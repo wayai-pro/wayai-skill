@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-marketplace.json",
+  "name": "wayai-skill",
+  "description": "WayAI hub configuration skill — set up AI communication hubs, agents, and tools.",
+  "owner": {
+    "name": "WayAI",
+    "email": "support@wayai.pro"
+  },
+  "plugins": [
+    {
+      "name": "wayai",
+      "source": "./plugins/wayai",
+      "description": "Configure WayAI hubs, agents, tools, channels, and resources via the wayai CLI.",
+      "homepage": "https://wayai.pro/docs/get-started",
+      "repository": "https://github.com/wayai-pro/wayai-skill",
+      "license": "MIT",
+      "keywords": ["wayai", "whatsapp", "customer-support", "ai-agent", "communication"],
+      "category": "ai-platforms"
+    }
+  ]
+}
