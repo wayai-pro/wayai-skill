@@ -1,34 +1,29 @@
 # wayai-skill
 
-The official WayAI skill for filesystem-having AI agents — Claude Code, Cursor, Codex CLI, OpenCode, Claude Cowork, and any agent that loads skills from disk. Drives the canonical onboarding flow described at [wayai.pro/docs/get-started](https://wayai.pro/docs/get-started).
+The official WayAI skill for filesystem-having AI agents. Drives the canonical onboarding flow at [wayai.pro/docs/get-started](https://wayai.pro/docs/get-started).
 
-## Install
+---
 
-**Claude Code** (two commands):
+## 1. Install the WayAI skill
 
-```
-/plugin marketplace add wayai-pro/wayai-skill
-/plugin install wayai@wayai-skill
-```
-
-**Cursor / cross-tool** (via [skills.sh](https://skills.sh)):
+One command, works across Claude Code, Codex, Cursor, OpenCode, Cline, GitHub Copilot, and 48 more.
 
 ```
-npx skills add wayai
+npx skills add wayai-pro/wayai-skill
 ```
 
-**Manual** (any AGENTS.md-aware agent):
+If your agent is already running, ask it to run the command above — it will pick up the skill on its next turn.
+
+## 2. Tell your agent what you want
+
+After install, just ask. The skill walks you through CLI install, login, organization, credentials, OAuth, and your first hub.
 
 ```
-git clone https://github.com/wayai-pro/wayai-skill ~/.claude/skills/wayai
+Set up a WayAI hub for customer support over WhatsApp.
 ```
 
-## Then ask your agent
+## 3. Don't have an account yet?
 
-> Set up a WayAI hub for customer support over WhatsApp.
+Free plan includes 2,000 operations per month. No credit card required.
 
-The skill walks you through CLI install, login, organization, credentials, OAuth, and your first hub.
-
-## Source of truth
-
-This repository is **mirrored** from the WayAI platform monorepo on every change to the canonical skill path. Do not send PRs here — they will be overwritten by the next sync. Open issues at [github.com/wayai-pro/wayai_platform](https://github.com/wayai-pro/wayai_platform) instead.
+[Create a free account](https://app.wayai.pro/login)
