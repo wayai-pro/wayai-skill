@@ -193,7 +193,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 7 | Template requires an OAuth channel (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
 | 8 | Prerequisites met | Agent copies the template (`assets/templates/{en\|pt}/.../hub.md` + `<role>-instructions.md`) into `workspace/<hub>/`, replaces placeholders, then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
-| 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/hub/<id>?action=publish` and click Publish." |
+| 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
 
 ### Deeplinks (canonical URLs — never breadcrumbs)
 
@@ -202,7 +202,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 3 (signup / org create) | `https://app.wayai.pro/login`, `https://app.wayai.pro/settings/organizations/new` |
 | 6 (credential pre-fill) | `https://app.wayai.pro/settings/credentials?type=bearer&name=<key-name>&prefill=true` |
 | 7 (OAuth channel) | `https://app.wayai.pro/settings/connections?connector=<whatsapp\|instagram\|google-calendar>` |
-| 10 (publish) | `https://app.wayai.pro/hub/<hub_id>?action=publish` |
+| 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 
 ### Rules
 
