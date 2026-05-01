@@ -208,7 +208,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 
 - Detect, don't assume — every step starts with a fresh `wayai status --json`.
 - Agent actions get a one-line receipt; user handoffs get one URL, one action, one return signal.
-- Never invent URLs outside the table above. Never instruct "go to Settings → …" — always a deeplink.
+- Never invent URLs outside the table above. Never instruct "go to Settings → …" — always a deeplink. For non-onboarding URLs see [`references/navigation.md`](references/navigation.md).
 - One question at a time during template selection (state 5): hub kind, then channel, then LLM provider.
 - Never auto-commit anything created during onboarding — show `git diff` and wait for user approval before any commit.
 
@@ -453,3 +453,4 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, `wayai eval capture` from production |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
 | **Templates** | [`references/templates.md`](references/templates.md) | Hub templates catalog, file format, placeholders |
+| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |
