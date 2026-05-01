@@ -19,6 +19,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 
 ## Agent Guidelines
 
+- **Interface:** if you have filesystem/shell access (code-harness agents — Claude Code, Codex, Cursor, OpenCode), drive WayAI through the **`wayai` CLI and workspace files**, and do not call any `mcp__wayai__*` tools that may also be in your toolset. If you do **not** have filesystem/shell access (app-harness agents — Claude Desktop, etc.), use the `mcp__wayai__*` tools — they are your interaction surface for everything below
 - Only provide information from this skill, tool descriptions, or reference documentation
 - Do not invent URLs, paths, or steps
 - Hub config flows through files + the `wayai` CLI; one-time setup (orgs, OAuth, publish) goes through the platform UI
