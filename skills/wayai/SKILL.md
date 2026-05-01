@@ -1,5 +1,6 @@
 ---
 name: wayai
+version: 6.0.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -9,8 +10,6 @@ description: |
   create-credential, analytics, run-eval, eval capture, init); or interpreting WayAI platform
   terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles).
 ---
-
-<!-- v6.0.0 -->
 
 # WayAI Skill
 
@@ -185,6 +184,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 |---|---|---|
 | 1 | CLI missing (`wayai --version` not found) | Agent runs `npm i -g @wayai/cli@latest`. |
 | 1b | No harness skill install present at project root (none of `<root>/.claude/skills/wayai/SKILL.md`, `<root>/.opencode/skills/wayai/SKILL.md`, `<root>/.agents/skills/wayai/SKILL.md` exists, where `<root>` is `git rev-parse --show-toplevel` or cwd if not in a git repo) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>`. After it completes, agent re-checks the three paths: if at least one exists, exit (the harness will load the installed skill on the next turn). If none exist, surface the install error to the user and halt — do not silently exit (would loop on re-entry). |
+| 1c | `skill.installed: true`, `skill.latest` is set, and `skill.latest` is newer than `skill.version` (CLI nightly check populates `skill.latest`) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>` to refresh the install in place, then exits (the updated skill loads on the next turn). On install failure, surface the error to the user and continue with the existing skill. |
 | 2 | `auth.logged_in: false` | Agent runs `wayai login` (opens browser). User handoff: "Open the page that just opened. Sign in or sign up. Tell me when done." |
 | 3 | `auth.logged_in: true`, `orgs: []` | User handoff: "Open `https://app.wayai.pro/login` (or sign up there if you don't have an account yet), then `https://app.wayai.pro/settings/organizations` to create your organization. Tell me when done." Then re-run `status --json`. |
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
@@ -216,13 +216,14 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 
 ### Existing hub
 1. **Update CLI** — `wayai update` (always run before any operation)
-2. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
-3. **Read context** — `workspace/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
-4. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
-5. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
-6. **Test** — `wayai send-message "Hello"`
-7. **Review** — run `git diff`, ask user to confirm. **Never auto-commit.** User commits and pushes to `main`
-8. **Go live** — sync preview → production via the platform UI when ready
+2. **Update skill if stale** — `wayai status --json` and apply state machine row 1c: if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue.
+3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
+4. **Read context** — `workspace/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
+5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
+6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
+7. **Test** — `wayai send-message "Hello"`
+8. **Review** — run `git diff`, ask user to confirm. **Never auto-commit.** User commits and pushes to `main`
+9. **Go live** — sync preview → production via the platform UI when ready
 
 ### New hub (from scratch)
 1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
