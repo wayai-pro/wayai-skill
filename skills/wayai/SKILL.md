@@ -187,11 +187,11 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 1b | No harness skill install present at project root (none of `<root>/.claude/skills/wayai/SKILL.md`, `<root>/.opencode/skills/wayai/SKILL.md`, `<root>/.agents/skills/wayai/SKILL.md` exists, where `<root>` is `git rev-parse --show-toplevel` or cwd if not in a git repo) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>`. After it completes, agent re-checks the three paths: if at least one exists, exit (the harness will load the installed skill on the next turn). If none exist, surface the install error to the user and halt — do not silently exit (would loop on re-entry). |
 | 1c | `skill.installed: true`, `skill.latest` is set, and `skill.latest` is newer than `skill.version` (CLI nightly check populates `skill.latest`) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>` to refresh the install in place, then exits (the updated skill loads on the next turn). On install failure, surface the error to the user and continue with the existing skill. |
 | 2 | `auth.logged_in: false` | Agent runs `wayai login` (opens browser). User handoff: "Open the page that just opened. Sign in or sign up. Tell me when done." |
-| 3 | `auth.logged_in: true`, `orgs: []` | User handoff: "Open `https://app.wayai.pro/login` (or sign up there if you don't have an account yet), then `https://app.wayai.pro/settings/organizations` to create your organization. Tell me when done." Then re-run `status --json`. |
+| 3 | `auth.logged_in: true`, `orgs: []` | User handoff: "Open `https://app.wayai.pro/settings/organizations/new` to create your organization. Tell me when done." Then re-run `status --json`. |
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What kind of hub? Pick one: pizzeria, dental, swimming-academy, sdr, or describe a custom one." See [`references/templates.md`](references/templates.md). |
 | 6 | LLM credential missing for chosen template | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
-| 7 | Template requires an OAuth channel (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
+| 7 | Template requires an OAuth connection (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
 | 8 | Prerequisites met | Agent copies the template (`assets/templates/{en\|pt}/.../hub.md` + `<role>-instructions.md`) into `workspace/<hub>/`, replaces placeholders, then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
@@ -200,9 +200,9 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 
 | State | URL |
 |-------|-----|
-| 3 (signup / org create) | `https://app.wayai.pro/login`, `https://app.wayai.pro/settings/organizations/new` |
+| 3 (signup / org create) | `https://app.wayai.pro/settings/organizations/new` |
 | 6 (credential pre-fill) | `https://app.wayai.pro/settings/credentials?type=bearer&name=<key-name>&prefill=true` |
-| 7 (OAuth channel) | `https://app.wayai.pro/settings/connections?connector=<whatsapp\|instagram\|google-calendar>` |
+| 7 (OAuth connection) | `https://app.wayai.pro/settings/connections?connector=<whatsapp\|instagram\|google-calendar>` |
 | 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 
 ### Rules
