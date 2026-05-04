@@ -6,6 +6,7 @@ For the canonical, programmatic source of connector definitions (auth schemas, s
 
 ## Table of Contents
 - [Organization Credentials](#organization-credentials)
+- [Organization Tags](#organization-tags)
 - [Creating Connections via CLI](#creating-connections-via-cli)
 - [Connector Types](#connector-types)
 - [Agent](#agent)
@@ -48,6 +49,51 @@ connections:
 - **No duplication** — same API key used across multiple hubs
 - **CLI-compatible** — agents can create connections via files + push (no raw secrets needed)
 - **Easy rotation** — update one credential, all connections use the new value
+
+---
+
+## Organization Tags
+
+Org tags are organization-scoped labels used to organize hubs and credentials, gate which credentials a hub can resolve, and scope API tokens.
+
+**Tag shape:** lowercase slug (`^[a-z0-9]+(-[a-z0-9]+)*$`, max 50 chars), optional display name, optional color. Unique per organization.
+
+**Where tags attach:**
+| Entity | How it's tagged | Effect |
+|--------|----------------|--------|
+| Org credential | UI: Credentials tab → tag picker | Restricts which hubs can use the credential (see matching rule below) |
+| Hub | `hub.yaml` (`tags: [...]`) **or** UI: Org → Hubs tab | Restricts which org credentials are visible to this hub |
+| API token (scope) | UI: User Settings → API Tokens (`hub_tags` scope) | Token applies only to hubs whose tags overlap |
+
+**Hub tags in `hub.yaml`:** declare a list of slug names — `wayai push` resolves them against `org_tag` and rejects unknown names with `Unknown org tag(s): …`. Tags must be **created in the platform UI first** (Settings → Organization → Tags); the CLI does not auto-create org-level entities. Credentials are only taggable in the UI.
+
+```yaml
+# hub.yaml
+name: My Hub
+description: ...
+tags:
+  - retail
+  - vip
+```
+
+Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_statuses` semantics). Use `tags: []` to clear all tags.
+
+**Credential ↔ hub matching rule** (enforced in `OrgDO.listCredentialsForHub`):
+
+| Hub tags | Credential tags | Visible to hub? |
+|----------|-----------------|-----------------|
+| empty | empty | ✓ |
+| has tags | empty | ✗ |
+| empty | has tags | ✗ |
+| has tags | has tags | ✓ if any tag overlaps |
+
+The rule is **symmetric**: an untagged hub only sees untagged credentials; a tagged hub only sees credentials sharing at least one of its tags. An additional **environment filter** layers on top — a credential's `environment` (`preview` | `production` | `all`) must be `all` or match the hub's environment.
+
+**Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` reports "no matching credential" while the credential clearly exists in the org, the cause is almost always a tag mismatch (or environment mismatch) — adjust `hub.yaml` `tags`, or the credential's tags in the UI.
+
+**Tag deletion** is blocked while any credential or hub still references the tag (`OrgTagReferencesError`). Untag references first, then delete.
+
+---
 
 **Supported connectors (non-OAuth):**
 - All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, OpenCode)
@@ -96,6 +142,7 @@ connections:
 
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
+- The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (tag overlap + environment)
 - OAuth connections (WhatsApp, Instagram, Google Calendar) cannot be auto-created — use UI
 
 ### Example: Full Hub Setup via CLI

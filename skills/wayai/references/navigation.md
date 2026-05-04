@@ -77,7 +77,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/overview` | Org overview |
 | `/settings/organizations/[orgId]/hubs` | Org's hubs list |
 | `/settings/organizations/[orgId]/credentials` | Org-level credentials |
-| `/settings/organizations/[orgId]/tags` | Tags |
+| `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
 
 ### Hub level

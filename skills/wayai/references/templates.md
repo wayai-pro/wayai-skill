@@ -106,6 +106,7 @@ YAML frontmatter with hub settings and agents config, plus a Markdown body for h
 | `ai_mode` | string | `Pilot+Copilot`, `Pilot`, `Copilot`, `Turned Off` |
 | `hub_type` | string | `chat` or `task` |
 | `kanban_statuses` | array | Workflow stages with followup config |
+| `tags` | array of slug names | Org tags attached to the hub. Names must already exist in the org (Settings → Organization → Tags). Gates which org credentials this hub can resolve — see [connections.md](connections.md#organization-tags) |
 | `agents` | array | Agent configurations (see below) |
 | `connections` | array | Required connections (referenced by name + connector_id) |
 
