@@ -145,9 +145,19 @@ Behavioral flags: `isInitialStatus`, `triggersAgentResponse`, `allowsAgentUpdate
 
 Followup types:
 - `inactivity` — sent after a period of silence
-- `before_event` — sent before a scheduled event
+- `before_event` — sent before a scheduled event (requires parent status `isSchedulingStatus: true`)
 
 Both support `threshold` + `timeUnit` (seconds/minutes/hours/days), optional quiet hours (`excludedTimeStart`/`excludedTimeEnd`), and `excludeHolidays` (default `true`).
+
+**Constraints** (enforced server-side on every write — REST, CLI `wayai push`, MCP):
+- Exactly one status must have `isInitialStatus: true`
+- Status names must be unique within a hub
+- Mutually exclusive flags (cannot both be `true` on the same status):
+  - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
+  - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
+- `isSchedulingStatus: true` requires non-empty `eventName`
+- `before_event` followups require the parent status to have `isSchedulingStatus: true`
+- Followups with `delivery_mode: direct` require non-empty `direct_text`
 
 **States** are JSON-schema data the agent reads/writes during conversations. Each state has either `conversation` or `user` scope, a `json_schema` (shape), and `initial_value` (defaults).
 
