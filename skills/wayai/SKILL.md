@@ -139,9 +139,15 @@ Only preview hubs are tracked in this repository.
 
 ## Kanban & States
 
-**Kanban statuses** are workflow stages for conversations (visible in support/task views), defined per hub in `hub.yaml`. Each status supports behavioral flags and optional time-based followups.
+**Kanban statuses** are workflow stages for conversations (visible in support/task views), defined per hub in `hub.yaml`. Each status has a stable `slug` (immutable identifier), a `name` (display label), behavioral flags, and optional time-based followups.
+
+**Identity model:**
+- `slug` — immutable lowercase identifier (`^[a-z][a-z0-9_]{0,49}$`). Stored in `conversation.kanban_status`, ClickHouse `data.meta.kanban_status`, native tool params, and transition references. **Cannot be renamed** after the status is saved.
+- `name` — display label shown in the UI and tool descriptions. Freely editable.
 
 Behavioral flags: `isInitialStatus`, `triggersAgentResponse`, `allowsAgentUpdate`, `isTerminalStatus`, `isSchedulingStatus` (requires `eventName`).
+
+**Allowed transitions** (`allowed_next_statuses`) — optional list of slugs this status can transition to. Omit (= `undefined`) for unrestricted (any next status). Empty array `[]` is rejected; use `isTerminalStatus: true` for "no outbound."
 
 Followup types:
 - `inactivity` — sent after a period of silence
@@ -151,13 +157,19 @@ Both support `threshold` + `timeUnit` (seconds/minutes/hours/days), optional qui
 
 **Constraints** (enforced server-side on every write — REST, CLI `wayai push`, MCP):
 - Exactly one status must have `isInitialStatus: true`
-- Status names must be unique within a hub
+- Slugs must be unique within a hub and match `^[a-z][a-z0-9_]{0,49}$`
+- Every entry in `allowed_next_statuses` must reference a sibling slug; `[]` is rejected
 - Mutually exclusive flags (cannot both be `true` on the same status):
   - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
   - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
 - `isSchedulingStatus: true` requires non-empty `eventName`
 - `before_event` followups require the parent status to have `isSchedulingStatus: true`
 - Followups with `delivery_mode: direct` require non-empty `direct_text`
+
+**Non-blocking warnings** (returned alongside successful saves):
+- Unreachable status — a non-initial status that no other status lists in its `allowed_next_statuses`. Save still succeeds.
+
+**Runtime transition gate:** When a conversation transitions kanban status (drag-drop, native tool, REST, MCP), the configured `allowed_next_statuses` is enforced. Disallowed transitions return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy "any → any" behavior.
 
 **States** are JSON-schema data the agent reads/writes during conversations. Each state has either `conversation` or `user` scope, a `json_schema` (shape), and `initial_value` (defaults).
 
@@ -343,21 +355,26 @@ hub:
     time_threshold2: 300
     time_threshold3: 600
   kanban_statuses:
-    - name: New
+    - slug: new
+      name: New
       order: 0
       color: "#22c55e"
       isInitialStatus: true
       triggersAgentResponse: true
-    - name: Waiting for Customer
+      allowed_next_statuses: [waiting_for_customer, resolved]
+    - slug: waiting_for_customer
+      name: Waiting for Customer
       order: 1
       color: "#f59e0b"
+      allowed_next_statuses: [resolved]
       followups:
         - order: 0
           type: inactivity
           threshold: 30
           timeUnit: minutes
           instructions: "Hi! Just checking in — do you still need help?"
-    - name: Resolved
+    - slug: resolved
+      name: Resolved
       order: 2
       color: "#ef4444"
       isTerminalStatus: true
