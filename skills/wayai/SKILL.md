@@ -285,9 +285,9 @@ wayai push              # Push local changes (-y skips confirmation; auto-pulls 
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unlock            # Clear the worktree hub lock
 wayai send-message      # Test message to a preview hub
-wayai conversations     # List or inspect conversations
-                        # `wayai conversations <id> observability` — per-message LLM trace summary
-                        # `wayai conversations <id> observability --message-id <id>` — full record (prompt, completion, tool calls, tokens)
+wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
+                        # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
+                        # `wayai conversations <id> observability --message-id <id>` — full record for one turn (prompt, completion, tool calls, tokens; --json for raw)
 wayai delete-history    # Clear conversation history (testing)
 wayai sync-skills       # Sync skills to provider connections; --connection-id <uuid> to scope
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
