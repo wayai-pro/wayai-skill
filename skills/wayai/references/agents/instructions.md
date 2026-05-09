@@ -7,6 +7,7 @@ Agent instructions live in `agents/<slug>.md` files. They support dynamic `{{pla
 - [Syntax](#syntax)
 - [Available Placeholders](#available-placeholders)
 - [Examples](#examples)
+- [Additional Context (cache-friendly)](#additional-context-cache-friendly)
 
 ---
 
@@ -18,6 +19,7 @@ Placeholders are processed in:
 - Agent instructions (uploaded via `upload_agent_instructions`)
 - Prepend instructions (injected at conversation start)
 - Kanban followup instructions
+- **Additional Context** — see below
 
 ---
 
@@ -332,3 +334,35 @@ You are a scheduling assistant.
 
 Confirm the appointment details with the user and offer to reschedule if needed.
 ```
+
+---
+
+## Additional Context (cache-friendly)
+
+Agents have a separate `additional_context_template` field — same `{{...}}` syntax as instructions, but the resolved output is emitted as a `<additional_context>` XML tag prepended to the **last user message** on every turn instead of being substituted inline into the system prompt.
+
+**Why this exists.** Anthropic prompt caching matches the cached prefix byte-for-byte. Any placeholder that changes per turn (`{{now()}}`, `{{state(...)}}`) inside `instructions` invalidates the cached system prompt every turn, so cache reads never land. Moving those high-churn values into `additional_context_template` keeps the system prompt stable and lets the cache absorb the agent's identity, tools, and skills — typical cache-read savings are large because tools + agent definitions are most of the prefix.
+
+**When to use which:**
+- `instructions` — stable agent identity, tone, rules. Static placeholders are fine here (`{{user_info()}}`, `{{previous_conversations(N)}}`).
+- `additional_context_template` — anything that changes per turn or per minute. `{{now()}}` always belongs here; `{{state(...)}}` belongs here unless the agent's reasoning hard-depends on reading state from inline prose.
+
+**YAML / agent file:**
+
+```yaml
+agents:
+  - name: Support Pilot
+    role: pilot
+    connection: anthropic-prod
+    instructions: agents/support-pilot.md
+    additional_context_template: |
+      Current time: {{now()}}
+      Open tickets: {{state(user, open_tickets)}}
+```
+
+**Behavior:**
+- Empty / whitespace-only → no tag emitted (fully backward-compatible)
+- The tag sits next to existing state tags (`<conversation_state>`, `<user_state>`) on the last user turn
+- Evaluator agents (`message_evaluator`, `conversation_evaluator`) do NOT receive the tag — they score raw history
+- All `{{...}}` placeholders documented above work identically in this field
+
