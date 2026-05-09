@@ -78,11 +78,11 @@ Close/end a conversation.
 
 ### update_kanban_status
 
-Update conversation's kanban board status.
+Update conversation's kanban board status. The enum is constrained to the hub's agent-updateable status **slugs**; the tool description renders `slug (Display Name)` pairs so the LLM can reason about the choice. Transitions are rejected when the source status is `isTerminalStatus: true` (any outbound transition fails) or defines an `allowed_next_statuses` list that excludes the target. Both rejections return an error message beginning with `invalid_kanban_transition:` — terminal-status rejections name the source and target slug; `allowed_next_statuses` rejections additionally append `Allowed targets: <slugs>`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `new_kanban_status` | string | Yes | New kanban status value |
+| `new_kanban_status` | string | Yes | Target status **slug** (immutable identifier from `hub.kanban_statuses[].slug`, not the display `name`) |
 
 ### schedule_followup
 
