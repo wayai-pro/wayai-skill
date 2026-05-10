@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.0.0
+version: 6.1.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
