@@ -543,7 +543,7 @@ Speech-to-text services for transcribing voice messages.
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | API Key | Fast speech-to-text transcription using Groq's Whisper implementation. |
-| OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | API Key | Speech-to-text transcription using OpenAI Whisper API. |
+| OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | API Key | Speech-to-text transcription using OpenAI gpt-4o-transcribe models. |
 
 ### Groq STT
 
