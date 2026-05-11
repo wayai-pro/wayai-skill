@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.2.0
+version: 6.3.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -91,8 +91,13 @@ Decision: WhatsApp/Instagram/Email needed → `chat`. Object/task processing →
 | `pilot_advisor` / `copilot_advisor` | Both | 1 each | Advisory input via `consult_agent`; returns control |
 | `monitor` | Background | 1 | Observes silently |
 | `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing |
+| `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross `summarization_threshold_tokens` (default 120000, hub-level). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
 
 For role flow, delegation, and settings depth, see [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md).
+
+### Hub-level summarization config
+
+`hub.yaml` exposes `summarization_threshold_tokens` (default 120000, min 1000, max 1000000). Lower it for testing; raise it for very long conversations. The summarizer agent's `connection` defaults to the pilot's; edit `agents/summarizer.yaml` to change its model or system prompt. The `conversation_summary` state's schema is round-trippable like any other state — extra fields beyond the anchors are allowed but the anchors are load-bearing.
 
 ## Connection Types
 
