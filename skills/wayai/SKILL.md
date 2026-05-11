@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.3.0
+version: 6.4.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -185,7 +185,7 @@ Both support `threshold` + `timeUnit` (seconds/minutes/hours/days), optional qui
 
 **Runtime transition gate:** When a conversation transitions kanban status (drag-drop, native tool, REST, MCP), the configured `allowed_next_statuses` is enforced. Disallowed transitions return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy "any → any" behavior.
 
-**States** are JSON-schema data the agent reads/writes during conversations. Each state has either `conversation` or `user` scope, a `json_schema` (shape), and `initial_value` (defaults).
+**States** are JSON-schema data the agent reads/writes during conversations. Each state has either `conversation` or `user` scope, a `json_schema` (shape), and an optional `initial_value` (opt-in pre-populated virtual record rendered in both the `{{state()}}` placeholder and the `<state>` tag until the first real write). Omit `initial_value` to keep state silent until something is actually written.
 
 **Kanban vs State:** kanban tracks workflow progression; state tracks structured data. Both coexist.
 

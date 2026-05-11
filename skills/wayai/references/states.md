@@ -70,7 +70,7 @@ states:
       contact_method: whatsapp
 ```
 
-**Required fields:** `name`, `scope`, `json_schema`, `initial_value`.
+**Required fields:** `name`, `scope`, `json_schema`. `initial_value` is optional.
 
 ---
 
@@ -83,7 +83,7 @@ Agents access states through native tools (provided by the Wayai connector):
 | `get_state` | Read a state's current value (returns the full object) |
 | `update_state` | Replace the entire state value |
 | `set_state_path` | Update a single dot-notation path (e.g., `items.0.quantity`) |
-| `reset_state` | Reset to `initial_value` |
+| `reset_state` | Delete the persisted row (next read falls back to `initial_value` if set, else `{}`) |
 
 To make these available, list them under `tools.native` for the agent:
 
@@ -108,17 +108,29 @@ See [agents/instructions.md](agents/instructions.md) for full placeholder syntax
 
 ## `initial_value`
 
-`initial_value` is what the state holds when:
-- A new conversation starts (for `conversation`-scoped states)
-- A new user first interacts with the hub (for `user`-scoped states)
-- An agent calls `reset_state`
+`initial_value` is the **opt-in "pre-populated virtual record"** rendered to the agent when no row has been written yet. It is optional.
 
-The shape of `initial_value` MUST validate against `json_schema`. The platform rejects state definitions where `initial_value` doesn't conform.
+- **When set**, both channels render it as the effective state until a real write happens:
+  - the `{{state(<scope>, <slug>)}}` placeholder substitutes its JSON content
+  - the `<conversation_state>` / `<user_state>` tag emits it on the user turn (when `inject_in_last_message` is on)
+- **When omitted**, the placeholder renders empty and the tag is suppressed. The state stays silent until the agent or a tool writes to it for the first time.
+- After `reset_state`, the persisted row is deleted; the next read falls back to `initial_value` if set, otherwise `{}`.
+- After `set_state_path` or `update_state`, the persisted row contains ONLY what was explicitly written — it does NOT include the surrounding `initial_value` shape. If the agent needs the rest of the structure, it should read `initial_value` separately or always go through `get_state`.
+
+The shape of `initial_value` (when set) MUST validate against `json_schema`. The platform rejects state definitions where `initial_value` doesn't conform.
+
+**When to set it:**
+- The hub author wants the agent to see useful defaults from turn one (e.g., language preferences, a "no orders yet" sentinel).
+- The agent's prompt references `{{state(...)}}` and would read awkwardly with an empty render.
+
+**When to leave it unset:**
+- The state is "scratch space" — nothing meaningful exists until the agent writes.
+- You want shape documentation only — put the shape in the agent's system prompt prose instead. Setting `initial_value` to a structurally-empty object (like `{ "students": [], "contact": { "name": "" } }`) wastes context tokens on every turn for zero signal.
 
 Patterns:
-- Use `null` for fields you want to be "unset" — combined with `nullable` in the schema (or omit `required` so the field can be absent)
-- Use empty arrays `[]` and empty strings `""` over `null` when you want the agent to append rather than replace
-- Default enum-typed fields to a sensible starting value (e.g., `status: pending`)
+- Use `null` for fields you want to be "unset" — combined with `nullable` in the schema (or omit `required` so the field can be absent).
+- Use empty arrays `[]` and empty strings `""` over `null` when you want the agent to append rather than replace.
+- Default enum-typed fields to a sensible starting value (e.g., `status: pending`).
 
 ---
 
