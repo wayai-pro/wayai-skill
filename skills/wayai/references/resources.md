@@ -149,36 +149,38 @@ Configured per agent-resource link via `use_native_integration`:
 - Faster execution — no container overhead
 - Best for most use cases
 
-### Native integration (Anthropic only)
+### Native integration (Anthropic, OpenAI)
 
 - `use_native_integration: true`
-- Skill is uploaded to Anthropic's API and executed in a sandboxed container
-- Requires an **Anthropic connection** on the hub
+- Skill is uploaded to the agent's provider and loaded inside a managed container:
+  - **Anthropic** — `container.skills` + `code_execution_20250825` tool
+  - **OpenAI** — `shell` tool with `container_auto` environment + `skill_reference` entries
+- Requires an **Anthropic or OpenAI connection** on the hub
 - Requires **syncing** skills to the provider (auto-sync on push, or manual)
-- Best for skills that need sandboxed code execution or Anthropic-specific features
+- Best for skills that need sandboxed code execution; pay for container cold-start latency and a tool-call op per turn
 
 ### When to use which
 
 | Scenario | Mode |
 |----------|------|
 | General agent capability | Tool-based (default) |
-| Multi-provider hub (Anthropic + OpenAI) | Tool-based |
+| Skill must work across non-skill-capable providers (Google, OpenRouter) | Tool-based |
 | Sandboxed code execution required | Native integration |
-| Anthropic-specific container features | Native integration |
+| Hub uses Anthropic and/or OpenAI agents and wants native skill features | Native integration |
 
 ---
 
 ## Syncing Skills to Providers
 
-When a skill is created and the hub has an Anthropic connection, skills are **automatically synced** (uploaded) to the provider on `wayai push`. Manual re-sync is needed when:
+When a skill is created and the hub has an Anthropic or OpenAI connection, skills are **automatically synced** (uploaded) to those providers on `wayai push`. Manual re-sync is needed when:
 - The initial auto-sync failed (network error, rate limit)
-- An Anthropic connection was added **after** the skill resource was created
+- An Anthropic or OpenAI connection was added **after** the skill resource was created
 - Skills were updated and need to be re-uploaded
 
 Trigger a manual re-sync:
 
 ```bash
-wayai sync-skills                              # all skills, all Anthropic connections
+wayai sync-skills                              # all skills, all skill-capable connections (Anthropic, OpenAI)
 wayai sync-skills --connection-id <uuid>       # scope to one connection
 ```
 
@@ -191,7 +193,7 @@ wayai sync-skills --connection-id <uuid>       # scope to one connection
 3. Add `references/*.md` for deep-dive content the skill body points to
 4. Declare the resource in `hub.yaml` with `type: skill`
 5. Link to one or more agents in `agents/<slug>.yaml` under `resources:`
-6. `wayai push` — uploads the skill, syncs to Anthropic if connection exists
-7. (Optional) `wayai sync-skills` if auto-sync didn't run or you added an Anthropic connection later
+6. `wayai push` — uploads the skill, syncs to Anthropic and/or OpenAI if those connections exist
+7. (Optional) `wayai sync-skills` if auto-sync didn't run or you added an Anthropic/OpenAI connection later
 
 Treat skill content like the conceptual layer of a feature — the entry `SKILL.md` describes *what* and *when*, with body short enough to fit always-on, and references handle *deep how*.
