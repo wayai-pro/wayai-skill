@@ -96,9 +96,9 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 ---
 
 **Supported connectors (non-OAuth):**
-- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, OpenCode)
+- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter)
 - Channel connectors with API Key auth (Resend, Telegram)
-- Tool - Custom (User Tool, OpenCode Tool)
+- Tool - Custom (User Tool)
 - Tool - MCP (MCP Server — API Key auth)
 - Tool - Native (External Resources)
 - STT (Groq STT, OpenAI STT)
@@ -161,10 +161,10 @@ connections:
 
 | Type | Description |
 |------|-------------|
-| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, OpenCode) |
+| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool - Native` | Platform-provided tool integrations (Wayai, Google Calendar, External Resources) |
-| `Tool - Custom` | Custom API integrations you create (User Tool, OpenCode Tool) |
+| `Tool - Custom` | Custom API integrations you create (User Tool) |
 | `Tool - MCP` | External MCP server connections |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
@@ -183,7 +183,6 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 | Anthropic | `b3c4d5e6-f7a8-9012-bcde-f12345678902` | API Key | LLM provider for Anthropic Claude models. |
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | API Key | LLM provider for Google Gemini models. |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | API Key | Multi-provider LLM gateway with access to OpenAI, Anthropic, Google, xAI, DeepSeek, MiniMax, Kimi, GLM, Qwen, and Xiaomi models. |
-| OpenCode | `e6f7a8b9-c0d1-2345-ef01-234567890abc` | Basic Auth | Connect to a deployed OpenCode server for self-hosted agentic loops with custom tools and instructions. |
 
 ### OpenAI
 
@@ -232,28 +231,6 @@ LLM providers for AI functionality. **At least one Agent connection required bef
    - **Connection Name** (required): A name to identify this connection
    - **API Key** (required): Your OpenRouter API key
 4. Click Save
-
-### OpenCode
-
-Connect to a self-hosted OpenCode server. Unlike other Agent connectors, OpenCode runs its own agentic loop on the server side — tools, MCP servers, and custom instructions are configured in `AGENTS.md` on the OpenCode server, not in the WayAI agent settings.
-
-**Prerequisites:**
-- A deployed OpenCode server (e.g., on Railway) with `OPENCODE_SERVER_PASSWORD` set
-- The server's base URL
-
-**Setup:**
-1. Settings → Organizations → Project → Hub → Connections
-2. In the **Agent** group, click the **OpenCode** card
-3. Fill the form:
-   - **Connection Name** (required): A name to identify this connection
-   - **Server URL** (required): Base URL of the OpenCode server (e.g., `https://your-opencode-server.up.railway.app`)
-   - **Username**: Basic auth username (defaults to `opencode`)
-   - **Password** (required): Basic auth password (`OPENCODE_SERVER_PASSWORD` on the server)
-4. Click Save
-
-**Agent settings:**
-- `model: opencode` (single fixed value — actual model is configured server-side)
-- `agent_name`: Optional. Name of an OpenCode agent defined in `AGENTS.md` on the server (e.g. `Build`, `Plan`). Leave empty for the default agent.
 
 ---
 
@@ -454,7 +431,6 @@ See [agents/custom-tools.md](agents/custom-tools.md) for how to create custom to
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
 | User Tool | `b15fb991-63e1-4a79-a174-d10aa66f4414` | API Key, Basic Auth, Bearer Token | Connect custom REST APIs using API key, basic auth, or bearer token authentication. |
-| OpenCode Tool | `f7a8b9c0-d1e2-3456-f012-345678901bcd` | Basic Auth | Send tasks to a deployed OpenCode server and retrieve results. |
 
 ### User Tool
 
@@ -475,27 +451,6 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
 5. Click Save
 
 **Usage:** A Tool - Custom connection is required before creating custom tools. Each custom tool must reference a connection for authentication.
-
-### OpenCode Tool
-
-Connect custom tools to a deployed OpenCode server. Use this when you want a specific tool (e.g., a code-review or build endpoint) to dispatch to OpenCode without making the entire agent OpenCode-driven.
-
-**Prerequisites:**
-- A deployed OpenCode server with `OPENCODE_SERVER_PASSWORD` set
-- The server's base URL
-
-**Setup:**
-1. Settings → Organizations → Project → Hub → Connections
-2. In the **Tool - Custom** group, click the **OpenCode Tool** card
-3. Fill the form:
-   - **Connection Name** (required): A name to identify this connection
-   - **Server URL** (required): Base URL of the OpenCode server (e.g., `https://your-opencode-server.up.railway.app`)
-   - **Username**: Basic auth username (defaults to `opencode`)
-   - **Password** (required): Basic auth password (`OPENCODE_SERVER_PASSWORD` on the server)
-   - **Connection Headers** (optional): Additional headers
-4. Click Save
-
-**Usage:** Reference this connection from custom tools in `agents/<slug>.yaml` to call OpenCode endpoints. See [agents/custom-tools.md](agents/custom-tools.md).
 
 ---
 
@@ -645,7 +600,6 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Anthropic | `b3c4d5e6-f7a8-9012-bcde-f12345678902` | Agent | API Key |
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | Agent | API Key |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | Agent | API Key |
-| OpenCode | `e6f7a8b9-c0d1-2345-ef01-234567890abc` | Agent | Basic Auth |
 | WhatsApp | `5fb214cb-aaa8-4b3d-8c65-c9370b3e7c85` | Channel | OAuth |
 | Instagram | `f9e8d7c6-5b4a-3210-9876-543210fedcba` | Channel | OAuth |
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | Channel | API Key |
@@ -654,7 +608,6 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool - Native | OAuth |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool - Native | API Key |
 | User Tool | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool - Custom | API Key, Basic Auth, Bearer Token |
-| OpenCode Tool | `f7a8b9c0-d1e2-3456-f012-345678901bcd` | Tool - Custom | Basic Auth |
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool - MCP | API Key, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | STT | API Key |
