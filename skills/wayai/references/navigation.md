@@ -21,8 +21,8 @@ Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_n
 | `/chat` | Conversations where the signed-in user is the **end user** of a `chat` hub | Hub Users |
 | `/task` | Task-oriented conversations (one user, many concurrent) | Hub Users on `task` hubs |
 | `/support` | Inbox / kanban for team members handling end-user conversations | Hub Team Users, Hub Admins |
-| `/settings` | Org + hub configuration (full-screen drill-down) | Org Owners/Admins, Hub Admins |
-| `/user` | Personal settings (profile, preferences, tokens) | All authenticated users |
+| `/settings` | Unified settings shell (account + org + hub) with sidebar nav | Account: all authenticated users; Org/Hub: admins |
+| `/user` | Legacy alias — 308 redirects to `/settings/account/*` (kept for external bookmarks) | All authenticated users |
 
 Access is per-level: an Org Admin who isn't also a Hub Admin gets an auth error at hub-scoped URLs. Top-level prefixes are the canonical list in `frontend/src/lib/app-routes.ts` (`APP_ROUTE_PREFIXES`).
 
@@ -107,17 +107,18 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 |------|---------|
 | `/settings/hubs/[hubId]` | Direct hub access (resolves org from membership) |
 
-## User Settings
+## Account Settings
 
-Reached via the avatar menu (bottom of sidebar) → User Settings.
+Reached via the avatar menu (bottom of sidebar) → User Settings, or the ACCOUNT section of the settings sidebar.
 
 | Path | Purpose |
 |------|---------|
-| `/user` | Default user-settings tab |
-| `/user/profile` | Name, email, avatar |
-| `/user/preferences` | Theme, language, notifications |
-| `/user/authorized-apps` | OAuth-authorized apps (MCP clients, third parties) |
-| `/user/api-tokens` | Personal `way_` API tokens for CLI / MCP / direct API |
+| `/settings/account` | Default account tab (redirects to profile) |
+| `/settings/account/profile` | Name, email, avatar, theme, language |
+| `/settings/account/authorized-apps` | OAuth-authorized apps (MCP clients, third parties) |
+| `/settings/account/api-tokens` | Personal `way_` API tokens for CLI / MCP / direct API |
+
+Legacy `/user/*` paths 308-redirect to the equivalent `/settings/account/*` URL — bookmarks and external links stay valid for one release cycle.
 
 ## Marketing & Docs
 
