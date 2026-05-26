@@ -191,8 +191,7 @@ composed_tools:
       event_description: result.summary
   - tool_name: update_state
     mappings:
-      state_scope: conversation
-      state_name: appointment
+      state_slug: appointment
       updates: result
 ```
 

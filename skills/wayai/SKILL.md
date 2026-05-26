@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.4.0
+version: 6.4.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -497,7 +497,7 @@ For full agent options (settings per connector, native tool params, custom tool 
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection)
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)
-- **Entity matching (sync/diff):** `id` first (stable UUID), then fallback. Exceptions: states match by `name + scope`; evals match by `name + path`; native tools by `tool_name` per agent
+- **Entity matching (sync/diff):** `id` first (stable UUID), then fallback. Exceptions: states match by `name` (unique per hub regardless of scope); evals match by `name + path`; native tools by `tool_name` per agent
 
 ## Slugification & Entity Matching
 

@@ -217,6 +217,6 @@ Both coexist: kanban tracks "where in the workflow am I?", state tracks "what da
 
 ## Entity Matching
 
-States match on `name + scope` (composite key) instead of name alone — you can have an `order_tracking` state at both `conversation` and `user` scope without conflict. The `id` is the primary match; `name + scope` is the fallback for renames.
+State `name` (the slug) is unique **per hub** across all scopes — you cannot have an `order_tracking` state at both `conversation` and `user` scope in the same hub. The platform-facing tool surface identifies state by slug only (scope is derived from the definition), so two states sharing a slug would be ambiguous to the agent. The `id` is the primary match; `name` is the fallback for renames.
 
 Renaming a state: change the `name` field — the `id` keeps continuity, so it's detected as a rename, not delete + create. Changing `scope` is treated as delete + create (scope is structural).
