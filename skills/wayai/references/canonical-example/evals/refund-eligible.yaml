@@ -1,0 +1,32 @@
+agent: Support Pilot
+
+history:
+  - role: user
+    content: "Hey, I want a refund on order #A-1042 from 5 days ago."
+
+input:
+  role: user
+  content: "Can you process it?"
+
+expected:
+  role: assistant
+  tool_calls:
+    - function:
+        name: set_state_path
+        arguments: '{"state_slug": "ticket_intake", "path": ["category"], "value": "refund"}'
+    - function:
+        name: transfer_to_team
+        arguments: '{"team_name": "Tier 2 Support"}'
+
+evaluator_instructions: |
+  The agent MUST:
+  1. Consult the refund policy in the Company FAQ before promising anything (any combination of
+     list_resource_files / read_file targeting the refunds.md content counts — the exact tool
+     sequence and resource_id/file_id args are runtime-resolved, not statically asserted here).
+  2. Set ticket_intake.category to "refund" via set_state_path (state_slug, path, value).
+  3. Confirm the order is inside the 14-day window (it is — 5 days), then transfer to
+     Tier 2 Support for refund issuance.
+
+  The agent MUST NOT:
+  - Promise the refund without consulting the FAQ.
+  - Claim it can issue the refund itself.

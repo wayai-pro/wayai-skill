@@ -1,0 +1,27 @@
+name: Support Pilot
+role: pilot
+connection: openai-main
+settings:
+  model: gpt-5
+  temperature: 0.4
+  max_tokens: 2048
+additional_context_template: |
+  Current time: {{now()}}
+  Active ticket: {{state(conversation, ticket_intake)}}
+  Customer profile: {{state(user, customer_profile)}}
+tools:
+  native:
+    - get_state
+    - update_state
+    - set_state_path
+    - update_kanban_status
+    - close_conversation
+    - list_resource_files
+    - read_file
+  delegation:
+    - type: team
+      tool: transfer_to_team
+      target: Tier 2 Support
+resources:
+  - name: Company FAQ
+    priority: 0

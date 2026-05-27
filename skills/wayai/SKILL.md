@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.4.1
+version: 6.5.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -226,10 +226,10 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 3 | `auth.logged_in: true`, `orgs: []` | User handoff: "Open `https://app.wayai.pro/settings/organizations/new` to create your organization. Tell me when done." Then re-run `status --json`. |
 | 3b | `git rev-parse --show-toplevel` fails (cwd is not in a git repo) | The CLI requires git for workspace detection. **Before acting, surface the resolved cwd and confirm with the user** — handoff: "I'll initialize a git repo at `<cwd>`. Confirm or pick a different folder." This prevents accidentally initializing a repo in `~` or another unintended directory. After confirmation, agent runs `git init` in cwd. Then checks `git config --global user.name` and `git config --global user.email`; if either is empty, asks the user once for their name and email and runs `git config --global user.name "<name>"` / `git config --global user.email "<email>"`. A GitHub remote is not required for the onboarding flow — only set one up later if the user wants the GitOps/CI loop. |
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
-| 5 | Workspace scoped, hub goal not yet known | User handoff: "What kind of hub? Pick one: pizzeria, dental, swimming-academy, sdr, or describe a custom one." See [`references/templates.md`](references/templates.md). |
-| 6 | LLM credential missing for chosen template | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
-| 7 | Template requires an OAuth connection (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
-| 8 | Prerequisites met | Agent copies the template (`assets/templates/{en\|pt}/.../hub.md` + `<role>-instructions.md`) into `workspace/<hub>/`, replaces placeholders, then `wayai push -y`. |
+| 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
+| 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
+| 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
+| 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `workspace/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
 
@@ -247,7 +247,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 - Detect, don't assume — every step starts with a fresh `wayai status --json`.
 - Agent actions get a one-line receipt; user handoffs get one URL, one action, one return signal.
 - Never invent URLs outside the table above. Never instruct "go to Settings → …" — always a deeplink. For non-onboarding URLs see [`references/navigation.md`](references/navigation.md).
-- One question at a time during template selection (state 5): hub kind, then channel, then LLM provider.
+- One question at a time during hub scoping (state 5): goal, then channel, then LLM provider.
 - Never auto-commit anything created during onboarding — show `git diff` and wait for user approval before any commit.
 
 ## Workflow
@@ -534,5 +534,5 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, `wayai eval capture` from production |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
-| **Templates** | [`references/templates.md`](references/templates.md) | Hub templates catalog, file format, placeholders |
+| **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |

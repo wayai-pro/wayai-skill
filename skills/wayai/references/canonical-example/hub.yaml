@@ -1,0 +1,94 @@
+version: 1
+
+hub:
+  name: Customer Support
+  hub_type: chat
+  ai_mode: pilot+copilot
+  timezone: America/New_York
+  app_permission: require_permission
+  non_app_permission: everyone
+  file_handling_mode: metadata_only
+  hub_sla:
+    time_threshold1: 60
+    time_threshold2: 300
+    time_threshold3: 600
+  kanban_statuses:
+    - slug: new
+      name: New
+      order: 0
+      color: "#22c55e"
+      isInitialStatus: true
+      allowed_next_statuses: [in_progress, waiting_for_customer, resolved]
+    - slug: in_progress
+      name: In Progress
+      order: 1
+      color: "#3b82f6"
+      allowed_next_statuses: [waiting_for_customer, resolved]
+    - slug: waiting_for_customer
+      name: Waiting for Customer
+      order: 2
+      color: "#f59e0b"
+      allowed_next_statuses: [in_progress, resolved]
+      followups:
+        - order: 0
+          type: inactivity
+          threshold: 24
+          timeUnit: hours
+          instructions: "Hi! Just checking in — do you still need help with this?"
+    - slug: resolved
+      name: Resolved
+      order: 3
+      color: "#10b981"
+      isTerminalStatus: true
+
+states:
+  - name: ticket_intake
+    scope: conversation
+    description: Structured intake of the current support request
+    json_schema:
+      type: object
+      properties:
+        category:
+          oneOf:
+            - { type: string, enum: [billing, technical, account, refund, other] }
+            - { type: "null" }
+        order_id:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+        summary: { type: string }
+        urgency:
+          type: string
+          enum: [low, medium, high]
+      required: []
+    initial_value:
+      category: null
+      order_id: null
+      summary: ""
+      urgency: low
+
+  - name: customer_profile
+    scope: user
+    description: Persistent customer info across conversations
+    json_schema:
+      type: object
+      properties:
+        preferred_language: { type: string, enum: [en, pt, es] }
+        plan: { type: string, enum: [free, pro, enterprise] }
+        known_account_id:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+    initial_value:
+      preferred_language: en
+      plan: free
+      known_account_id: null
+
+connections:
+  - name: openai-main
+    type: Agent
+    service: OpenAI
+
+resources:
+  - name: Company FAQ
+    description: Public-facing FAQ and policy docs (billing, refunds, account)
