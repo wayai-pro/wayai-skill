@@ -247,6 +247,16 @@ Messaging channels for customer communication.
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | API Key | Send and receive emails via Resend API with email forwarding. |
 | Telegram | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000002` | API Key | Send and receive Telegram messages via Bot API. |
 
+### Testing a channel on a preview before publishing
+
+You can exercise a WhatsApp/Instagram/Telegram channel on a **preview** hub before publishing it to production — even a channel that exists only on the preview (no production counterpart yet).
+
+1. Add the channel connection to the preview hub.
+2. In **Settings → Hub → Users → Test Identities**, generate a claim code for the channel and share the `#test CODE` message with your tester.
+3. The tester sends `#test CODE` to the channel. They're registered as a tester, and their subsequent messages route to the preview hub's AI.
+
+Only registered testers reach a preview-owned channel — all other inbound is dropped, so this never touches production traffic. Publish/sync when ready (see SKILL.md → Hub Environments).
+
 ### Instagram
 
 **Prerequisites:**

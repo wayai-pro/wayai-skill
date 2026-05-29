@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.5.0
+version: 6.5.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -139,6 +139,8 @@ Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schem
 4. **Replicate Preview** (UI) — creates a new preview from production for experimentation
 
 Production is read-only — all config mutations flow through preview. Multiple previews can link to the same production (many-to-1). Channel uniqueness is enforced on production only — previews can share phone/email/SID with their production.
+
+WhatsApp/Instagram/Telegram channels can be exercised on a preview before publishing — register a tester via a `#test CODE` claim code (see `references/connections.md` → Channel → "Testing a channel on a preview before publishing").
 
 Only preview hubs are tracked in this repository.
 
