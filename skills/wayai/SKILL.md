@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.5.1
+version: 6.5.2
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -314,6 +314,7 @@ wayai eval capture      # Capture production conversation as eval YAML (<convers
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
 wayai report-bug        # Create platform bug report (--title, --description, --hub, --conversation, --error)
+wayai report edit       # Amend your own pending report (<id> --title/--description/--error/--steps/--context)
 ```
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `workspace/`.
