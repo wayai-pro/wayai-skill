@@ -10,6 +10,7 @@ Deep reference for choosing an agent role, structuring delegation, and configuri
 - [Agent Settings](#agent-settings)
 - [Per-Connector `settings`](#per-connector-settings)
 - [Response Format (Structured Output)](#response-format-structured-output)
+- [Evaluation Variables](#evaluation-variables)
 - [`enabled` Behavior](#enabled-behavior)
 - [`include_message_timestamps` Behavior](#include_message_timestamps-behavior)
 
@@ -183,6 +184,48 @@ response_format:
 Both `schema_name` and `schema_json` are required when `response_format` is set. The `wayai pull` includes `type: json_schema` for informational consistency — the platform sets it automatically.
 
 Agents with `response_format` set behave like API endpoints — the response is the JSON object, not a chat reply. Useful for evaluators, structured intent classification, and data-extraction agents called via `consult_agent`.
+
+---
+
+## Evaluation Variables
+
+`conversation_evaluator` and `message_evaluator` agents emit structured fields per conversation/message — their **evaluation variables** (stored as agent parameters, surfaced as Analytics columns). They round-trip via `wayai pull` / `wayai push` under an `evaluation_variables` list on the agent:
+
+```yaml
+# agents/conversation-evaluator.yaml
+name: Conversation Evaluator
+role: conversation_evaluator
+connection: anthropic
+evaluation_variables:
+  - name: conversation_summary
+    type: string
+    label: Conversation Summary
+    description: A concise summary of the conversation.
+    category: quality
+    is_summary: true            # rolling-summary field (type: string only)
+  - name: user_sentiment
+    type: enum
+    label: User Sentiment
+    enum: [positive, negative, neutral]
+    category: satisfaction
+  - name: goal_achieved
+    type: enum
+    enum: [yes, no]
+    required: false
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `name` | string | required | Variable name the agent writes — unique per agent |
+| `type` | enum | `string` | `string` \| `number` \| `boolean` \| `integer` \| `enum` |
+| `description` | string | `""` | What the variable measures (guides the evaluator) |
+| `label` | string | omitted | Display label (Analytics columns, UI) |
+| `enum` | string[] | omitted | Allowed values — required when `type: enum`, ignored otherwise |
+| `required` | boolean | `true` | Whether the evaluator must populate it |
+| `category` | string | omitted | Analytics grouping: `quality` \| `satisfaction` \| `compliance` \| `categorization` |
+| `is_summary` | boolean | `false` | Marks the rolling conversation-summary field; honored only for `type: string` |
+
+**Replace semantics:** the list is authoritative. Omit the `evaluation_variables` key to leave the agent's current variables untouched; include it (even as `[]`) and `push` makes the platform match it exactly — added entries are created, missing ones deleted. Default-valued fields are omitted on pull, so a pulled-then-pushed file is a no-op.
 
 ---
 
