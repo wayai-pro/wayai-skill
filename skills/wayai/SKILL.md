@@ -428,6 +428,7 @@ hub:
 
 states:
   - id: "state-uuid-789"          # set by pull
+    slug: order_tracking           # immutable identifier; auto-derived from name if omitted
     name: order_tracking
     scope: conversation            # conversation | user
     description: Tracks current order
