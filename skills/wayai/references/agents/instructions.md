@@ -84,6 +84,31 @@ Current time in NYC: {{now(America/New_York).time}}
 
 ---
 
+### `{{week_horizon()}}`
+
+Upcoming days as a `date → weekday` lookup table, in the hub timezone. Use it so the agent **reads** the weekday of a date instead of computing it (which LLMs do unreliably) — e.g. when proposing or confirming scheduling dates.
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `days` | `8` | Number of days to list, including today (capped at 31) |
+
+```
+Available days:
+{{week_horizon()}}
+
+Next two weeks: {{week_horizon(14)}}
+```
+
+Output — one line per day, with `today:` / `tomorrow:` prefixes on the first two:
+
+```
+today: 2026-06-11/Thursday
+tomorrow: 2026-06-12/Friday
+2026-06-13/Saturday
+```
+
+---
+
 ### `{{user_name()}}`
 
 User's display name.
