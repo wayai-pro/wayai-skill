@@ -51,7 +51,7 @@ tools:
 connections:
   - name: my-api-connection
     type: Tool - Custom
-    service: User Tool - API Key
+    service: User Tool
 ```
 
 Then run `wayai push` to create the tools on the hub.
@@ -220,7 +220,7 @@ tools:
 connections:
   - name: my-api
     type: Tool - Custom
-    service: User Tool - API Key
+    service: User Tool
 ```
 
 **Connection setup (UI — org credential):**
@@ -298,7 +298,7 @@ The agent doesn't see `generate_monthly_report` in its tool list each turn. To u
 **Use case:** API requiring both API key and access token.
 
 **Connection setup (UI):**
-- Type: User Tool - API Key
+- Connector: User Tool (Tool - Custom) · Auth type: API Key
 - Base URL: `https://api.service.com`
 - API Key: `key-xxx`
 - Access Token: `token-yyy`

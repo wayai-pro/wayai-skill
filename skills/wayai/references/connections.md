@@ -122,14 +122,17 @@ Non-OAuth connections are auto-created by `wayai push` using matching organizati
 connections:
   - name: anthropic           # Display name for the connection
     type: Agent               # Connector type (see Quick Reference)
-    service: Anthropic        # Connector service name
+    service: Anthropic        # Connector name (the card label in the UI)
   - name: my-custom-api
     type: Tool - Custom
     service: User Tool
   - name: mcp-server
     type: Tool - MCP
     service: MCP Server
+    base_url: https://mcp.example.com/mcp   # Streamable HTTP endpoint (required for MCP)
 ```
+
+> **`service:` is the connector name** — the card label shown in the UI and the **Connector Types** tables below (`Anthropic`, `MCP Server`, `User Tool`, `Google AI Studio`, `OpenAI`, …). The internal `service_name` (e.g. `Other`, `Openai`) is also accepted, but prefer the connector name.
 
 ### How Auto-Creation Works
 
