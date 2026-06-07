@@ -99,7 +99,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 - All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter)
 - Channel connectors with API Key auth (Resend, Telegram)
 - Tool - Custom (User Tool)
-- Tool - MCP (MCP Server — API Key auth)
+- Tool - MCP (MCP Server — Bearer Token auth)
 - Tool - Native (External Resources)
 - STT (Groq STT, OpenAI STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS)
@@ -107,7 +107,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
 - Tool - Native (Google Calendar)
-- Tool - MCP (MCP Server — **OAuth** auth only; API Key MCP connections are auto-created)
+- Tool - MCP (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
 
 OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connection Types → OAuth connection handoff) — then `wayai pull` once they finish.
 
@@ -169,6 +169,8 @@ connections:
     base_url: https://public.example.com/mcp
     no_auth: true
 ```
+
+> **MCP binds a Bearer Token credential.** An MCP Server connection's token is sent to the server as `Authorization: Bearer <token>` — it is a **Bearer Token**, the connector's only non-OAuth auth type. Create the org credential as type **Bearer Token** (not API Key) and the connection auto-binds it. The connection's token field is labeled "Bearer Token" in the UI for the same reason.
 
 > **No silent unbound connections.** If an optional-auth connector (MCP Server) ends up with **no** resolvable credential and you didn't set `no_auth: true`, `wayai push` still creates it but prints a yellow **warning** telling you to bind a credential or declare `no_auth: true`. Bind a credential, or make the no-auth intent explicit — never leave it ambiguous.
 
@@ -508,11 +510,11 @@ Connect external MCP (Model Context Protocol) servers to extend agent capabiliti
 
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
-| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | API Key, OAuth | Connect to external MCP servers with optional API key or OAuth 2.0 authentication. |
+| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Bearer Token, OAuth | Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication. |
 
 ### MCP Server
 
-Connect to external MCP servers with optional API key or OAuth 2.0 authentication.
+Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication. MCP's authorization standard is OAuth 2.1; the non-OAuth fallback is a static token sent as `Authorization: Bearer <token>` — a **Bearer Token**, not an API Key.
 
 **Prerequisites:** MCP server URL (Streamable HTTP endpoint)
 
@@ -520,18 +522,18 @@ Connect to external MCP servers with optional API key or OAuth 2.0 authenticatio
 1. Settings → Organizations → Project → Hub → Connections
 2. In the **Tool - MCP** group, click the **MCP Server** card
 3. Choose an authentication type:
-   - **API Key** — provide a bearer token (or leave empty for no auth)
+   - **Bearer Token** — provide a bearer token (or leave empty for no auth). Bind a **Bearer Token** org credential to reuse it across connections.
    - **OAuth** — complete OAuth 2.0 authorization flow (RFC 9728)
 4. Fill the form:
    - **Connection Name** (required): A friendly name for this MCP connection
    - **MCP Server URL** (required): The Streamable HTTP endpoint (e.g., `https://mcp.example.com/mcp`)
-   - For **API Key**: **Bearer Token** (optional), **Custom Headers** (optional)
+   - For **Bearer Token**: **Bearer Token** (optional), **Custom Headers** (optional)
    - For **OAuth**: **OAuth Client ID** (optional), **OAuth Client Secret** (optional)
 5. Click Save → Tools auto-discovered (OAuth connections complete authorization flow first)
 
 **After setup:** Use the Sync button to refresh available tools when the MCP server is updated.
 
-> **MCP OAuth is UI-only.** `wayai push` auto-creates only the **API Key** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connection Types → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
+> **MCP OAuth is UI-only.** `wayai push` auto-creates only the **Bearer Token** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connection Types → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
 
 **Features:** OAuth connections include automatic token refresh (1 hour).
 
@@ -656,7 +658,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool - Native | OAuth |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool - Native | API Key |
 | User Tool | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool - Custom | API Key, Basic Auth, Bearer Token |
-| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool - MCP | API Key, OAuth |
+| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool - MCP | Bearer Token, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | STT | API Key |
 | OpenAI TTS | `b2c3d4e5-f6a7-4b89-c012-3456789abcdf` | TTS | API Key |

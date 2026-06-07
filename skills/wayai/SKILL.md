@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.5.7
+version: 6.5.8
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -32,7 +32,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Entity | How |
 |--------|-----|
 | Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, outbound, custom tools | CLI (`wayai push`) |
-| Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP API key) | CLI (auto-created from org credentials) |
+| Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, Google Calendar, MCP OAuth) | Platform UI |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
@@ -107,12 +107,12 @@ For role flow, delegation, and settings depth, see [`references/agents/roles-and
 | **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend, Telegram (API Key — auto-created) |
 | **Tool — Native** | Wayai (auto-created), Google Calendar (OAuth), External Resources (API Key) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
-| **Tool — MCP** | External MCP servers (Streamable HTTP) — API Key via CLI; OAuth via UI |
+| **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
 | **Speech** | Groq STT, OpenAI TTS, ElevenLabs |
 
-**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via API Key) are auto-created from matching organization credentials when `hub.yaml` is pushed. OAuth connections must be set up in the UI first.
+**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. OAuth connections must be set up in the UI first.
 
-**OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, Google Calendar, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → API Key), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
+**OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, Google Calendar, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → Bearer Token), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
 For per-provider setup, see [`references/connections.md`](references/connections.md).
 
