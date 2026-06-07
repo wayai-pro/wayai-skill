@@ -294,6 +294,14 @@ Execute a tool with parameters.
 
 Tools for interfacing with external MCP servers. Tool IDs are dynamically discovered from each connected MCP server.
 
+> **MCP tools are NOT declared in agent YAML.** There is no `tools.mcp` block — the agent `tools:` map accepts only `native`, `delegation`, and `custom`. Adding a `tools.mcp` (or any other unknown) key does nothing: `wayai push` ignores it (and warns that it was ignored), and the next `pull` strips it. This is by design — MCP tools have no GitOps surface.
+>
+> **How MCP tools reach an agent instead:**
+> 1. Set up the `Tool - MCP` connection (Bearer Token via CLI in `hub.yaml`, or OAuth via the UI handoff). The connection itself *is* GitOps-managed; the tools it exposes are not.
+> 2. The platform auto-discovers the server's tools (the MCP client meta-tools below back this — `mcp_discover_tools` / `mcp_refresh`).
+> 3. **Scope per-agent in the Platform UI** (hub → **Agents** → the agent → add the MCP tools you want). Each becomes a per-agent tool row — MCP tools are scoped to the agent they're added to, **not** hub-wide-available to every agent. `wayai pull` leaves these rows untouched (preserved across pushes); they just never appear as YAML.
+> 4. Alternatively, an agent that has the MCP client meta-tools can discover and execute MCP tools dynamically by name at runtime (see **Dynamic MCP Tools** below) without each tool being pre-assigned.
+
 ### mcp_discover_tools
 
 Discover available tools from MCP server.
