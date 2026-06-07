@@ -142,6 +142,38 @@ connections:
 3. It looks up a matching organization credential (by auth type)
 4. Creates the connection automatically — no secrets needed in the repo
 
+### Binding an organization credential
+
+The raw secret never goes in YAML (anti-pattern for git). Instead, a connection **references** an org credential by name. Auto-creation resolves the binding in this order:
+
+| Field | When to use | Behavior |
+|-------|-------------|----------|
+| _(none)_ | One matching credential for the auth type | Auto-bound implicitly. If **multiple** match, push errors and asks you to add `credential:` |
+| `credential: "<name>"` | Pin a specific org credential by its display name | Binds that credential. Errors if the name doesn't resolve among the hub-visible credentials of the chosen auth type |
+| `access_token_credential: "<name>"` | Dual-credential connectors (API Key auth **plus** a Bearer Token access token) | Binds the named **Bearer Token** credential as the secondary secret. Requires `authentication_type: api_key`. **Push-only** — not echoed on pull (see Round-trip note) |
+| `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server) | Creates the connection with no bound credential and **no warning**. Cannot be combined with `credential:`; rejected if the connector mandates a secret |
+
+```yaml
+connections:
+  # Pin a specific org credential by name
+  - name: rekor-clinica
+    type: Tool - MCP
+    service: MCP Server
+    base_url: https://mcp.example.com/mcp
+    credential: clinica-medica-mcp          # org credential display name
+
+  # Deliberately no-auth MCP server (optional-auth connector)
+  - name: public-mcp
+    type: Tool - MCP
+    service: MCP Server
+    base_url: https://public.example.com/mcp
+    no_auth: true
+```
+
+> **No silent unbound connections.** If an optional-auth connector (MCP Server) ends up with **no** resolvable credential and you didn't set `no_auth: true`, `wayai push` still creates it but prints a yellow **warning** telling you to bind a credential or declare `no_auth: true`. Bind a credential, or make the no-auth intent explicit — never leave it ambiguous.
+
+> **Round-trip.** `wayai pull` writes the bound credential back as `credential: "<name>"` (or `no_auth: true` for an intentional no-auth endpoint) so the binding is visible in review and GitOps diffs. The secret itself is never exported. **Only the primary `credential` round-trips** — a dual-credential connection's secondary `access_token_credential` is push-only (the connection stores a single credential reference), so re-add it by hand if you recreate such a connection from a pulled file. `headers` likewise remain write-only (may carry an `Authorization` value) and are not echoed on pull.
+
 ### Requirements
 
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
