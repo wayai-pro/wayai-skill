@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.5.6
+version: 6.5.7
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -111,6 +111,8 @@ For role flow, delegation, and settings depth, see [`references/agents/roles-and
 | **Speech** | Groq STT, OpenAI TTS, ElevenLabs |
 
 **Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via API Key) are auto-created from matching organization credentials when `hub.yaml` is pushed. OAuth connections must be set up in the UI first.
+
+**OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, Google Calendar, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → API Key), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
 For per-provider setup, see [`references/connections.md`](references/connections.md).
 
@@ -230,7 +232,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
 | 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
-| 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar) | User handoff: "Open `https://app.wayai.pro/settings/connections?connector=<connector>`, finish the provider's flow, tell me when done." |
+| 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connection Types → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
 | 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `workspace/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
@@ -241,7 +243,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 |-------|-----|
 | 3 (signup / org create) | `https://app.wayai.pro/settings/organizations/new` |
 | 6 (credential pre-fill) | `https://app.wayai.pro/settings/credentials?type=bearer&name=<key-name>&prefill=true` |
-| 7 (OAuth connection) | `https://app.wayai.pro/settings/connections?connector=<whatsapp\|instagram\|google-calendar>` |
+| 7 (OAuth connection) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/connections?connector=<whatsapp\|instagram\|google-calendar\|mcp-server>` |
 | 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 
 ### Rules
@@ -499,7 +501,7 @@ For full agent options (settings per connector, native tool params, custom tool 
 ## Key Rules
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
-- **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, Google Calendar) must already exist (UI setup) — referenced by name only
+- **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection)
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)

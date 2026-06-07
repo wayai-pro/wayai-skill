@@ -23,7 +23,7 @@ canonical-example/
 ## Cross-references (this is the part you can't get from per-domain refs)
 
 ### 1. Agent → Connection
-`agents/support-pilot.yaml` field `connection: openai-main` matches the entry in `hub.yaml` `connections:` with `name: openai-main`. On `wayai push`, that connection auto-creates from the first org credential matching `type: Agent` + `service: OpenAI` (auth type: API Key). OAuth connections (WhatsApp, Instagram, Google Calendar) must already exist in the UI; the agent file references them by name only — see `references/connections.md`.
+`agents/support-pilot.yaml` field `connection: openai-main` matches the entry in `hub.yaml` `connections:` with `name: openai-main`. On `wayai push`, that connection auto-creates from the first org credential matching `type: Agent` + `service: OpenAI` (auth type: API Key). OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist in the UI; the agent file references them by name only — see `references/connections.md`.
 
 ### 2. Agent → State (two paths)
 **Tool path:** `agents/support-pilot.yaml` `tools.native` lists `get_state`, `update_state`, `set_state_path`. At runtime the agent calls these with `state_name` matching a name in `hub.yaml` `states[]` (e.g., `ticket_intake`, `customer_profile`). Scope is derived from the state definition — the agent passes only the name.

@@ -100,7 +100,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 |------|---------|
 | `/settings/organizations/[orgId]/hubs/[hubId]/agents/[agentId]` | Agent detail |
 | `/settings/organizations/[orgId]/hubs/[hubId]/connections/[connectionId]` | Connection detail |
-| `/settings/organizations/[orgId]/hubs/[hubId]/connections/new?connector=<slug>` | Create connection pre-picked to a connector |
+| `/settings/organizations/[orgId]/hubs/[hubId]/connections/new?connector=<connector_id>` | Create connection pre-picked to a connector (matched by `connector_id` UUID, not a slug) |
 
 ### Hub-only shortcut
 | Path | Purpose |
@@ -140,17 +140,17 @@ Tab pages accept these query strings to pre-open modals or pre-fill forms.
 | Tab | Query | Effect |
 |-----|-------|--------|
 | `…/credentials` | `?prefill=true&name=<name>&type=<api_key|bearer|basic_auth>` | Opens the create-credential modal pre-filled |
-| `…/connections` | `?connector=<slug>` | Scrolls to and highlights the matching connector card |
-| `…/connections/new` | `?connector=<slug>` | Opens connector picker with that connector pre-selected |
+| `…/connections` | `?connector=<slug>` | Lands on the Connections tab; if a connection for that connector **already exists** it's scrolled to and highlighted (`slug` = hyphen/space-tolerant substring of the connector name: `whatsapp`, `instagram`, `google-calendar`, `mcp-server`). Canonical **OAuth-connection handoff** target — the slug does **not** pre-open the add form, so to create one the user clicks **Add Connection** on this tab, picks the connector, and chooses OAuth |
+| `…/connections/new` | `?connector=<connector_id>` | Opens the create form pre-picked to a connector — matched by `connector_id` **UUID**, not a slug. For multi-auth connectors it defaults to the first auth type (e.g. MCP → API Key), so it is **not** a reliable deeplink for MCP OAuth — use the `…/connections` slug form above |
 | `…/overview` | `?action=publish` | Opens the publish (preview→production) modal |
 
-Onboarding-time shorthand used in SKILL.md (e.g. `app.wayai.pro/settings/connections?connector=whatsapp`) requires the **org and hub** in scope. When in an active hub-setup flow, expand to the full path:
+The org/hub-less form `app.wayai.pro/settings/connections?connector=<slug>` is shorthand — it only resolves when the **org and hub** are already in scope. For the OAuth-connection handoff (the canonical target; see SKILL.md → Connection Types → OAuth connection handoff), and any time an OAuth connection is needed, use the full path:
 
 ```
-https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=whatsapp
+https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>
 ```
 
-The `orgId` and `hubId` come from `wayai status --json` (or the platform's last-viewed state).
+`<slug>` is one of `whatsapp`, `instagram`, `google-calendar`, `mcp-server`. The `orgId` and `hubId` come from `wayai status --json` (or the platform's last-viewed state).
 
 ## Rules
 

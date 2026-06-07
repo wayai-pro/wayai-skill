@@ -107,8 +107,9 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
 - Tool - Native (Google Calendar)
+- Tool - MCP (MCP Server — **OAuth** auth only; API Key MCP connections are auto-created)
 
-> **Note:** MCP Server supports both API Key and OAuth authentication types. Only OAuth requires UI setup — API Key connections are auto-created from org credentials.
+OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connection Types → OAuth connection handoff) — then `wayai pull` once they finish.
 
 ---
 
@@ -146,7 +147,7 @@ connections:
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
 - The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (tag overlap + environment)
-- OAuth connections (WhatsApp, Instagram, Google Calendar) cannot be auto-created — use UI
+- OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
 
 ### Example: Full Hub Setup via CLI
 
@@ -497,6 +498,8 @@ Connect to external MCP servers with optional API key or OAuth 2.0 authenticatio
 5. Click Save → Tools auto-discovered (OAuth connections complete authorization flow first)
 
 **After setup:** Use the Sync button to refresh available tools when the MCP server is updated.
+
+> **MCP OAuth is UI-only.** `wayai push` auto-creates only the **API Key** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connection Types → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
 
 **Features:** OAuth connections include automatic token refresh (1 hour).
 
