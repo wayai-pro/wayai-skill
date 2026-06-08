@@ -287,57 +287,33 @@ Execute a tool with parameters.
 
 ---
 
-## MCP Client Tools
+## MCP Tools
 
-**Connector:** MCP Server
-**connector_id:** `f1a2b3c4-d5e6-7890-abcd-ef1234567890` (supports API Key and OAuth authentication)
+**Connector:** MCP Server (`Tool - MCP`, supports Bearer Token and OAuth authentication)
 
-Tools for interfacing with external MCP servers. Tool IDs are dynamically discovered from each connected MCP server.
+An agent uses an external MCP server's tools by assigning them individually — there is **no dynamic "discover and call anything at runtime" path**. Each assigned tool is a reviewed, per-agent allowlist entry (the static allowlist keeps third-party tools least-privilege; the server's tool descriptions are wrapped as untrusted input).
 
-> **MCP tools are NOT declared in agent YAML.** There is no `tools.mcp` block — the agent `tools:` map accepts only `native`, `delegation`, and `custom`. Adding a `tools.mcp` (or any other unknown) key does nothing: `wayai push` ignores it (and warns that it was ignored), and the next `pull` strips it. This is by design — MCP tools have no GitOps surface.
->
-> **How MCP tools reach an agent instead:**
-> 1. Set up the `Tool - MCP` connection (Bearer Token via CLI in `hub.yaml`, or OAuth via the UI handoff). The connection itself *is* GitOps-managed; the tools it exposes are not.
-> 2. The platform auto-discovers the server's tools (the MCP client meta-tools below back this — `mcp_discover_tools` / `mcp_refresh`).
-> 3. **Scope per-agent in the Platform UI** (hub → **Agents** → the agent → add the MCP tools you want). Each becomes a per-agent tool row — MCP tools are scoped to the agent they're added to, **not** hub-wide-available to every agent. `wayai pull` leaves these rows untouched (preserved across pushes); they just never appear as YAML.
-> 4. Alternatively, an agent that has the MCP client meta-tools can discover and execute MCP tools dynamically by name at runtime (see **Dynamic MCP Tools** below) without each tool being pre-assigned.
+### Assigning MCP tools via GitOps (`tools.mcp`)
 
-### mcp_discover_tools
+Declare MCP tools under an agent's `tools:` map. The reference is `(name, connection)` — an MCP tool name is unique per server:
 
-Discover available tools from MCP server.
+```yaml
+# agents/<agent>.yaml
+tools:
+  mcp:
+    - name: search_documents       # the discovered MCP tool's name
+      connection: My MCP Server    # the Tool - MCP connection's display name
+```
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `connection_id` | string | No | MCP connection (uses context if not provided) |
+- **`wayai push` discovers + assigns in one run.** If the named tool isn't in the hub's discovered catalog yet, push runs discovery against the server (equivalent to the UI's "Sync MCP tools" action), then assigns it — so a single push can create the connection (declared in `hub.yaml`) and assign its tools. **The MCP server must be reachable**; if it isn't, push fails with a clear, retryable error.
+- **Omitted vs present:** when the `mcp` key is **omitted**, existing MCP tool rows are left untouched (tools assigned in the Platform UI survive). When **present** (even `[]`), the list is **authoritative** — unlisted MCP tools are removed. (This differs from `native`/`custom`, whose absence deletes them, because MCP tools are dual-origin: UI + GitOps. Same rule as `evaluation_variables`.)
+- **`wayai pull`** emits a `tools.mcp` block for the agent's MCP tools (`id` / `connection_id` included for stable round-trips). The tool schema and description stay derived from the connection's discovered catalog — they are not round-tripped.
 
-### mcp_discover_resources
+### Assigning MCP tools via the Platform UI
 
-Discover available resources from MCP server.
+hub → **Connections** → set up the `Tool - MCP` connection → **Sync MCP tools** → hub → **Agents** → the agent → **Add tool** → pick the MCP tool. Equivalent to `tools.mcp`; the next `wayai pull` materializes these as YAML.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `connection_id` | string | No | MCP connection |
-
-### mcp_read_resource
-
-Read a resource from MCP server.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `uri` | string | Yes | Resource URI |
-| `connection_id` | string | No | MCP connection |
-
-### mcp_refresh
-
-Refresh tools and resources from MCP server.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `connection_id` | string | No | MCP connection |
-
-### Dynamic MCP Tools
-
-Any tool discovered from connected MCP servers can be executed directly by name. Tool parameters depend on the specific MCP server implementation.
+> Connection-level sync/discovery (the server's live tool list) is handled by the connection, not by agent-assignable tools. There are no `mcp_discover_tools` / `mcp_refresh` agent tools.
 
 ---
 
@@ -349,4 +325,4 @@ Any tool discovered from connected MCP servers can be executed directly by name.
 | Resource | `retrieve_resource_content`, `list_resources`, `get_resource_item` |
 | Google Calendar | `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_check_availability` |
 | Meta Tools | `get_tool_schema`, `execute_tool` |
-| MCP Client | `mcp_discover_tools`, `mcp_read_resource`, dynamic tools |
+| MCP | per-agent tools assigned via `tools.mcp` (YAML) or the Platform UI |
