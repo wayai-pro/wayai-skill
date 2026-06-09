@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.7.0
+version: 6.7.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -233,7 +233,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
 | 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
 | 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connection Types → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
-| 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `workspace/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
+| 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
 
@@ -260,7 +260,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 1. **Update CLI** — `wayai update` (always run before any operation)
 2. **Update skill if stale** — `wayai status --json` and apply state machine row 1c: if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue.
 3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
-4. **Read context** — `workspace/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
+4. **Read context** — `wayai-ws/hubs/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
 5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
 6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
 7. **Test** — `wayai send-message "Hello"`
@@ -270,7 +270,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 ### New hub (from scratch)
 1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
 2. **Init** — `wayai init` (interactive) or `wayai init --org <uuid>`
-3. **Create files** — `workspace/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md`
+3. **Create files** — `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md`
 4. **Push** — `wayai push -y` auto-creates the hub, non-OAuth connections, and applies all config
 5. **Test** — `wayai send-message "Hello"`
 
@@ -278,15 +278,15 @@ After the hub exists, follow the existing-hub workflow.
 
 ### Hub-Folder Memory
 
-`workspace/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — purpose, key decisions, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder.
+`wayai-ws/hubs/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — purpose, key decisions, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder.
 
 **Maintain it actively:**
 - After significant changes (new agent, new tool, business rule update), update `AGENTS.md` so future sessions inherit the context
 - If `AGENTS.md` is missing for a hub, create it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
 - Keep it focused on *why* decisions were made and *what* makes this hub different. Don't restate platform mechanics — those live in this skill
 
-**Overflow content goes into `workspace/<hub>/references/`:**
-- When `AGENTS.md` grows past ~200 lines or starts mixing topics, extract the deeper material into focused files under `workspace/<hub>/references/`
+**Overflow content goes into `wayai-ws/hubs/<hub>/references/`:**
+- When `AGENTS.md` grows past ~200 lines or starts mixing topics, extract the deeper material into focused files under `wayai-ws/hubs/<hub>/references/`
 - Examples: `references/business-rules.md`, `references/integrations.md`, `references/glossary.md`, `references/<api-name>-spec.md`, `references/<persona>-tone.md`
 - Keep `AGENTS.md` as the always-on entry point with a short pointer to each reference file: e.g., "Detailed pricing rules: `references/pricing-rules.md`"
 - Hub-folder `references/` are **not synced** to the platform — they're for agent context only, just like `AGENTS.md`
@@ -320,7 +320,7 @@ wayai report create     # Create platform bug report (--title, --description, --
 wayai report edit       # Amend your own pending report (<id> --title/--description/--error/--steps/--context)
 ```
 
-Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `workspace/`.
+Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
 
 ### Worktree hub lock
 
@@ -340,22 +340,26 @@ CLAUDE.md                                # Claude Code shim — `@AGENTS.md @AGE
 └── references/                          # On-demand deep-dive references (see index below)
 .opencode/skills/wayai/                  # OpenCode skill install (same provisioner; same SKILL.md + references/ layout)
 .agents/skills/wayai/                    # Neutral skill install (same provisioner; same SKILL.md + references/ layout)
-workspace/                               # Local copy of hub configuration
-└── <hub-slug>-<label>/                  # One folder per preview hub (disambiguated)
-    ├── hub.yaml                         # Hub config + states + connections + outbound + resources
-    ├── agents/
-    │   ├── <slug>.yaml                  # Agent config (one per agent, slugified name)
-    │   └── <slug>.md                    # Agent instructions (one per agent)
-    ├── evals/                           # Eval scenarios (synced)
-    │   ├── <name>.yaml
-    │   └── <set>/<name>.yaml
-    ├── resources/                       # Knowledge & skill resource files (synced)
-    ├── AGENTS.md                        # Hub-level agent context (NOT synced; yours to edit)
-    ├── CLAUDE.md                        # Per-hub Claude Code shim — `@AGENTS.md` (init-only, NOT synced)
-    └── references/                      # Hub-specific supporting files (NOT synced)
+wayai-ws/                                # All WayAI hub-as-code (init creates wayai-ws/hubs/)
+├── org/                                 # Org-as-code — shared resources (wayai org pull/push)
+│   ├── resources.yaml
+│   └── resources/<slug>/
+└── hubs/
+    └── <hub-slug>-<label>/              # One folder per preview hub (disambiguated)
+        ├── hub.yaml                     # Hub config + states + connections + outbound + resources
+        ├── agents/
+        │   ├── <slug>.yaml              # Agent config (one per agent, slugified name)
+        │   └── <slug>.md                # Agent instructions (one per agent)
+        ├── evals/                       # Eval scenarios (synced)
+        │   ├── <name>.yaml
+        │   └── <set>/<name>.yaml
+        ├── resources/                   # Knowledge & skill resource files (synced)
+        ├── AGENTS.md                    # Hub-level agent context (NOT synced; yours to edit)
+        ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (init-only, NOT synced)
+        └── references/                  # Hub-specific supporting files (NOT synced)
 ```
 
-Preview hub folders use `hub-slug-<preview_label>` or `hub-slug-<hub_id_prefix>` for disambiguation.
+Preview hub folders use `hub-slug-<preview_label>` or `hub-slug-<hub_id_prefix>` for disambiguation. **Existing repos** that still use the legacy `workspace/` + root `org/` layout keep working (the CLI reads either) — run `wayai migrate` to move to `wayai-ws/`.
 
 ## `hub.yaml` Shape
 
@@ -523,7 +527,7 @@ Examples: `Mario's Pizza` → `marios-pizza`; `Suporte Nível 2` → `suporte-ni
 ## Editing Agent Instructions
 
 - File: `agents/<slugified-agent-name>.md` alongside the corresponding `.yaml`
-- Always save under `workspace/<hub>/agents/`, never `/tmp` or other paths
+- Always save under `wayai-ws/hubs/<hub>/agents/`, never `/tmp` or other paths
 - Always `wayai pull` before editing to avoid clobbering out-of-band changes
 - Instructions support dynamic placeholders: `{{now()}}`, `{{user_name()}}`, `{{state()}}`, etc. — see [`references/agents/instructions.md`](references/agents/instructions.md)
 

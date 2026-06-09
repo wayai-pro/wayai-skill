@@ -28,10 +28,10 @@ Resources are knowledge bases (documents) or skills (versioned agent capability 
 
 ## Directory Structure
 
-Resource files live under `workspace/<hub>/resources/`:
+Resource files live under `wayai-ws/hubs/<hub>/resources/`:
 
 ```
-workspace/<hub>/resources/
+wayai-ws/hubs/<hub>/resources/
 ├── product-catalog/             # Knowledge resource (slugified name)
 │   ├── pricing.md               # Text file — editable, diffable
 │   ├── catalog.pdf              # Binary file — uploaded as asset
@@ -112,7 +112,7 @@ Higher `priority` means higher precedence when multiple resources apply.
 Skills are versioned agent capability packages. Each skill must contain a `SKILL.md` with YAML frontmatter (`name`, `description` required) at the resource root.
 
 ```
-workspace/<hub>/resources/order-management/
+wayai-ws/hubs/<hub>/resources/order-management/
 ├── SKILL.md              # Required — YAML frontmatter + Markdown body
 └── references/           # Optional supporting docs (loaded on demand)
     └── api-docs.md
@@ -188,7 +188,7 @@ wayai sync-skills --connection-id <uuid>       # scope to one connection
 
 ## Authoring Skills
 
-1. Create the skill folder under `workspace/<hub>/resources/<skill-name>/`
+1. Create the skill folder under `wayai-ws/hubs/<hub>/resources/<skill-name>/`
 2. Write `SKILL.md` with YAML frontmatter (`name`, `description`)
 3. Add `references/*.md` for deep-dive content the skill body points to
 4. Declare the resource in `hub.yaml` with `type: skill`

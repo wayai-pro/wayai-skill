@@ -1,6 +1,6 @@
 # Evals
 
-Evals are test scenarios that verify agent behavior. Each scenario is a YAML file under `workspace/<hub>/evals/`, synced bidirectionally to the platform via `wayai push` / `wayai pull`. Run them with `wayai run-eval` and inspect results with `wayai eval-results`.
+Evals are test scenarios that verify agent behavior. Each scenario is a YAML file under `wayai-ws/hubs/<hub>/evals/`, synced bidirectionally to the platform via `wayai push` / `wayai pull`. Run them with `wayai run-eval` and inspect results with `wayai eval-results`.
 
 ## Table of Contents
 - [Directory Structure](#directory-structure)
@@ -17,7 +17,7 @@ Evals are test scenarios that verify agent behavior. Each scenario is a YAML fil
 ## Directory Structure
 
 ```
-workspace/<hub>/evals/
+wayai-ws/hubs/<hub>/evals/
 ├── greeting.yaml                    # eval_name = "greeting", set = none
 ├── order-issues/                    # subfolder = scenario set name
 │   ├── cancellation.yaml            # set = "order-issues"
