@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.6.0
+version: 6.7.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -308,6 +308,7 @@ wayai conversations     # List or inspect conversations (default text view omits
                         # `wayai conversations <id> observability --message-id <id>` — full record for one turn (prompt, completion, tool calls, tokens; --json for raw)
 wayai delete-history    # Clear conversation history (testing); --conversation-id <id> deletes just one
 wayai sync-skills       # Sync skills to provider connections; --connection-id <uuid> to scope
+wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale schemas); --connection <name|uuid>
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
 wayai run-eval          # Run eval scenarios

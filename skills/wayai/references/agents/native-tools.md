@@ -306,12 +306,15 @@ tools:
 ```
 
 - **`wayai push` discovers + assigns in one run.** If the named tool isn't in the hub's discovered catalog yet, push runs discovery against the server (equivalent to the UI's "Sync MCP tools" action), then assigns it — so a single push can create the connection (declared in `hub.yaml`) and assign its tools. **The MCP server must be reachable**; if it isn't, push fails with a clear, retryable error.
+- **`wayai sync-mcp --connection <name>` re-syncs an existing connection's catalog.** `push` only discovers tools *new* to the catalog — it does **not** refresh the cached schema of tools already catalogued. When the server changes a tool's input schema (adds/renames params), run `wayai sync-mcp --connection "My MCP Server"` to re-discover and refresh the stored catalog (the `--connection` value is the display name or the connection UUID). Preview-only. This keeps the GitOps catalog (what `pull` exports and the diff compares) accurate; the runtime turn-time path resolves schemas live and self-heals within its cache TTL.
 - **Omitted vs present:** when the `mcp` key is **omitted**, existing MCP tool rows are left untouched (tools assigned in the Platform UI survive). When **present** (even `[]`), the list is **authoritative** — unlisted MCP tools are removed. (This differs from `native`/`custom`, whose absence deletes them, because MCP tools are dual-origin: UI + GitOps. Same rule as `evaluation_variables`.)
 - **`wayai pull`** emits a `tools.mcp` block for the agent's MCP tools (`id` / `connection_id` included for stable round-trips). The tool schema and description stay derived from the connection's discovered catalog — they are not round-tripped.
 
 ### Assigning MCP tools via the Platform UI
 
 hub → **Connections** → set up the `Tool - MCP` connection → **Sync MCP tools** → hub → **Agents** → the agent → **Add tool** → pick the MCP tool. Equivalent to `tools.mcp`; the next `wayai pull` materializes these as YAML.
+
+**Refreshing a changed catalog (UI):** click **Sync MCP tools** on the connection again to re-discover and refresh the stored tool schemas after the server changes them — the UI equivalent of `wayai sync-mcp`. Use this (or the CLI command) whenever an MCP server adds/renames a tool's params; `wayai push` alone won't refresh an already-catalogued tool's schema.
 
 > Connection-level sync/discovery (the server's live tool list) is handled by the connection, not by agent-assignable tools. There are no `mcp_discover_tools` / `mcp_refresh` agent tools.
 
