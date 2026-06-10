@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.7.1
+version: 6.7.2
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -530,6 +530,7 @@ Examples: `Mario's Pizza` → `marios-pizza`; `Suporte Nível 2` → `suporte-ni
 - Always save under `wayai-ws/hubs/<hub>/agents/`, never `/tmp` or other paths
 - Always `wayai pull` before editing to avoid clobbering out-of-band changes
 - Instructions support dynamic placeholders: `{{now()}}`, `{{user_name()}}`, `{{state()}}`, etc. — see [`references/agents/instructions.md`](references/agents/instructions.md)
+- **Structure for reliability:** order each `.md` **procedure → guardrails → voice**; say what to do (not what to avoid); make every action a named tool call. Structure the prompt so the right action is the first and easiest thing the model can do. Full principles: [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md)
 
 ## Reference Documentation
 
@@ -542,6 +543,7 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Agents** | [`references/agents/native-tools.md`](references/agents/native-tools.md) | Native tool parameters per connector, meta tools (`get_tool_schema`, `execute_tool`) |
 | **Agents** | [`references/agents/custom-tools.md`](references/agents/custom-tools.md) | Custom HTTP tool format, OpenAI function schema, `composed_tools` side effects |
 | **Agents** | [`references/agents/instructions.md`](references/agents/instructions.md) | Placeholder syntax (`{{now()}}`, `{{state()}}`, etc.) for `agents/<slug>.md` |
+| **Agents** | [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md) | Structuring instructions for reliable execution — flow-before-style, positive framing, explicit tool-call procedures, voice as its own section |
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
