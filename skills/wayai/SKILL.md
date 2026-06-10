@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.7.2
+version: 6.7.3
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -311,7 +311,7 @@ wayai sync-skills       # Sync skills to provider connections; --connection-id <
 wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale schemas); --connection <name|uuid>
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
-wayai run-eval          # Run eval scenarios
+wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs)
 wayai eval-results      # Inspect eval results
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai list              # List organizations and hubs

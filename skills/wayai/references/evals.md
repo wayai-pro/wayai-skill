@@ -115,10 +115,12 @@ This is the fastest way to grow eval coverage from real production behavior. Cap
 ## Running Evals
 
 ```bash
-wayai run-eval                           # all evals on the hub
-wayai run-eval --set <name>              # scope to a scenario set
-wayai run-eval --eval <name>             # run a single eval
+wayai run-eval                           # run the hub's sole enabled scenario set
+wayai run-eval --set <name>              # run a specific scenario set
+wayai run-eval --eval <name>             # run the set the named eval belongs to
 ```
+
+A run session targets **exactly one scenario set**. With no flag the hub's sole enabled set runs; on a multi-set hub the run fails with `ambiguous_scenario_set` — pick one with `--set`/`--eval` (mutually exclusive). `--eval <name>` runs the *whole set* that eval belongs to, not just that one eval.
 
 Each run executes the scenario `runs` times (default 1, configurable per scenario), passes the result to the hub's `message_evaluator` agent, and records the score.
 
