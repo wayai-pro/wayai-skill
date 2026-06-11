@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.8.2
+version: 6.8.3
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -242,7 +242,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | State | URL |
 |-------|-----|
 | 3 (signup / org create) | `https://app.wayai.pro/settings/organizations/new` |
-| 6 (credential pre-fill) | `https://app.wayai.pro/settings/credentials?type=bearer&name=<key-name>&prefill=true` |
+| 6 (credential pre-fill) | `https://app.wayai.pro/settings/organizations/<org_id>/credentials?type=bearer&name=<key-name>&prefill=true` |
 | 7 (OAuth connection) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/connections?connector=<whatsapp\|instagram\|google-calendar\|mcp-server>` |
 | 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 

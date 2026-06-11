@@ -77,6 +77,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/overview` | Org overview |
 | `/settings/organizations/[orgId]/hubs` | Org's hubs list |
 | `/settings/organizations/[orgId]/credentials` | Org-level credentials |
+| `/settings/organizations/[orgId]/resources` | Org-level resources (shared knowledge bases / skills) |
 | `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
 
@@ -144,7 +145,7 @@ Tab pages accept these query strings to pre-open modals or pre-fill forms.
 | `…/connections/new` | `?connector=<connector_id>` | Opens the create form pre-picked to a connector — matched by `connector_id` **UUID**, not a slug. For multi-auth connectors it defaults to the first auth type (e.g. MCP → Bearer Token), so it is **not** a reliable deeplink for MCP OAuth — use the `…/connections` slug form above |
 | `…/overview` | `?action=publish` | Opens the publish (preview→production) modal |
 
-The org/hub-less form `app.wayai.pro/settings/connections?connector=<slug>` is shorthand — it only resolves when the **org and hub** are already in scope. For the OAuth-connection handoff (the canonical target; see SKILL.md → Connection Types → OAuth connection handoff), and any time an OAuth connection is needed, use the full path:
+The org/hub-less form `app.wayai.pro/settings/connections?connector=<slug>` has **no route and 404s** — there is no `/settings/connections` page; connections only exist under `/settings/organizations/<orgId>/hubs/<hubId>/`. For the OAuth-connection handoff (the canonical target; see SKILL.md → Connection Types → OAuth connection handoff), and any time an OAuth connection is needed, always use the full path:
 
 ```
 https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>
