@@ -30,7 +30,7 @@ Other native fields (schema, instructions, operation) come from the platform cat
 - [Resource Tools](#resource-tools)
 - [Google Calendar Tools](#google-calendar-tools)
 - [Meta Tools](#meta-tools)
-- [MCP Client Tools](#mcp-client-tools)
+- [MCP Tools](#mcp-tools)
 
 ---
 

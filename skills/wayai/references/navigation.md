@@ -7,7 +7,7 @@ Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace w
 - [Auth Routes](#auth-routes)
 - [Conversation Surfaces](#conversation-surfaces)
 - [Settings Hierarchy](#settings-hierarchy)
-- [User Settings](#user-settings)
+- [Account Settings](#account-settings)
 - [Marketing & Docs](#marketing--docs)
 - [Query-String Deep Links](#query-string-deep-links)
 - [Rules](#rules)

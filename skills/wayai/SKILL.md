@@ -122,7 +122,7 @@ For per-provider setup, see [`references/connections.md`](references/connections
 |------|--------|-----|
 | Native | Platform built-ins (e.g., `send_text_message`, `update_kanban_status`, `transfer_to_human`) | Listed by name in `agents/<slug>.yaml` |
 | Custom | HTTP endpoints you define | Defined in `agents/<slug>.yaml` with `connection`, `method`, `path`, `config` |
-| MCP | Tools from connected MCP servers | Auto-discovered from the server; assigned per-agent in the Platform UI — **not** declared in `agents/<slug>.yaml` (there is no `tools.mcp` block). GitOps preserves them but does not manage them. See [native-tools.md](references/agents/native-tools.md#mcp-client-tools) |
+| MCP | Tools from connected MCP servers | Auto-discovered from the server; assigned per-agent in the Platform UI — **not** declared in `agents/<slug>.yaml` (there is no `tools.mcp` block). GitOps preserves them but does not manage them. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
 | Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`) or agent-to-team (`transfer_to_team`) | Declared with `target` in `agents/<slug>.yaml` |
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. See [`references/agents/native-tools.md`](references/agents/native-tools.md).
