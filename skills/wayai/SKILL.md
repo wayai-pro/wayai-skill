@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.8.3
+version: 6.9.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -42,14 +42,15 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Org credentials | CLI (`wayai create-credential`) or UI |
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
-| Organization (signup, update, delete) | UI |
+| Organization — create | CLI (`wayai org create`) or UI |
+| Organization — update, delete | UI |
 | Publish/sync to production, delete hubs, replicate previews | UI |
 | User management | UI |
 
 ## Entity Hierarchy
 
 ```
-Organization              ← UI only (signup)
+Organization              ← CLI (`wayai org create`) or UI
 ├── Org Credentials       ← CLI or UI (store API keys once, reuse across hubs)
 └── Project               ← CLI or UI
     └── Hub               ← CLI (auto-creates on push) or UI; publish/sync via UI
@@ -59,7 +60,7 @@ Organization              ← UI only (signup)
             └── Resources ← CLI (linked from hub.yaml)
 ```
 
-Setup order: Organization (signup) → Org Credentials (CLI or UI) → Project (CLI or UI) → Hub (CLI push or UI) → configure agents, tools, connections via CLI.
+Setup order: Organization (CLI `wayai org create` or UI) → Org Credentials (CLI or UI) → Project (CLI or UI) → Hub (CLI push or UI) → configure agents, tools, connections via CLI.
 
 The `wayai` connection (native tools) is auto-created when a hub is created — no setup needed.
 
@@ -227,7 +228,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 1b | No harness skill install present at project root (none of `<root>/.claude/skills/wayai/SKILL.md`, `<root>/.opencode/skills/wayai/SKILL.md`, `<root>/.agents/skills/wayai/SKILL.md` exists, where `<root>` is `git rev-parse --show-toplevel` or cwd if not in a git repo) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>`. After it completes, agent re-checks the three paths: if at least one exists, exit (the harness will load the installed skill on the next turn). If none exist, surface the install error to the user and halt — do not silently exit (would loop on re-entry). |
 | 1c | `skill.installed: true`, `skill.latest` is set, and `skill.latest` is newer than `skill.version` (CLI nightly check populates `skill.latest`) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>` to refresh the install in place, then exits (the updated skill loads on the next turn). On install failure, surface the error to the user and continue with the existing skill. |
 | 2 | `auth.logged_in: false` | Agent runs `wayai login` (opens browser). User handoff: "Open the page that just opened. Sign in or sign up. Tell me when done." |
-| 3 | `auth.logged_in: true`, `orgs: []` | User handoff: "Open `https://app.wayai.pro/settings/organizations/new` to create your organization. Tell me when done." Then re-run `status --json`. |
+| 3 | `auth.logged_in: true`, `orgs: []` | Ask once: "What should we name your organization? (usually your company name)". Then agent runs `wayai org create "<name>"` and re-runs `status --json` to pick up the new org. (Manual fallback only if the CLI create errors: open `https://app.wayai.pro/settings/organizations/new`.) |
 | 3b | `git rev-parse --show-toplevel` fails (cwd is not in a git repo) | The CLI requires git for workspace detection. **Before acting, surface the resolved cwd and confirm with the user** — handoff: "I'll initialize a git repo at `<cwd>`. Confirm or pick a different folder." This prevents accidentally initializing a repo in `~` or another unintended directory. After confirmation, agent runs `git init` in cwd. Then checks `git config --global user.name` and `git config --global user.email`; if either is empty, asks the user once for their name and email and runs `git config --global user.name "<name>"` / `git config --global user.email "<email>"`. A GitHub remote is not required for the onboarding flow — only set one up later if the user wants the GitOps/CI loop. |
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
@@ -241,7 +242,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 
 | State | URL |
 |-------|-----|
-| 3 (signup / org create) | `https://app.wayai.pro/settings/organizations/new` |
+| 3 (org create — manual fallback) | `https://app.wayai.pro/settings/organizations/new` |
 | 6 (credential pre-fill) | `https://app.wayai.pro/settings/organizations/<org_id>/credentials?type=bearer&name=<key-name>&prefill=true` |
 | 7 (OAuth connection) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/connections?connector=<whatsapp\|instagram\|google-calendar\|mcp-server>` |
 | 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
@@ -296,8 +297,9 @@ After the hub exists, follow the existing-hub workflow.
 ```bash
 wayai update            # Update CLI (run before any operation)
 wayai login             # OAuth — or `wayai login --token` for headless/CI
+wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
-wayai init              # Set up .wayai.yaml (interactive); --org <uuid> to skip prompt
+wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-locks worktree on first pull)
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
