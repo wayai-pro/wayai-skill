@@ -345,6 +345,8 @@ Agents have a separate `additional_context_template` field — same `{{...}}` sy
 
 **Why this exists.** Anthropic prompt caching matches the cached prefix byte-for-byte. Any placeholder that changes per turn (`{{now()}}`, `{{state(...)}}`) inside `instructions` invalidates the cached system prompt every turn, so cache reads never land. Moving those high-churn values into `additional_context_template` keeps the system prompt stable and lets the cache absorb the agent's identity, tools, and skills — typical cache-read savings are large because tools + agent definitions are most of the prefix.
 
+> For the full **lifetime model** (timeless → `instructions`, cross-turn → `state`, this-turn → here) and why churning **tool schemas** also busts the cache, see "Context placement" in [`prompt-principles.md`](prompt-principles.md).
+
 **When to use which:**
 - `instructions` — stable agent identity, tone, rules. Static placeholders are fine here (`{{user_info()}}`, `{{previous_conversations(N)}}`).
 - `additional_context_template` — anything that changes per turn or per minute. `{{now()}}` always belongs here; `{{state(...)}}` belongs here unless the agent's reasoning hard-depends on reading state from inline prose.

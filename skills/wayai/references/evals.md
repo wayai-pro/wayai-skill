@@ -10,6 +10,7 @@ Evals are test scenarios that verify agent behavior. Each scenario is a YAML fil
 - [Capturing a Production Conversation](#capturing-a-production-conversation)
 - [Running Evals](#running-evals)
 - [Inspecting Results](#inspecting-results)
+- [Principles — authoring & interpreting](#principles--authoring--interpreting)
 - [Entity Matching](#entity-matching)
 
 ---
@@ -66,6 +67,8 @@ evaluator_instructions: |
 **Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions` is optional.
 
 `expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
+
+> **History caveat.** The validated `history` field accepts `system` / `user` / `assistant` **text** turns only (`role: tool` and content-less `tool_calls` items are rejected by the eval validator), and the eval run path does not replay scenario `history` into the responder agent's context. Treat a scenario as effectively **single-turn** (`input` + `expected`) today — stage any precondition in the `input` message and pin criteria in `evaluator_instructions`.
 
 ---
 
@@ -139,6 +142,28 @@ wayai eval-results --json                # machine-readable
 Results come from ClickHouse — eval rows are tagged `is_eval = true` and excluded from production analytics. See [analytics.md](analytics.md) for the eval-only analytics surface.
 
 ---
+
+## Principles — authoring & interpreting
+
+The sections above are the *mechanics*; these are the *judgment calls*. Domain-neutral — each was forced by a real agent, not theorized.
+
+### Authoring
+
+1. **Test KNOWN failure modes, not happy paths.** An eval that only ever passes proves nothing. Target where the agent actually breaks.
+2. **For ACTION evals, assert on the tool call** (`expected.tool_calls`), not the text. Plausible prose is not proof the agent *did* anything — the harness fails a skipped-but-required tool call even when the reply reads fine (see [Scenario File Format](#scenario-file-format)).
+3. **Pin only what's deterministic.** Hard-code the stable parts in `expected`; push runtime ids/timestamps into `evaluator_instructions` ("the `order_id` must match the one in history") rather than a brittle literal.
+4. **Unit-test a DECISION, not just the whole flow.** Isolating one mid-flow decision makes the failure point sharp. *WayAI today:* scenarios are effectively single-turn (`input` + `expected`; scenario `history` isn't replayed into the responder — see the History caveat under [Scenario File Format](#scenario-file-format)), so stage the decision's precondition in the `input` message and pin criteria in `evaluator_instructions` rather than relying on canned prior turns.
+5. **Mutating evals need a seed/reset.** WayAI runs the **real** agent with its **real** tools, so an eval that triggers a write hits the live backend — without a known starting state it passes on residue from the last run. Seed/reset, or assert against state you control.
+6. **Repurpose or retire an eval when a structural fix makes its failure mode impossible.** A surface change (see [`tool-principles.md`](agents/tool-principles.md)) can make a bad call un-expressible — the eval guarding it now tests nothing. Retire it or re-point it at the next real risk.
+
+### Interpreting
+
+7. **A false PASS is the most dangerous result** — it hides a regression and makes every PASS suspect. Before trusting a PASS, confirm the evaluator actually *saw* the evidence (text **and** tool calls).
+   - *WayAI specific:* the `message_evaluator` is automatically given the agent's actual response **including its tool calls** for the scored turn — so it does see them. The real blind spot is **history**: upstream *ephemeral* tool results (`keep_in_history: false`) that informed the decision are invisible to the evaluator. If a judgment depends on one, surface it (see [`prompt-principles.md`](agents/prompt-principles.md), "Context placement").
+8. **Read the evaluator's REASONING + the actual tool_calls, not just the score.** A result must be self-contained — `wayai eval-results --json` carries the verdict, the reasoning, and the actual calls; a bare PASS/FAIL tells you nothing about *why*.
+9. **Localize the failure: agent, tools, data, or the eval/evaluator?** A FAIL can be a bad agent, a broken tool, wrong fixture data, or a wrong `expected` / `evaluator_instructions`. Diagnose which before "fixing the agent."
+10. **Reliability is a distribution — `runs: 1` is one sample.** A 1/1 PASS is not "reliable" (a booking eval read 1/1 while true reliability was ~50%). Raise `runs` for anything you're trusting, and read the pass *rate*, not the first result.
+11. **Distinguish text-judged from tool-judged evals.** Tone/voice scenarios are judged on text; action scenarios on `tool_calls`. Don't grade an action eval on how nice the prose sounds.
 
 ## Entity Matching
 

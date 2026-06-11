@@ -1,10 +1,25 @@
-# Prompt Engineering Principles (Reliable Agent Instructions)
+# Context & Prompt Engineering Principles (Reliable Agent Instructions)
 
-How to **structure** an agent's instructions so a cheap, fallible model executes them reliably — distinct from [`instructions.md`](instructions.md), which covers placeholder *mechanics*. Domain-neutral: applies to any hub and any vertical.
+How to **place and structure** an agent's context so a cheap, fallible model executes reliably — *where* each piece of context belongs ("Context placement" below) and *how* to phrase the instructions (the rest). Distinct from [`instructions.md`](instructions.md), which covers placeholder *mechanics*, and [`tool-principles.md`](tool-principles.md), which covers the tool surface. Domain-neutral: applies to any hub and any vertical.
 
 **Meta:** a prompt is **procedure → guardrails → voice**, in that priority order. Design for the *fallible* model you deploy, not the ideal one. Structure the prompt so the right action is the first and easiest thing the model can do, say what you want (not what you don't), and keep style out of the way of the flow.
 
 > Field-tested: on a small/cheap model, an agent went from flaky (over-gathering, skipped writes, drifting tone) to reliable (correct action, 0 errors, consistent voice) **purely by restructuring the instructions** this way — no model upgrade.
+
+## Context placement — match each piece to the lifetime of its slot
+
+Before structuring instructions, decide *what even belongs in them*. Match each piece of context to the **lifetime of its slot** — a longer-lived slot than it needs makes it stale; a shorter-lived one makes it churn (and busts the cache, below).
+
+| Lifetime | Slot | Examples |
+|----------|------|----------|
+| Timeless — every conversation | `instructions` (`agents/<slug>.md`) | persona, data model, flow, rules, tool conventions, voice |
+| Per-conversation behavior | prepend / additional instructions | one-off overlays that shouldn't pollute the general prompt |
+| Must survive across turns | conversation / user **`state`** | ids, cart, booking-in-progress — durable working memory |
+| This turn only | `additional_context_template` + the message | `{{now()}}`, volatile `{{state()}}`, placeholders |
+
+**Cache hygiene gives this teeth.** The provider caches the **stable prefix** (system prompt + tool schemas) byte-for-byte. Any per-turn value baked into `instructions` invalidates that cache every turn — a staleness bug *and* a per-turn cost/latency tax. So keep `instructions` and the tool surface byte-stable, and inject volatile content after the cache boundary via `additional_context_template` (mechanics + the why: [`instructions.md`](instructions.md#additional-context-cache-friendly)). Corollary: churning **tool schemas** busts the cache too — another reason to curate and stabilize the surface ([`tool-principles.md`](tool-principles.md)).
+
+**State vs tool-history.** Tool call/result is **ephemeral by default** (`keep_in_history: false`) — good hygiene; raw tool I/O is verbose and noisy. Enabling `keep_in_history` is a **last resort** (it pollutes the window, grows tokens, pressures the cache). Prefer having the agent **annotate the distilled fact to `state`** — extract the id from the ephemeral result and write it compact (see "State discipline" below). *Caveat:* because tool I/O isn't in history by default, downstream consumers — including the `message_evaluator` — are blind to it unless given. That blindness is the root of the eval **false-PASS** ([`../evals.md`](../evals.md)). Know what each consumer actually sees.
 
 ## A. Structure & order
 

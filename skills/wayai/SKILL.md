@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.7.3
+version: 6.8.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -517,7 +517,7 @@ For full agent options (settings per connector, native tool params, custom tool 
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
 - **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
-- **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from a `Tool - MCP` connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md)
+- **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from a `Tool - MCP` connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)
 - **Entity matching (sync/diff):** `id` first (stable UUID), then fallback. Exceptions: states match by `name` (unique per hub regardless of scope); evals match by `name + path`; native tools by `tool_name` per agent
@@ -552,8 +552,9 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Agents** | [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md) | Choosing an agent role, delegation flow, connector-specific settings |
 | **Agents** | [`references/agents/native-tools.md`](references/agents/native-tools.md) | Native tool parameters per connector, meta tools (`get_tool_schema`, `execute_tool`) |
 | **Agents** | [`references/agents/custom-tools.md`](references/agents/custom-tools.md) | Custom HTTP tool format, OpenAI function schema, `composed_tools` side effects |
+| **Agents** | [`references/agents/tool-principles.md`](references/agents/tool-principles.md) | Designing a tool surface a fallible agent calls reliably — surface curation > validation > prompt, one-tool-one-intent, fail-loud, guarded atomic ops |
 | **Agents** | [`references/agents/instructions.md`](references/agents/instructions.md) | Placeholder syntax (`{{now()}}`, `{{state()}}`, etc.) for `agents/<slug>.md` |
-| **Agents** | [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md) | Structuring instructions for reliable execution — flow-before-style, positive framing, explicit tool-call procedures, voice as its own section |
+| **Agents** | [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md) | Placing & structuring context for reliable execution — context-to-slot-lifetime, cache hygiene, state vs tool-history, flow-before-style, positive framing, voice as its own section |
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
