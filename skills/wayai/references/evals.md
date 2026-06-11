@@ -63,9 +63,9 @@ evaluator_instructions: |
   The agent MUST call cancel_order with the correct order_id.
 ```
 
-**Required fields:** `agent` (or `agent_id`), `input`, `expected`, `evaluator_instructions`.
+**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions` is optional.
 
-`expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) compares the agent's actual response against `expected` using `evaluator_instructions` as its rubric.
+`expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
 
 ---
 

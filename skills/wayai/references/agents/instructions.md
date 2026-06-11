@@ -266,29 +266,6 @@ Another agent's instructions and tools configuration (by agent name).
 
 ---
 
-### `{{eval_info()}}`
-
-Evaluation test case data for evaluator agents.
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `eval_name` | Yes | Eval name or UUID |
-
-| Property | Description |
-|----------|-------------|
-| `.eval_id` | Eval UUID |
-| `.message_text` | Test message |
-| `.actual_response` | Agent's actual response |
-| `.expected_response` | Expected response |
-| `.message_history` | Conversation history for context |
-| `.agent_settings` | Responder agent's settings |
-
-```
-{{eval_info(greeting-test)}}
-```
-
----
-
 ### `{{current_conversation_id()}}`
 
 The current conversation UUID.
