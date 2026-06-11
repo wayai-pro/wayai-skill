@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.8.1
+version: 6.8.2
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -122,7 +122,7 @@ For per-provider setup, see [`references/connections.md`](references/connections
 |------|--------|-----|
 | Native | Platform built-ins (e.g., `send_text_message`, `update_kanban_status`, `transfer_to_human`) | Listed by name in `agents/<slug>.yaml` |
 | Custom | HTTP endpoints you define | Defined in `agents/<slug>.yaml` with `connection`, `method`, `path`, `config` |
-| MCP | Tools from connected MCP servers | Auto-discovered from the server; assigned per-agent in the Platform UI — **not** declared in `agents/<slug>.yaml` (there is no `tools.mcp` block). GitOps preserves them but does not manage them. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
+| MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` in `agents/<slug>.yaml` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
 | Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`) or agent-to-team (`transfer_to_team`) | Declared with `target` in `agents/<slug>.yaml` |
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. See [`references/agents/native-tools.md`](references/agents/native-tools.md).
