@@ -318,7 +318,17 @@ wayai list              # List organizations and hubs
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error)
 wayai report edit       # Amend your own pending report (<id> --title/--description/--error/--steps/--context)
+wayai report list       # List your reports (newest first; --status <s>, --json)
+wayai report get        # Show a report's status + message thread (<id>, --json)
+wayai report accept     # Accept a shipped fix (<id>) → addressed
+wayai report contest    # Contest a shipped fix or a dismissal (<id> --reason "...") → back to triage
 ```
+
+**Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
+moves to `shipped`. Poll `wayai report list --status shipped` to find it, read `wayai report get <id>`
+(status + the fixer's note in the thread), then `accept` if it works or `contest --reason "..."` if it
+doesn't. You can also `contest` a `dismissed` report you believe is real — it routes back to triage.
+Contests are bounded (a cap, and triage may mark a dismissal final); past those, contact support.
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
 
