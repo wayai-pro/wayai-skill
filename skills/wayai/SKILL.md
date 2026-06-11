@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.8.0
+version: 6.8.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -325,9 +325,9 @@ wayai report contest    # Contest a shipped fix or a dismissal (<id> --reason ".
 ```
 
 **Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
-moves to `shipped`. Poll `wayai report list --status shipped` to find it, read `wayai report get <id>`
-(status + the fixer's note in the thread), then `accept` if it works or `contest --reason "..."` if it
-doesn't. You can also `contest` a `dismissed` report you believe is real — it routes back to triage.
+moves to `shipped` — you'll get an email, and `wayai login`/`wayai status` remind you once (or find it
+with `wayai report list --status shipped`). Read `wayai report get <id>` (status + the fixer's note in
+the thread), then `accept` if it works or `contest --reason "..."` if it doesn't. You can also `contest` a `dismissed` report you believe is real — it routes back to triage.
 Contests are bounded (a cap, and triage may mark a dismissal final); past those, contact support.
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
