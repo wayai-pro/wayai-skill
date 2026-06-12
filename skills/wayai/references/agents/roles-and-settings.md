@@ -126,35 +126,46 @@ settings:
   model: claude-sonnet-4-6
   temperature: 0.7
   max_tokens: 4096
-  thinking:                   # optional extended thinking
-    type: enabled
-    budget_tokens: 8000
+  thinking_enabled: true        # optional extended thinking (Claude 4+)
 ```
 
 **OpenAI** (service: OpenAI):
 ```yaml
 settings:
-  model: gpt-5
+  model: gpt-5.5
   temperature: 0.7
   max_tokens: 4096
-  reasoning_effort: medium    # for reasoning models
+  reasoning_effort: medium      # reasoning models: minimal|low|medium|high|none
 ```
 
 **Google AI Studio** (service: Google AI Studio):
 ```yaml
 settings:
-  model: gemini-2.5-pro
+  model: gemini-3.1-pro
   temperature: 0.7
-  max_output_tokens: 4096
+  max_tokens: 4096
+  reasoning_level: high         # dynamic|low|medium|high
 ```
 
 **OpenRouter** (service: OpenRouter):
 ```yaml
 settings:
-  model: anthropic/claude-sonnet-4.6
+  model: openai/gpt-5.5
   temperature: 0.7
   max_tokens: 4096
+  reasoning_effort: medium      # reasoning-capable models: low|medium|high|none
 ```
+
+### Reasoning / thinking by provider
+
+Each provider exposes one reasoning control, named to match its schema. The key name must be exact — a mismatched key (e.g. a nested `thinking:` object on Anthropic, or `max_output_tokens` on Gemini) is **silently stripped on `wayai push`**.
+
+| Connector | Setting | Values | Maps to |
+|---|---|---|---|
+| Anthropic | `thinking_enabled` (boolean) | `true` / `false` | Adaptive thinking on Claude 4.6+; fixed budget on older 4.x. Temperature/top_p ignored when on. |
+| OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. |
+| Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
+| OpenRouter | `reasoning_effort` | `low` / `medium` / `high` / `none` | `reasoning.effort`. `none` disables the override. |
 
 When the agent's connection changes, existing `settings` are sanitized against the new connector's schema — unknown keys are dropped. To see the exact schema for a specific connector at any time, run `wayai pull` and inspect a freshly pulled agent's `settings` block.
 

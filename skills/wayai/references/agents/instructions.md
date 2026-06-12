@@ -257,7 +257,8 @@ Another agent's instructions and tools configuration (by agent name).
 | `.agent_name` | Agent name |
 | `.instructions` | Processed instructions (with placeholders resolved) |
 | `.tools_config` | JSON array of enabled tool configs |
-| `.reasoning_effort` | Reasoning effort setting |
+| `.reasoning_effort` | Reasoning effort setting (OpenAI / OpenRouter) |
+| `.reasoning_level` | Reasoning level setting (Google Gemini) |
 | `.verbosity` | Verbosity setting |
 
 ```
