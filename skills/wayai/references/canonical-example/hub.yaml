@@ -5,8 +5,10 @@ hub:
   hub_type: chat
   ai_mode: pilot+copilot
   timezone: America/New_York
+  language: en
   app_permission: require_permission
   non_app_permission: everyone
+  access_approval_role: admin
   file_handling_mode: metadata_only
   hub_sla:
     time_threshold1: 60

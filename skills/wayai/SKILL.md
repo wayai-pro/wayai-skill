@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.10.0
+version: 6.11.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -206,6 +206,9 @@ For deeper schemas, see [`references/states.md`](references/states.md).
 | `hub_sla` | JSON `time_threshold1/2/3` (seconds) | `60`/`300`/`600` | SLA escalation thresholds |
 | `max_file_size_for_attachment` | integer (bytes) | — | Optional cap |
 | `timezone` | IANA timezone | — | For scheduling and display |
+| `language` | `en`, `pt`, `es` | `en` | Language for hub-sent text (e.g. the pending-access notice on `require_permission` channels) |
+| `access_approval_role` | `admin`, `team` | `admin` | Who may approve/block a pending contact: hub admins only, or also support team members |
+| `access_request_message` | string | — | Optional override for the "your access is pending approval" auto-reply (else a localized default by `language`) |
 
 ## First-time setup (cold start)
 
