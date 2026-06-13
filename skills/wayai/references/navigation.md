@@ -86,7 +86,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 
 | Tab | Path suffix | Covers |
 |-----|-------------|--------|
-| `overview` | `/overview` | Name, description, SLA, timezone, AI mode, permissions |
+| `overview` | `/overview` | Name, description, timezone, AI mode, permissions |
 | `connections` | `/connections` | LLM providers, channel APIs, MCP servers, OAuth configs |
 | `agents` | `/agents` | Agents list |
 | `state` | `/state` | Conversation/user state schemas |

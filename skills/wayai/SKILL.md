@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.11.5
+version: 6.11.6
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -201,7 +201,6 @@ For deeper schemas, see [`references/states.md`](references/states.md).
 | Setting | Values | Default | Description |
 |---------|--------|---------|-------------|
 | `non_app_permission` | `everyone`, `require_permission`, `not_allowed` | `everyone` | Who can reach hub via external channels |
-| `hub_sla` | JSON `time_threshold1/2/3` (seconds) | `60`/`300`/`600` | SLA escalation thresholds |
 | `timezone` | IANA timezone | — | For scheduling and display |
 | `language` | `en`, `pt`, `es` | `en` | Language for hub-sent text (e.g. the pending-access notice on `require_permission` channels) |
 | `access_approval_role` | `admin`, `team` | `admin` | Who may approve/block a pending contact: hub admins only, or also support team members |
@@ -386,10 +385,6 @@ hub:
   ai_mode: pilot+copilot         # pilot | copilot | pilot+copilot | turned_off
   timezone: America/New_York
   non_app_permission: everyone
-  hub_sla:
-    time_threshold1: 60
-    time_threshold2: 300
-    time_threshold3: 600
   kanban_statuses:
     - slug: new
       name: New

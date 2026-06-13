@@ -8,10 +8,6 @@ hub:
   language: en
   non_app_permission: everyone
   access_approval_role: admin
-  hub_sla:
-    time_threshold1: 60
-    time_threshold2: 300
-    time_threshold3: 600
   kanban_statuses:
     - slug: new
       name: New
