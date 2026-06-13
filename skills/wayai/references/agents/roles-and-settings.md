@@ -251,6 +251,28 @@ evaluation_variables:
 
 ---
 
+## Flag Conditions (`conversation_evaluator` only)
+
+`flag_conditions` is a setting on the **`conversation_evaluator` agent** — conditions evaluated after a conversation closes (against its system metrics + evaluation variables). Any match (OR semantics) flags the conversation for review in the support sidebar. Round-trips via `wayai pull` / `wayai push` as a top-level key on the evaluator agent:
+
+```yaml
+# agents/conversation-evaluator.yaml
+name: Conversation Evaluator
+role: conversation_evaluator
+connection: anthropic
+flag_conditions:
+  - variable: goal_achieved      # system metric or evaluation-variable name
+    operator: "="                # "=" | "!="
+    value: no
+  - variable: user_sentiment
+    operator: "="
+    value: negative
+```
+
+New hubs seed the two defaults above onto the evaluator agent automatically. Omit the key to leave the current value untouched; set `flag_conditions: []` to clear it. Configurable from the UI in the evaluator agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the evaluator agent.)
+
+---
+
 ## `enabled` Behavior
 
 When `enabled: false`:
