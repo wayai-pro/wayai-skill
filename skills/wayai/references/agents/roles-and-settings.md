@@ -289,6 +289,27 @@ New hubs seed the default onto the summarizer agent automatically. Omit the key 
 
 ---
 
+## Monitor Configuration (`monitor` only)
+
+`monitor_config` is a setting on the **`monitor` agent** — it controls when the background monitor re-evaluates an active conversation and which conditions flag it. `delay_seconds` is the user-inactivity wait (in seconds, minimum 10) before the monitor runs; `flag_conditions` use OR semantics (any match flags the conversation). Unlike the evaluator/summarizer, the monitor is **not** auto-provisioned — create it explicitly. Round-trips via `wayai pull` / `wayai push` as a top-level key on the monitor agent:
+
+```yaml
+# agents/monitor.yaml
+name: Monitor
+role: monitor
+connection: anthropic
+monitor_config:
+  delay_seconds: 300            # inactivity wait before re-evaluation; >= 10
+  flag_conditions:
+    - variable: user_sentiment  # system metric or evaluation-variable name
+      operator: "="             # "=" | "!="
+      value: negative
+```
+
+Omit the key to leave the current value untouched; set `monitor_config: null` to clear it. Configurable from the UI in the monitor agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the monitor agent.)
+
+---
+
 ## `enabled` Behavior
 
 When `enabled: false`:
