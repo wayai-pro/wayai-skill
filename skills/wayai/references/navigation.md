@@ -24,7 +24,7 @@ Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_n
 | `/settings` | Unified settings shell (account + org + hub) with sidebar nav | Account: all authenticated users; Org/Hub: admins |
 | `/user` | Legacy alias — 308 redirects to `/settings/account/*` (kept for external bookmarks) | All authenticated users |
 
-Access is per-level: an Org Admin who isn't also a Hub Admin gets an auth error at hub-scoped URLs. Top-level prefixes are the canonical list in `frontend/src/lib/app-routes.ts` (`APP_ROUTE_PREFIXES`).
+Access is per-level: an Org Admin who isn't also a Hub Admin gets an auth error at hub-scoped URLs. Top-level prefixes are the canonical list in `apps/web/src/lib/app-routes.ts` (`APP_ROUTE_PREFIXES`).
 
 ## Auth Routes
 

@@ -2,7 +2,7 @@
 
 Setup guide for WayAI hub connections. Non-OAuth connections are **auto-created by `wayai push`** from organization credentials. OAuth connections require **UI** setup.
 
-For the canonical, programmatic source of connector definitions (auth schemas, settings schemas, model lists), inspect [`workers/shared/src/catalog/connectors.ts`](../../../../../workers/shared/src/catalog/connectors.ts) — this reference reflects that catalog and is updated alongside it.
+For the canonical, programmatic source of connector definitions (auth schemas, settings schemas, model lists), inspect [`packages/core/src/catalog/connectors.ts`](../../../../../packages/core/src/catalog/connectors.ts) — this reference reflects that catalog and is updated alongside it.
 
 ## Table of Contents
 - [Organization Credentials](#organization-credentials)
@@ -436,7 +436,7 @@ This is the core native toolset providing:
 - **Tool orchestration:** Get tool schema, execute tool dynamically
 - **Skills:** Read skill, read skill file
 
-**Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `get_files`, `send_files`, `list_resource_folders`, `list_resource_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
+**Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `read_file`, `send_files`, `list_resource_folders`, `list_resource_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
 
 ### Google Calendar
 

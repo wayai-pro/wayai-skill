@@ -167,6 +167,17 @@ Each provider exposes one reasoning control, named to match its schema. The key 
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `low` / `medium` / `high` / `none` | `reasoning.effort`. `none` disables the override. |
 
+### File handling (all LLM connectors)
+
+Two optional `settings` keys control how a conversation's **historical** files are sent to this agent's LLM (the current message's own attachments are always sent in full):
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| `file_handling_mode` | `always_attach` / `metadata_only` | `always_attach` | `always_attach` includes file content; `metadata_only` sends only an `[Attached files: …]` annotation and the agent fetches content on demand via the `read_file` tool (auto-enabled for the agent in this mode). |
+| `max_attachment_size_mb` | integer (MB) | — (no cap) | In `always_attach`, any historical file larger than this is downgraded to metadata-only. |
+
+Background observer roles (`conversation_evaluator`, `message_evaluator`, `monitor`) ignore these settings and always receive full file content.
+
 When the agent's connection changes, existing `settings` are sanitized against the new connector's schema — unknown keys are dropped. To see the exact schema for a specific connector at any time, run `wayai pull` and inspect a freshly pulled agent's `settings` block.
 
 ---
