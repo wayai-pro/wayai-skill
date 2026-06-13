@@ -273,6 +273,22 @@ New hubs seed the two defaults above onto the evaluator agent automatically. Omi
 
 ---
 
+## Summarization Threshold (`summarizer` only)
+
+`summarization_threshold_tokens` is a setting on the **`summarizer` agent** — the rolling summarizer fires async post-turn once a turn's effective input tokens (input + cache_read + cache_creation) reach this value. Default 120000; min 1000, max 1000000. Round-trips via `wayai pull` / `wayai push` as a top-level key on the summarizer agent:
+
+```yaml
+# agents/summarizer.yaml
+name: Summarizer
+role: summarizer
+connection: anthropic
+summarization_threshold_tokens: 120000   # lower for testing, raise for very long conversations
+```
+
+New hubs seed the default onto the summarizer agent automatically. Omit the key to leave the current value untouched; an empty value (`summarization_threshold_tokens:`) clears it back to the 120000 default. Configurable from the UI in the summarizer agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the summarizer agent.)
+
+---
+
 ## `enabled` Behavior
 
 When `enabled: false`:
