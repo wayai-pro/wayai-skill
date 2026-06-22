@@ -24,6 +24,6 @@ Set up a WayAI hub for customer support over WhatsApp.
 
 ## 3. Don't have an account yet?
 
-Free plan includes 2,000 operations per month. No credit card required.
+Free plan includes 3,000 operations per month. No credit card required.
 
 [Create a free account](https://app.wayai.pro/login)
