@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.11.6
+version: 6.11.7
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -39,6 +39,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
+| Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
 | Org credentials | CLI (`wayai create-credential`) or UI |
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
@@ -315,6 +316,7 @@ wayai analytics query   # Structured ClickHouse query (multi-variable, group_by,
 wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs)
 wayai eval-results      # Inspect eval results
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
+wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>])
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error)
@@ -554,7 +556,7 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
-| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, `wayai eval capture` from production |
+| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, `wayai eval capture` / `wayai eval journey capture` from production |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |

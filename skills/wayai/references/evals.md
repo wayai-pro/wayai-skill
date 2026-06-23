@@ -113,6 +113,16 @@ Flow:
 
 This is the fastest way to grow eval coverage from real production behavior. Capture once, then refine `evaluator_instructions` to match your acceptance criteria.
 
+### Capture as a journey (full multi-turn transcript)
+
+`wayai eval capture` extracts only the **last** user→agent exchange. To capture the **entire** conversation as a happy-path journey (one eval step per agent turn):
+
+```bash
+wayai eval journey capture <conversation_id> [--name <journey_name>] [--instructions "..."]
+```
+
+This calls `POST /api/evals/journeys/from-conversation`. Unlike scenario capture it writes **no local file** — the journey is platform-managed: it owns its own scenario set and materializes one single-turn eval per agent turn (each graded against the ideal prefix). Review/edit it in the hub UI's **Journeys** tab.
+
 ---
 
 ## Running Evals
