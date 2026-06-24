@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.13.0
+version: 6.13.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -316,7 +316,7 @@ wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale s
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
 wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs)
-wayai eval-results      # Inspect eval results
+wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
 wayai eval session delete   # Delete an eval session + its run history (<session_id>, or --all for every session on the hub; -y to skip confirm)

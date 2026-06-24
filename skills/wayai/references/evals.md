@@ -191,10 +191,13 @@ A session is capped at **1000 total runs** across all enabled scenarios in the s
 ## Inspecting Results
 
 ```bash
-wayai eval-results                       # latest results across the hub
-wayai eval-results --set <name>          # scope to a set
-wayai eval-results --json                # machine-readable
+wayai eval-results --session <id>            # aggregate results for a session
+wayai eval-results --session <id> --runs     # per-run detail: response, tool calls, and the conversation + message ids
+wayai eval-results --eval "<name>"           # latest session results for one eval (by name)
+wayai eval-results --session <id> --json     # machine-readable
 ```
+
+Requires `--session <id>` or `--eval <name>` — there is no hub-wide default. The per-run `Observability:` line carries the `conversation` + `evaluated`/`evaluator` message ids, so a turn's full trace is one command away: `wayai conversations <conversation_id> observability --message-id <id>`.
 
 Results come from ClickHouse — eval rows are tagged `is_eval = true` and excluded from production analytics. See [analytics.md](analytics.md) for the eval-only analytics surface.
 
@@ -231,7 +234,7 @@ The sections above are the *mechanics*; these are the *judgment calls*. Domain-n
 
 7. **A false PASS is the most dangerous result** — it hides a regression and makes every PASS suspect. Before trusting a PASS, confirm the evaluator actually *saw* the evidence (text **and** tool calls).
    - *WayAI specific:* the `message_evaluator` is given the agent's actual response **including its tool calls** for the scored turn, **plus an AGENT OBSERVABILITY block** — the agent's resolved system prompt and the exact messages it saw, including any replayed scenario `history`. So it sees the context that shaped the answer, not just the final reply. The remaining blind spot is narrow: *ephemeral* tool results (`keep_in_history: false`) are stripped from what the agent itself retains, so they're absent from the captured observability too. If a judgment depends on one, surface it (see [`prompt-principles.md`](agents/prompt-principles.md), "Context placement").
-8. **Read the evaluator's REASONING + the actual tool_calls, not just the score.** A result must be self-contained — `wayai eval-results --json` carries the verdict, the reasoning, and the actual calls; a bare PASS/FAIL tells you nothing about *why*.
+8. **Read the evaluator's REASONING + the actual tool_calls, not just the score.** A result must be self-contained — `wayai eval-results --session <id> --runs --json` carries the verdict, the reasoning, and the actual calls per run; a bare PASS/FAIL tells you nothing about *why*.
 9. **Localize the failure: agent, tools, data, or the eval/evaluator?** A FAIL can be a bad agent, a broken tool, wrong fixture data, or a wrong `expected` / `evaluator_instructions`. Diagnose which before "fixing the agent."
 10. **Reliability is a distribution — `runs: 1` is one sample.** A 1/1 PASS is not "reliable" (a booking eval read 1/1 while true reliability was ~50%). Raise `runs` for anything you're trusting, and read the pass *rate*, not the first result.
 11. **Distinguish text-judged from tool-judged evals.** Tone/voice scenarios are judged on text; action scenarios on `tool_calls`. Don't grade an action eval on how nice the prose sounds.
