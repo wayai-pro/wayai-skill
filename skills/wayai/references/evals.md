@@ -200,6 +200,20 @@ Results come from ClickHouse — eval rows are tagged `is_eval = true` and exclu
 
 ---
 
+## Deleting Sessions
+
+Each `run-eval` creates a **session** — its runs, results, and the eval conversations they spawned. Sessions accumulate; delete the noise once you've read what you need.
+
+```bash
+wayai eval session delete <session_id>   # delete one session
+wayai eval session delete --all          # delete every session on the hub
+wayai eval session delete --all -y       # skip the confirmation prompt
+```
+
+Destructive and irreversible. The cascade removes the session row, its runs + results, and the eval conversations everywhere they live (ConversationDO storage, ClickHouse rows, R2 archives). Scenarios, scenario sets, and journeys are **not** touched — only the run history. Both forms prompt for confirmation unless `-y`/`--yes` is passed.
+
+---
+
 ## Principles — authoring & interpreting
 
 The sections above are the *mechanics*; these are the *judgment calls*. Domain-neutral — each was forced by a real agent, not theorized.

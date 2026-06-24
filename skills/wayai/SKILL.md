@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.12.0
+version: 6.13.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -41,6 +41,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
 | Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
+| Delete eval session(s) / run history | CLI (`wayai eval session delete <session_id>`, or `--all` for every session on the hub) |
 | Org credentials | CLI (`wayai create-credential`) or UI |
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
@@ -318,6 +319,7 @@ wayai run-eval          # Run a scenario set's enabled evals (sole set by defaul
 wayai eval-results      # Inspect eval results
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
+wayai eval session delete   # Delete an eval session + its run history (<session_id>, or --all for every session on the hub; -y to skip confirm)
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
