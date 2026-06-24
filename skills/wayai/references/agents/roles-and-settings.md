@@ -64,9 +64,17 @@ Background roles (`monitor`, evaluators) are excluded from delegation flows — 
 
 ## Delegation Flow
 
-Two delegation patterns, both expressed as native tools assigned to the calling agent:
+Three delegation patterns, all expressed as native tools assigned to the calling agent. The routing effect is only half the story — the harness handles each tool's **return** differently, and that dictates **who writes the next user-facing message**. Your agent instructions must match, or the user sees a redundant message or none at all.
 
-**`transfer_to_agent`** — full transfer. The conversation moves to the target agent (specialist). Subsequent user messages go to the specialist until it transfers back or the conversation ends.
+| Tool | Tool result | Who writes the next user-facing message | Prompt rule |
+|------|-------------|-----------------------------------------|-------------|
+| `transfer_to_agent` | **Skipped** — the harness does not give the caller a reply turn; it reinvokes the target in the same turn | The **target specialist** (immediately) | Call it **silently** — no message at all |
+| `consult_agent` | **Returns to the caller** | The **caller** (advisor output is internal) | Use the advice, then reply normally |
+| `transfer_to_team` | **Returns to the caller** | The **caller** (one final confirmation) | Call it, **then confirm** — never pre-announce |
+
+**`transfer_to_agent`** — full transfer to a specialist. The harness **skips the tool return to the caller** and **reinvokes the target agent immediately in the same turn**; the specialist produces the next user-facing message. The conversation then stays with the specialist until it transfers back or ends — the user does **not** need to send another message for the specialist to engage.
+
+- **Prompt rule:** call it **silently** — no user-facing text. Any text the caller emits alongside the call **is delivered** to the user, and the specialist then replies in the same turn, so a pre-announcement ("I'll forward you to…") lands as a redundant message in front of the specialist's response. (The harness only skips the caller's *post-result* reply turn — it never reinvokes the caller after the transfer — but that turn is not where a pre-announcement lives.)
 
 ```yaml
 tools:
@@ -76,7 +84,7 @@ tools:
       target: Specialist - Billing      # display name of the target agent
 ```
 
-**`consult_agent`** — one-shot advisory. The advisor runs once with the question, returns a response to the caller, and control returns to the caller agent. The user does not see the advisor's output directly.
+**`consult_agent`** — one-shot advisory. The advisor runs once with the question, **its result returns to the caller**, and control stays with the caller agent, which writes the next user-facing message. The user does not see the advisor's output directly.
 
 ```yaml
 tools:
@@ -86,7 +94,9 @@ tools:
       target: Compliance Advisor
 ```
 
-**`transfer_to_team`** — agent-to-team handoff. Switches the conversation's `current_responder_type` to `team`. With `ai_mode: pilot+copilot`, the active track shifts from Pilot to Copilot.
+**`transfer_to_team`** — agent-to-team handoff. Switches the conversation's `current_responder_type` to `team` (with `ai_mode: pilot+copilot`, the active track shifts Pilot → Copilot). Unlike `transfer_to_agent`, **the tool result returns to the calling agent** — so the caller writes the next user-facing message itself.
+
+- **Prompt rule:** call the tool, **then confirm** to the user ("You're now with our team — someone will help you shortly."). Do **not** pre-announce before the call.
 
 ```yaml
 tools:
@@ -95,6 +105,8 @@ tools:
       tool: transfer_to_team
       target: Tier 2 Support
 ```
+
+> **Limbo footgun.** The two transfer tools have *opposite* announcement rules. Pre-announcing a `transfer_to_agent` adds a redundant "I'll forward you" before the specialist's immediate reply. Pre-announcing a `transfer_to_team` — then staying silent because the agent "already said it" — leaves the user in limbo: the team has been notified, but the user never gets a closing confirmation. Rule of thumb: **`transfer_to_agent` → say nothing; `transfer_to_team` → say it *after*.**
 
 See [native-tools.md](native-tools.md) for the full parameter list.
 
