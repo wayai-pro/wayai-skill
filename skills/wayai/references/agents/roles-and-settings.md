@@ -75,6 +75,7 @@ Three delegation patterns, all expressed as native tools assigned to the calling
 **`transfer_to_agent`** — full transfer to a specialist. The harness **skips the tool return to the caller** and **reinvokes the target agent immediately in the same turn**; the specialist produces the next user-facing message. The conversation then stays with the specialist until it transfers back or ends — the user does **not** need to send another message for the specialist to engage.
 
 - **Prompt rule:** call it **silently** — no user-facing text. Any text the caller emits alongside the call **is delivered** to the user, and the specialist then replies in the same turn, so a pre-announcement ("I'll forward you to…") lands as a redundant message in front of the specialist's response. (The harness only skips the caller's *post-result* reply turn — it never reinvokes the caller after the transfer — but that turn is not where a pre-announcement lives.)
+- **In evals:** a `transfer_to_agent` scenario is scored as the **complete handoff** — the specialist's continuation, not the intermediate transfer turn (the transfer call + the specialist's final reply). See [`../evals.md`](../evals.md) → "Delegation evals".
 
 ```yaml
 tools:
