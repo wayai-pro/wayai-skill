@@ -121,7 +121,54 @@ This is the fastest way to grow eval coverage from real production behavior. Cap
 wayai eval journey capture <conversation_id> [--name <journey_name>] [--instructions "..."]
 ```
 
-This calls `POST /api/evals/journeys/from-conversation`. Unlike scenario capture it writes **no local file** — the journey is platform-managed: it owns its own scenario set and materializes one single-turn eval per agent turn (each graded against the ideal prefix). Review/edit it in the hub UI's **Journeys** tab.
+This calls `POST /api/evals/journeys/from-conversation`. Like scenario capture, the journey is created **on the platform** — but it doesn't write the local file inline. Run `wayai pull` to bring it down to `journeys/<slug>.yaml` (this also syncs the server-minted step ids). Journeys are first-class **hub-as-code** (see next section): edit the YAML, `wayai push`, or edit in the hub UI's **Journeys** tab.
+
+---
+
+## Journeys (hub-as-code)
+
+A **journey** is a stored happy-path transcript that materializes into single-turn evals — one per agent turn. Journeys are first-class hub-as-code: `wayai pull` writes them to `journeys/<slug>.yaml`, `wayai push` creates/updates/deletes them, `wayai diff` previews the changes.
+
+**On-disk layout.** `journeys/` is a **flat folder** — one file per journey, `journeys/<slug>.yaml` (filename slug = journey name). There are NO scenario-set subfolders (that's evals): a journey owns its own **server-managed scenario set**, which is **not authored** and never appears in YAML. The derived single-turn evals are also server-managed (materialized from the transcript) and are **excluded from the eval diff** — you never see or edit them as `evals/*.yaml`.
+
+**What a "step" is.** A step is one user→agent exchange in the transcript. The stable `step_id` lives on the **concluding assistant turn** of each step. The platform explodes the transcript into one derived eval per step, each graded against the ideal conversation prefix up to that point.
+
+**YAML shape:**
+
+```yaml
+id: <journey-uuid>              # set by pull; primary match key (omit when authoring a new journey)
+name: Cancel Order             # journey name (omit if it equals the filename slug)
+agent: Pilot                   # responder agent, resolved by display name
+agent_id: <agent-uuid>         # stable agent FK (set by pull; survives a rename)
+enabled: false                 # omit when true
+evaluator_instructions: "..."  # optional; default grading instructions for all steps
+transcript:                    # ordered turns; the happy path
+  - role: user
+    content: "cancel my order #123"
+  - role: assistant            # concluding turn of step 1 — carries the step_id
+    content: null
+    tool_calls:
+      - id: call_1
+        type: function
+        function: { name: cancel_order, arguments: '{"order_id":"123"}' }
+    step_id: <step-uuid>       # set by pull / minted server-side
+  - role: tool
+    tool_call_id: call_1
+    content: "Order 123 cancelled"
+  - role: assistant
+    content: "Your order #123 is cancelled."
+    step_id: <step-uuid-2>
+step_config:                   # optional per-step overrides, keyed by step_id
+  <step-uuid>:
+    runs: 3                    # number of times to run this step's eval (default 1)
+    evaluator_instructions: "Confirm the cancel_order tool was called"
+```
+
+Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
+
+**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
+
+> **Pull after creating a journey.** The backend mints stable `step_id`s when a journey is first created (whether via `journey capture` or a `push` of a hand-authored transcript with no `step_id`s). Those ids land in the DB but not on your disk. **Run `wayai pull` after creating or first-pushing a journey** to sync the ids (and the assigned `id`) back — same discipline as entity `id`s. Re-pushing a transcript that's missing the server's `step_id`s re-mints them, which severs the derived evals' history.
 
 ---
 

@@ -1,0 +1,52 @@
+# A journey is a happy-path transcript that materializes into single-turn evals
+# (one per agent turn / "step"). It owns its own server-managed scenario set, so
+# there's no `path`/scenario-set folder here — journeys/ is a flat folder.
+#
+# `id` and the `step_id`s below are set by `wayai pull` after the journey is
+# created on the platform. When hand-authoring a NEW journey you may omit them;
+# the backend mints them on first push — then run `wayai pull` to sync them back
+# (re-pushing without the server's step_ids re-mints them and severs eval history).
+name: Refund Flow
+agent: Support Pilot
+
+transcript:
+  # --- Step 1: the user asks for a refund; the agent consults the FAQ + transfers
+  - role: user
+    content: "I want a refund on order #A-1042 from 5 days ago. Can you process it?"
+  - role: assistant
+    content: null
+    tool_calls:
+      - id: call_1
+        type: function
+        function:
+          name: set_state_path
+          arguments: '{"state_slug": "ticket_intake", "path": ["category"], "value": "refund"}'
+      - id: call_2
+        type: function
+        function:
+          name: transfer_to_team
+          arguments: '{"team_name": "Tier 2 Support"}'
+    step_id: step-1
+  - role: tool
+    tool_call_id: call_1
+    content: "ok"
+  - role: tool
+    tool_call_id: call_2
+    content: "Transferred to Tier 2 Support"
+
+  # --- Step 2: a follow-up question, answered from the knowledge base
+  - role: user
+    content: "How long until the money is back on my card?"
+  - role: assistant
+    content: "Refunds usually post to your card within 5–7 business days after Tier 2 issues them."
+    step_id: step-2
+
+# Per-step overrides keyed by step_id. `runs` = how many times to run that step's
+# derived eval (default 1); `evaluator_instructions` overrides the default grading
+# for that step only.
+step_config:
+  step-1:
+    runs: 3
+    evaluator_instructions: |
+      The agent MUST set ticket_intake.category to "refund" via set_state_path AND
+      transfer to Tier 2 Support. It MUST NOT promise to issue the refund itself.

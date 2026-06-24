@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.11.7
+version: 6.12.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -31,7 +31,8 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 
 | Entity | How |
 |--------|-----|
-| Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, outbound, custom tools | CLI (`wayai push`) |
+| Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, journeys, outbound, custom tools | CLI (`wayai push`) |
+| Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, Google Calendar, MCP OAuth) | Platform UI |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
@@ -316,7 +317,8 @@ wayai analytics query   # Structured ClickHouse query (multi-variable, group_by,
 wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs)
 wayai eval-results      # Inspect eval results
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
-wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>])
+wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
+# Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error)
@@ -366,6 +368,8 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
         ├── evals/                       # Eval scenarios (synced)
         │   ├── <name>.yaml
         │   └── <set>/<name>.yaml
+        ├── journeys/                    # Eval journeys (synced; flat folder, one file per journey)
+        │   └── <slug>.yaml
         ├── resources/                   # Knowledge & skill resource files (synced)
         ├── AGENTS.md                    # Hub-level agent context (NOT synced; yours to edit)
         ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (init-only, NOT synced)
@@ -556,7 +560,7 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
-| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, `wayai eval capture` / `wayai eval journey capture` from production |
+| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code (`journeys/<slug>.yaml`, `wayai pull`/`push`), `wayai eval capture` / `wayai eval journey capture` from production |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
-| **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` cross-reference. Read once before generating a new hub from scratch |
+| **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |
