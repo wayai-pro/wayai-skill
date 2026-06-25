@@ -34,8 +34,8 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 
 | Role | Per Hub | Receives Conversation | Returns Control | Notes |
 |------|---------|-----------------------|-----------------|-------|
-| `pilot` | 1 | Yes (primary on Pilot track) | n/a | Main AI agent for end users |
-| `copilot` | 1 | Yes (primary on Copilot track) | n/a | Main AI assistant for the support team |
+| `pilot` | 1 | Yes (primary on Pilot track) | n/a | Main AI agent for end users; also a valid `transfer_to_agent` target — a specialist can route back to it (hub-and-spoke router) |
+| `copilot` | 1 | Yes (primary on Copilot track) | n/a | Main AI assistant for the support team; also a valid `transfer_to_agent` target |
 | `pilot_specialist` | Multiple | Yes (full transfer) | No | Domain expert; receives `transfer_to_agent` |
 | `copilot_specialist` | Multiple | Yes (full transfer) | No | Copilot-track specialist |
 | `pilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Receives `consult_agent`; runs once and returns |
@@ -45,6 +45,8 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 
 Background roles (`monitor`, evaluators) are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
+
+**`transfer_to_agent` targets any agent on the same track** — the entry `pilot`/`copilot` *or* a `*_specialist` (status `agent` → pilot track; status `team` → copilot track). Targeting the entry pilot enables the **hub-and-spoke router** pattern: the pilot dispatches to specialists, and a specialist can transfer back to the pilot to re-dispatch a request that belongs to a different domain. Cross-track agents and advisor/background roles are never transfer targets. (Within one turn an agent can't be delegated back to an agent already in the chain — the reinvoke cycle guard bounds ping-pong; across turns, re-routing is unrestricted.)
 
 ---
 
@@ -57,6 +59,7 @@ Background roles (`monitor`, evaluators) are excluded from delegation flows — 
 | AI handles end users; team can take over and AI shifts to suggesting | `pilot+copilot` mode + `pilot` + `copilot` |
 | A specialized handler for billing / refunds / specific intents | Add a `pilot_specialist` (or `copilot_specialist`); transfer to it |
 | A domain expert that answers a question and hands back | Add a `pilot_advisor` (or `copilot_advisor`); consult it |
+| A dispatcher that routes to domain specialists and re-dispatches | `pilot` as the entry router + `pilot_specialist`s; a specialist transfers back to the `pilot` to re-route a cross-domain request |
 | Conversation quality scoring | `conversation_evaluator` and/or `message_evaluator` |
 | Silent monitoring/logging | `monitor` |
 
