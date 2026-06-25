@@ -10,6 +10,7 @@ Evals are test scenarios that verify agent behavior. Each scenario is a YAML fil
 - [Capturing a Production Conversation](#capturing-a-production-conversation)
 - [Running Evals](#running-evals)
 - [Inspecting Results](#inspecting-results)
+- [Debug: what did the agent actually see?](#debug-what-did-the-agent-actually-see)
 - [Principles — authoring & interpreting](#principles--authoring--interpreting)
 - [Entity Matching](#entity-matching)
 
@@ -202,6 +203,24 @@ wayai eval-results --session <id> --json     # machine-readable
 Requires `--session <id>` or `--eval <name>` — there is no hub-wide default. The per-run `Observability:` line carries the `conversation` + `evaluated`/`evaluator` message ids, so a turn's full trace is one command away: `wayai conversations <conversation_id> observability --message-id <id>`.
 
 Results come from ClickHouse — eval rows are tagged `is_eval = true` and excluded from production analytics. See [analytics.md](analytics.md) for the eval-only analytics surface.
+
+---
+
+## Debug: what did the agent actually see?
+
+When an eval (or a live turn) does something inexplicable — wrong date, ignored a rule, hallucinated a value — **stop guessing at the instructions and read the exact input the model received for that turn**: the resolved system prompt, the rendered `additional_context_template` (what `{{now()}}` actually expanded to), the replayed scenario `history`, any `[timestamp, weekday]` from `include_message_timestamps`, and the tool calls it made. That input is captured in conversation **observability**.
+
+```bash
+# 1. Run (or re-find) the eval and grab the ids from the per-run Observability: line.
+wayai eval-results --session <session_id> --runs        # → conversation id + message id per run
+
+# 2. Read the FULL record for the scored turn: resolved prompt + exact messages + tool calls.
+wayai conversations <conversation_id> observability --message-id <message_id> --json
+```
+
+`wayai conversations <id> observability` (no `--message-id`) lists every LLM turn in the conversation with its `message_id`, latency, and tool-call count; adding `--message-id <id>` expands one turn into the complete record (prompt, completion, tool calls, tokens). This works for any conversation, not just evals — it's the answer to *"the agent did X — what did it ACTUALLY receive?"*.
+
+> **Why this beats re-reading `agents/<slug>.md`:** the file is the *template*; observability is the *resolved* prompt for that specific turn. A relative-date bug, a stale `{{state(...)}}`, or a placeholder that silently rendered empty is invisible in the source file and obvious in the resolved record.
 
 ---
 

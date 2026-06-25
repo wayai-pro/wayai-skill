@@ -355,3 +355,5 @@ Use this when:
 - Followup logic depends on absolute time
 
 Skip this for agents where temporal context is irrelevant — the extra tokens add up over long histories.
+
+**`include_message_timestamps` vs `{{now()}}` — pick by granularity.** This setting is the **per-message** way to give temporal context (a `[timestamp, weekday]` on *every* user message). The other way is `{{now()}}` in `additional_context_template` — a **single per-turn "now"** (see [`instructions.md`](instructions.md#additional-context-cache-friendly)). Both are cache-safe (neither touches the cached system-prompt prefix) and both resolve into eval replay, so the choice is purely granularity: reach for `{{now()}}` when the agent only needs the current time, and this setting when it must reason about *when each* message arrived. They compose — you can set both — but don't enable per-message timestamps just to answer "what time is it now?"; that's `{{now()}}`'s job and it's leaner.
