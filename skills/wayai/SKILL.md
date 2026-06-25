@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.13.2
+version: 6.14.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -98,6 +98,14 @@ Decision: WhatsApp/Instagram/Email needed → `chat`. Object/task processing →
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
 
 For role flow, delegation, and settings depth, see [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md).
+
+### Handoff context engineering
+
+When a conversation is handed to another agent via `transfer_to_agent`, the receiving agent rebuilds history from scratch, where **every prior agent's turns appear as undifferentiated `assistant` messages** (the model can't tell which turns it authored vs. inherited). The runtime closes that gap automatically — author your agents to cooperate with it:
+
+- **The runtime persists a durable custody marker** (`This conversation was handed off from X to Y.`) on each `transfer_to_agent` and delivers a **one-time continuation note** to the receiving agent's first turn. You don't write these — so **don't** put "you were just transferred this conversation" framing in an agent's instructions; it's handled and would double up. (Agent↔team handoffs adopt the same model as that support lands.)
+- **Always open each agent's instructions with its identity** — `You are <Agent Name>, the <role/purpose>…`. The runtime reinforces identity at the handoff moment, but the system prompt is the strongest signal and the only one present on every steady-state turn; the custody marker ("…to Y") only lands if the agent knows it *is* Y.
+- **A specialist must do work, not bounce.** Don't write a `*_specialist` whose instructions hand the conversation straight back to its delegator — that's a delegation loop. Complete the task, transfer to a *different* agent, or return control to the user.
 
 ### Summarizer agent config
 
