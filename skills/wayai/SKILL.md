@@ -312,10 +312,10 @@ wayai login             # OAuth — or `wayai login --token` for headless/CI
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
 wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
-wayai pull              # Pull hub config from platform (-y skips confirmation; auto-locks worktree on first pull)
+wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull)
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
-wayai unlock            # Clear the worktree hub lock
+wayai unbind            # Clear the worktree hub binding
 wayai send-message      # Test message to a preview hub
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
                         # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
@@ -349,11 +349,11 @@ Contests are bounded (a cap, and triage may mark a dismissal final); past those,
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
 
-### Worktree hub lock
+### Worktree hub binding
 
-Each git checkout (main or linked worktree) can be locked to a single hub. `wayai push` and `wayai pull` refuse to run against a different hub once locked — this catches the common mistake of a prompt being routed to the wrong terminal/worktree. The lock is auto-set on the first successful pull (or new-hub creation) into an unlocked checkout, and lives at `<git-dir>/wayai-lock` (per-checkout, never tracked).
+Each git checkout (main or linked worktree) can be bound to a single hub. `wayai push` and `wayai pull` refuse to run against a different hub once bound — this catches the common mistake of a prompt being routed to the wrong terminal/worktree. The binding is auto-set on the first successful pull (or new-hub creation) into an unbound checkout, and lives at `<git-dir>/wayai-binding` (per-checkout, never tracked). It is a routing tripwire, not a concurrency lock — it does not coordinate concurrent edits to the same hub.
 
-If `push`/`pull` errors with a lock mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unlock`, `wayai use`, or modify `.git/wayai-lock` without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub the user thinks you're working on.
+If `push`/`pull` errors with a binding mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use`, or modify `.git/wayai-binding` without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub the user thinks you're working on.
 
 ## Repository Structure
 
