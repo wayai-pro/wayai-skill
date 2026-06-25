@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.15.0
+version: 6.16.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -105,7 +105,7 @@ When a conversation changes hands — `transfer_to_agent` or `transfer_to_team` 
 
 - **The runtime persists a durable custody marker** (`This conversation was handed off from X to Y.`) on each `transfer_to_agent` and `transfer_to_team`, and delivers a **one-time continuation note** to a receiving *agent's* first turn (agent→agent only — a team handoff has no AI receiver to brief). You don't write these — so **don't** put "you were just transferred this conversation" framing in an agent's instructions; it's handled and would double up.
 - **Always open each agent's instructions with its identity** — `You are <Agent Name>, the <role/purpose>…`. The runtime reinforces identity at the handoff moment, but the system prompt is the strongest signal and the only one present on every steady-state turn; the custody marker ("…to Y") only lands if the agent knows it *is* Y.
-- **A specialist must do work, not bounce.** Don't write a `*_specialist` whose instructions hand the conversation straight back to its delegator — that's a delegation loop. Complete the task, transfer to a *different* agent, or return control to the user.
+- **A specialist must do work, not bounce.** The runtime **blocks** delegating back to any agent that already held the conversation earlier in the same turn (A→B→A and longer revisits) — the transfer is refused with an error telling the agent to complete the task, transfer to a *different* agent, or return control to the user. So don't write a `*_specialist` whose instructions reflexively hand the conversation back to its delegator; it'll just hit the guard. (The chain resets each user turn, so re-routing to an earlier agent on a *later* turn is fine.)
 
 ### Summarizer agent config
 
