@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.18.0
+version: 6.19.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -201,6 +201,9 @@ Both support `threshold` + `timeUnit` (seconds/minutes/hours/days), optional qui
 **Non-blocking warnings** (returned alongside successful saves):
 - `unreachable` — a non-initial status that no other status lists in its `allowed_next_statuses`.
 - `placeholder_unresolved` — a `{{path.to.field}}` placeholder in `additional_instructions` does not resolve against `additional_context_schema`. At runtime that placeholder renders as empty string.
+- `unused_lane` — a declared lane no status is assigned to.
+
+**Lanes** (optional, presentational grouping for the kanban board filter). A hub may declare a `lanes` array (`{ slug, name, color?, order? }`); each non-initial status may set `lane_slug` to one of them. Lanes are organizational only — they do **not** change transitions (those stay in `allowed_next_statuses`) and are not visible to agents. Constraints (server-side, all write paths): lane slugs unique + `^[a-z][a-z0-9_]{0,49}$`; a status's `lane_slug` must reference a declared lane; the initial status must **not** have a `lane_slug` (it's the shared entry point). The board filters by lane; the initial status shows in every lane.
 
 **Runtime transition gate:** When a conversation transitions kanban status (drag-drop, native tool, REST, MCP), the configured `allowed_next_statuses` is enforced. Disallowed transitions return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy "any → any" behavior.
 
