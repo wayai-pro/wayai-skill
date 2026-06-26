@@ -123,7 +123,7 @@ Top-level `agents/<slug>.yaml` fields that affect agent behavior (independent of
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | boolean | `true` | Whether the agent is active for new conversations, transfers, and consultations. Disabled agents are skipped during routing |
-| `include_message_timestamps` | boolean | `false` | When `true`, appends `[2026-04-30 14:30:00 (America/New_York), Wednesday]` to user messages in the LLM history. Useful when temporal context affects responses |
+| `include_message_timestamps` | boolean | `false` | When `true`, appends `[2026-04-30 14:30:00 (America/New_York), Thursday, afternoon]` to user messages (same line, after the content) in the LLM history. Useful when temporal context affects responses |
 | `response_format` | object | omitted (text) | Structured output. When set: `{ schema_name: "...", schema_json: {...} }` (both required). Omit for plain text |
 | `connection` | string | required | Display name of the agent's `Agent` connection (LLM provider) |
 | `settings` | object | varies | Connector-specific settings (model, temperature, max_tokens, etc.) — see [Per-Connector `settings`](#per-connector-settings) |
@@ -340,14 +340,13 @@ Use `enabled: false` to take an agent offline without deleting it — its config
 
 ## `include_message_timestamps` Behavior
 
-When `true`, every user message in the LLM history is augmented:
+When `true`, every user message in the LLM history is augmented — the stamp is **appended to the same line** after the message content, space-separated:
 
 ```
-[2026-04-30 14:30:00 (America/New_York), Wednesday]
-The user's actual message text
+The user's actual message text [2026-04-30 14:30:00 (America/New_York), Thursday, afternoon]
 ```
 
-The hub's `timezone` setting determines the timezone shown; the day of the week is computed from the timestamp.
+The hub's `timezone` setting determines the timezone shown; the weekday and the `daypart` (`morning` before 12:00, `afternoon` until 18:00, `night` after) are computed from the timestamp. The `daypart` is a coarse English label the model maps to the locale-appropriate greeting (e.g. pt `bom dia` / `boa tarde` / `boa noite`) instead of re-deriving the bucket from the clock.
 
 Use this when:
 - The agent reasons about time deltas ("how long since the last message?")
@@ -356,4 +355,4 @@ Use this when:
 
 Skip this for agents where temporal context is irrelevant — the extra tokens add up over long histories.
 
-**`include_message_timestamps` vs `{{now()}}` — pick by granularity.** This setting is the **per-message** way to give temporal context (a `[timestamp, weekday]` on *every* user message). The other way is `{{now()}}` in `additional_context_template` — a **single per-turn "now"** (see [`instructions.md`](instructions.md#additional-context-cache-friendly)). Both are cache-safe (neither touches the cached system-prompt prefix) and both resolve into eval replay, so the choice is purely granularity: reach for `{{now()}}` when the agent only needs the current time, and this setting when it must reason about *when each* message arrived. They compose — you can set both — but don't enable per-message timestamps just to answer "what time is it now?"; that's `{{now()}}`'s job and it's leaner.
+**`include_message_timestamps` vs `{{now()}}` — pick by granularity.** This setting is the **per-message** way to give temporal context (a `[timestamp, weekday, daypart]` on *every* user message). The other way is `{{now()}}` in `additional_context_template` — a **single per-turn "now"** (see [`instructions.md`](instructions.md#additional-context-cache-friendly)). Both are cache-safe (neither touches the cached system-prompt prefix) and both resolve into eval replay, so the choice is purely granularity: reach for `{{now()}}` when the agent only needs the current time, and this setting when it must reason about *when each* message arrived. They compose — you can set both — but don't enable per-message timestamps just to answer "what time is it now?"; that's `{{now()}}`'s job and it's leaner.

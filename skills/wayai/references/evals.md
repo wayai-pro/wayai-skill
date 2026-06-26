@@ -208,7 +208,7 @@ Results come from ClickHouse — eval rows are tagged `is_eval = true` and exclu
 
 ## Debug: what did the agent actually see?
 
-When an eval (or a live turn) does something inexplicable — wrong date, ignored a rule, hallucinated a value — **stop guessing at the instructions and read the exact input the model received for that turn**: the resolved system prompt, the rendered `additional_context_template` (what `{{now()}}` actually expanded to), the replayed scenario `history`, any `[timestamp, weekday]` from `include_message_timestamps`, and the tool calls it made. That input is captured in conversation **observability**.
+When an eval (or a live turn) does something inexplicable — wrong date, ignored a rule, hallucinated a value — **stop guessing at the instructions and read the exact input the model received for that turn**: the resolved system prompt, the rendered `additional_context_template` (what `{{now()}}` actually expanded to), the replayed scenario `history`, any `[timestamp, weekday, daypart]` from `include_message_timestamps`, and the tool calls it made. That input is captured in conversation **observability**.
 
 ```bash
 # 1. Run (or re-find) the eval and grab the ids from the per-run Observability: line.

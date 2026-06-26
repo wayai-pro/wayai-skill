@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.20.0
+version: 6.20.1
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -496,7 +496,7 @@ role: pilot
 connection: anthropic              # connection display name
 # instructions resolved by convention from agents/<slug>.md
 # enabled: true                    # default; omitted
-# include_message_timestamps: false  # default; when true, appends [timestamp, day] to user messages
+# include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
 settings:
   model: claude-sonnet-4-6
   temperature: 0.7

@@ -354,7 +354,7 @@ Agents have a separate `additional_context_template` field — same `{{...}}` sy
 
 **Two ways to give temporal context — pick by granularity (both are cache-safe and both replay in evals):**
 - `{{now()}}` in `additional_context_template` (here) — **one "now" per turn**, prepended to the last user message. Resolves at render time, so it's present in eval replay. Use when the agent only needs *the current time*.
-- `include_message_timestamps: true` (see [`roles-and-settings.md`](roles-and-settings.md#include_message_timestamps-behavior)) — **per-message** `[timestamp, weekday]` appended to every user message. Use when the agent reasons about *when each* message arrived or deltas between messages.
+- `include_message_timestamps: true` (see [`roles-and-settings.md`](roles-and-settings.md#include_message_timestamps-behavior)) — **per-message** `[timestamp, weekday, daypart]` appended to every user message. Use when the agent reasons about *when each* message arrived or deltas between messages.
 
 Both sit outside the cached system-prompt prefix, so neither busts the cache. If you only need a single per-turn clock, prefer `{{now()}}` — it's the leaner one.
 
