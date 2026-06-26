@@ -1,13 +1,14 @@
 ---
 name: wayai
-version: 6.19.0
+version: 6.20.0
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
   connections, kanban, states, resources, eval scenarios, outbound campaigns; running analytics
   or evals; reviewing or editing workspace YAML (hub.yaml, agents/*.yaml) or agent instruction
-  Markdown; using the wayai CLI (push, pull, send-message, conversations, sync-skills,
-  create-credential, analytics, run-eval, eval capture, init); or interpreting WayAI platform
+  Markdown; installing a ready-made hub template (`wayai template list`/`pull`); using the wayai CLI
+  (push, pull, send-message, conversations, sync-skills, create-credential, analytics, run-eval,
+  eval capture, template, init); or interpreting WayAI platform
   terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles).
 ---
 
@@ -320,6 +321,8 @@ wayai pull              # Pull hub config from platform (-y skips confirmation; 
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unbind            # Clear the worktree hub binding
+wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
+wayai template pull <slug>  # Write a template's config into wayai-ws/hubs/<slug>/, then `wayai push` to deploy it into your own hub
 wayai send-message      # Test message to a preview hub
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
                         # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
