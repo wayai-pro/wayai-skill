@@ -20,11 +20,13 @@ hub:
       order: 1
       color: "#3b82f6"
       allowed_next_statuses: [waiting_for_customer, resolved]
+      lane_slug: open_work
     - slug: waiting_for_customer
       name: Waiting for Customer
       order: 2
       color: "#f59e0b"
       allowed_next_statuses: [in_progress, resolved]
+      lane_slug: follow_ups
       followups:
         - order: 0
           type: inactivity
@@ -36,6 +38,21 @@ hub:
       order: 3
       color: "#10b981"
       isTerminalStatus: true
+
+  # Lanes — optional presentational grouping for the kanban board filter.
+  # Each non-initial status may set `lane_slug` to one of these. Only the initial
+  # status (new) is required to stay laneless; here `resolved` (terminal) is left
+  # ungrouped by choice, but terminal statuses are allowed a lane. Lanes don't
+  # affect transitions and aren't visible to agents.
+  lanes:
+    - slug: open_work
+      name: Open Work
+      color: "#3b82f6"
+      order: 0
+    - slug: follow_ups
+      name: Follow-ups
+      color: "#f59e0b"
+      order: 1
 
 states:
   - name: ticket_intake
