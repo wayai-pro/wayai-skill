@@ -34,7 +34,7 @@ WayAI Analytics provides insights into hub conversations and agent performance. 
 
 ## Variable Categories
 
-Analytics variables are organized into five categories:
+Analytics variables are organized into six categories:
 
 | Category | Description | Example Variables |
 |----------|-------------|-------------------|
@@ -43,6 +43,7 @@ Analytics variables are organized into five categories:
 | `escalation_performance` | Escalation handling metrics | escalation_rate, resolution_time |
 | `function_calling` | Tool usage analytics | tool_call_count, success_rate |
 | `user_satisfaction` | User feedback metrics | satisfaction_score, feedback_sentiment |
+| `annotations` | Post-hoc business outcomes set after a conversation ends (via `wayai conversations <id> annotate`) — a third variable origin (`data.annotations.*`) distinct from agent-set variables | customer_purchased, refund_amount, churned |
 
 ### Category Details
 
