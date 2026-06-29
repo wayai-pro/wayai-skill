@@ -72,6 +72,12 @@ Analytics variables are organized into six categories:
 - Includes: ratings, sentiment analysis, feedback text
 - Origin: Collected from user interactions
 
+**Annotations**
+- Post-hoc business outcomes labeled AFTER a conversation ends — e.g. customer_purchased, refund_amount, churned
+- Set via the CLI (`wayai conversations <id> annotate --set key=value [--type numeric|categorical|text]`), not inferred by the AI
+- A third variable origin (`data.annotations.*`), distinct from agent-set variables (`data.variables.*`) and system metrics (`data.system.*`) — use it to correlate agent/evaluator predictions against real outcomes (e.g. predicted purchase intent vs actual purchase)
+- The conversation must still be within its hub's retention window so its working copy is annotatable after it ends; values are coerced to the declared `--type` so they aggregate like any other dimension
+
 ---
 
 ## Variable Types
