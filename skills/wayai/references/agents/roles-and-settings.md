@@ -139,7 +139,7 @@ The `settings` block under each agent is connector-specific — it mirrors the `
 **Anthropic** (`Agent` connection — service: Anthropic):
 ```yaml
 settings:
-  model: claude-sonnet-4-6
+  model: claude-sonnet-5
   temperature: 0.7
   max_tokens: 4096
   thinking_enabled: true        # optional extended thinking (Claude 4+)
@@ -152,7 +152,7 @@ settings:
   model: gpt-5.5
   temperature: 0.7
   max_tokens: 4096
-  reasoning_effort: medium      # reasoning models: minimal|low|medium|high|none
+  reasoning_effort: medium      # reasoning models: minimal|low|medium|high|xhigh|none (xhigh needs gpt-5.2+)
 ```
 
 **Google AI Studio** (service: Google AI Studio):
@@ -170,7 +170,7 @@ settings:
   model: openai/gpt-5.5
   temperature: 0.7
   max_tokens: 4096
-  reasoning_effort: medium      # reasoning-capable models: low|medium|high|none
+  reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
 ```
 
 ### Reasoning / thinking by provider
@@ -181,9 +181,9 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 |---|---|---|---|
 | Anthropic | `thinking_enabled` (boolean) | `true` / `false` | Adaptive thinking on Claude 4.6+; fixed budget on older 4.x. Temperature/top_p ignored when on. |
 | Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable 5). `xhigh` = Opus 4.7+/Sonnet 5/Fable 5; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
-| OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. |
+| OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+; older reasoning models clamp it to `high`. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
-| OpenRouter | `reasoning_effort` | `low` / `medium` / `high` / `none` | `reasoning.effort`. `none` disables the override. |
+| OpenRouter | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort`. `none` disables the override. OpenRouter maps the level to the nearest one each model supports. |
 
 ### File handling (all LLM connectors)
 

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.8
+version: 6.22.9
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -505,7 +505,7 @@ connection: anthropic              # connection display name
 # enabled: true                    # default; omitted
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
 settings:
-  model: claude-sonnet-4-6
+  model: claude-sonnet-5
   temperature: 0.7
   max_tokens: 4096
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
