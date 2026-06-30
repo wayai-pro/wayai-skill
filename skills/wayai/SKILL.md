@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.5
+version: 6.22.6
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -161,7 +161,7 @@ Production is read-only — all config mutations flow through preview. Multiple 
 
 WhatsApp/Instagram/Telegram channels can be exercised on a preview before publishing — register a tester via a `#test CODE` claim code (see `references/connections.md` → Channel → "Testing a channel on a preview before publishing").
 
-Only preview hubs are tracked in this repository.
+Only preview hubs are editable. `wayai pull` also writes the linked production hub as a **read-only mirror** folder (bare slug — no `--<label>` suffix — with a marker comment in `hub.yaml`) so the live production config is browsable alongside the preview; `wayai push` refuses it and it's excluded from auto-select. Use `wayai diff --production` for a clean preview-vs-production diff.
 
 ## Kanban & States
 
@@ -318,8 +318,9 @@ wayai login             # OAuth — or `wayai login --token` for headless/CI
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
 wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
-wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull)
+wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
+wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unbind            # Clear the worktree hub binding
 wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
@@ -393,9 +394,10 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
         ├── AGENTS.md                    # Hub-level agent context (NOT synced; yours to edit)
         ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (init-only, NOT synced)
         └── references/                  # Hub-specific supporting files (NOT synced)
+    └── <hub-slug>/                      # Linked production hub: READ-ONLY mirror (bare slug, no --label). Refreshed each pull; never pushed
 ```
 
-Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix>` for disambiguation. **Existing repos** that still use the legacy `workspace/` + root `org/` layout keep working (the CLI reads either) — run `wayai migrate` to move to `wayai-ws/`.
+Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix>` for disambiguation; the linked production hub mirrors to the bare `hub-slug` (no suffix). **Existing repos** that still use the legacy `workspace/` + root `org/` layout keep working (the CLI reads either) — run `wayai migrate` to move to `wayai-ws/`.
 
 ## `hub.yaml` Shape
 
