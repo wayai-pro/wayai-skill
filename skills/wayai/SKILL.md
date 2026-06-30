@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.2
+version: 6.22.3
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -405,6 +405,7 @@ Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix
 version: 1
 hub_id: "abc-123-def"           # set by `wayai pull` — do not edit
 hub_environment: preview         # set by `wayai pull` — do not edit
+preview_label: experiment-a      # set by `wayai pull` — do not edit (only on previews; sets the hub folder's `--<label>` suffix). Change it in the UI via Replicate Preview / hub settings — editing here only renames the local folder on next push
 
 hub:
   name: Customer Support
