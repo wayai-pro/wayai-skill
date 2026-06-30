@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.1
+version: 6.22.2
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -381,7 +381,7 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
 │   ├── resources.yaml
 │   └── resources/<slug>/
 └── hubs/
-    └── <hub-slug>-<label>/              # One folder per preview hub (disambiguated)
+    └── <hub-slug>--<label>/             # One folder per preview hub (disambiguated)
         ├── hub.yaml                     # Hub config + states + connections + outbound + resources
         ├── agents/
         │   ├── <slug>.yaml              # Agent config (one per agent, slugified name)
@@ -397,7 +397,7 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
         └── references/                  # Hub-specific supporting files (NOT synced)
 ```
 
-Preview hub folders use `hub-slug-<preview_label>` or `hub-slug-<hub_id_prefix>` for disambiguation. **Existing repos** that still use the legacy `workspace/` + root `org/` layout keep working (the CLI reads either) — run `wayai migrate` to move to `wayai-ws/`.
+Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix>` for disambiguation. **Existing repos** that still use the legacy `workspace/` + root `org/` layout keep working (the CLI reads either) — run `wayai migrate` to move to `wayai-ws/`.
 
 ## `hub.yaml` Shape
 
