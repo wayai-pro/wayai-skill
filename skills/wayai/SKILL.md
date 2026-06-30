@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.6
+version: 6.22.7
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -50,7 +50,8 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Workspace discovery | CLI (`wayai list`) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
-| Publish/sync to production, delete hubs, replicate previews | UI |
+| Publish/sync to production, delete hubs | UI |
+| Replicate a preview, set/clear a preview's label | CLI (`wayai replicate` / `wayai relabel`) or UI |
 | User management | UI |
 
 ## Entity Hierarchy
@@ -151,11 +152,12 @@ Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schem
 | `preview` | Default. Editable workspace for configuring and testing |
 | `production` | Read-only. Serves live traffic. Changes flow from preview via UI sync |
 
-**Lifecycle (UI-managed):**
-1. New hubs start as `preview` — edit freely
+**Lifecycle:**
+1. New hubs start as `preview` — edit freely. `wayai push --label <l>` names the first preview at creation
 2. **Publish** (UI) — first promotion creates a `production` hub cloned from preview
 3. **Sync** (UI) — pushes subsequent preview changes to the linked production
-4. **Replicate Preview** (UI) — creates a new preview from production for experimentation
+4. **Replicate Preview** (CLI `wayai replicate [hub] --label <l>` or UI) — creates a new sibling preview (from a preview or production) for experimentation
+5. **Relabel** (CLI `wayai relabel <label>` / `--clear`, or UI) — set/clear a preview's `preview_label` (the sibling disambiguator). NOT editable via `hub.yaml` + push — it's server-owned
 
 Production is read-only — all config mutations flow through preview. Multiple previews can link to the same production (many-to-1). Channel uniqueness is enforced on production only — previews can share phone/email/SID with their production.
 
@@ -321,6 +323,8 @@ wayai init              # Set up .wayai.yaml (interactive — creates an org inl
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
 wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
+wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
+wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub to target). Renames the local folder. The server-owned way to change preview_label
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unbind            # Clear the worktree hub binding
 wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
@@ -405,7 +409,7 @@ Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix
 version: 1
 hub_id: "abc-123-def"           # set by `wayai pull` — do not edit
 hub_environment: preview         # set by `wayai pull` — do not edit
-preview_label: experiment-a      # set by `wayai pull` — do not edit (only on previews; sets the hub folder's `--<label>` suffix). Change it in the UI via Replicate Preview / hub settings — editing here only renames the local folder on next push
+preview_label: experiment-a      # server-owned, set by `wayai pull` — do not edit (only on previews; sets the hub folder's `--<label>` suffix). Editing here is IGNORED on push (push warns); change it with `wayai relabel <label>` / `--clear`, or set it at creation with `wayai replicate --label` / `wayai push --label`
 
 hub:
   name: Customer Support
