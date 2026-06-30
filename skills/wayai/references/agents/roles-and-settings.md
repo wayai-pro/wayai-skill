@@ -143,6 +143,7 @@ settings:
   temperature: 0.7
   max_tokens: 4096
   thinking_enabled: true        # optional extended thinking (Claude 4+)
+  effort: high                  # optional reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Fable 5)
 ```
 
 **OpenAI** (service: OpenAI):
@@ -174,11 +175,12 @@ settings:
 
 ### Reasoning / thinking by provider
 
-Each provider exposes one reasoning control, named to match its schema. The key name must be exact — a mismatched key (e.g. a nested `thinking:` object on Anthropic, or `max_output_tokens` on Gemini) is **silently stripped on `wayai push`**.
+Each provider exposes one or more reasoning controls, named to match its schema. The key name must be exact — a mismatched key (e.g. a nested `thinking:` object on Anthropic, or `max_output_tokens` on Gemini) is **silently stripped on `wayai push`**.
 
 | Connector | Setting | Values | Maps to |
 |---|---|---|---|
 | Anthropic | `thinking_enabled` (boolean) | `true` / `false` | Adaptive thinking on Claude 4.6+; fixed budget on older 4.x. Temperature/top_p ignored when on. |
+| Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable 5). `xhigh` = Opus 4.7+/Sonnet 5/Fable 5; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
 | OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `low` / `medium` / `high` / `none` | `reasoning.effort`. `none` disables the override. |

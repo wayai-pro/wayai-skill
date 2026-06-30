@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.7
+version: 6.22.8
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -508,7 +508,7 @@ settings:
   model: claude-sonnet-4-6
   temperature: 0.7
   max_tokens: 4096
-  # reasoning per provider: Anthropic thinking_enabled · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
+  # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
 tools:
   native:
     - send_text_message
