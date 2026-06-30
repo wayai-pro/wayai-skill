@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.3
+version: 6.22.4
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -243,7 +243,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | # | Detection (from `status --json` or env) | Action |
 |---|---|---|
 | 1 | CLI missing (`wayai --version` not found) | Agent runs `npm i -g @wayai/cli@latest`. |
-| 1b | No harness skill install present at project root (none of `<root>/.claude/skills/wayai/SKILL.md`, `<root>/.opencode/skills/wayai/SKILL.md`, `<root>/.agents/skills/wayai/SKILL.md` exists, where `<root>` is `git rev-parse --show-toplevel` or cwd if not in a git repo) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>`. After it completes, agent re-checks the three paths: if at least one exists, exit (the harness will load the installed skill on the next turn). If none exist, surface the install error to the user and halt — do not silently exit (would loop on re-entry). |
+| 1b | No harness skill install present at project root (none of `<root>/.claude/skills/wayai/SKILL.md`, `<root>/.opencode/skills/wayai/SKILL.md`, `<root>/.agents/skills/wayai/SKILL.md` exists, where `<root>` is `git rev-parse --show-toplevel` or cwd if not in a git repo) | **If you are Claude Code, first `mkdir -p <root>/.claude`** — the `skills` installer links Claude Code's `.claude/skills/wayai` only when `.claude/` already exists, else it silently skips it while still printing "symlinked: Claude Code". Then run `npx skills add wayai-pro/wayai-skill -y` from `<root>`. After it completes, verify **your own harness's** path resolves (Claude Code → `<root>/.claude/skills/wayai/SKILL.md`, following the symlink; other harnesses → `<root>/.agents/skills/wayai/SKILL.md`). If it resolves, exit (the harness loads the skill next turn). If it doesn't but `<root>/.agents/skills/wayai/SKILL.md` exists, self-heal: `mkdir -p <root>/.claude/skills && ln -sfn ../../.agents/skills/wayai <root>/.claude/skills/wayai`, then re-verify. If still nothing, surface the install error and halt — do not silently exit (would loop on re-entry). |
 | 1c | `skill.installed: true`, `skill.latest` is set, and `skill.latest` is newer than `skill.version` (CLI nightly check populates `skill.latest`) | Agent runs `npx skills add wayai-pro/wayai-skill -y` from `<root>` to refresh the install in place, then exits (the updated skill loads on the next turn). On install failure, surface the error to the user and continue with the existing skill. |
 | 2 | `auth.logged_in: false` | Agent runs `wayai login` (opens browser). User handoff: "Open the page that just opened. Sign in or sign up. Tell me when done." |
 | 3 | `auth.logged_in: true`, `orgs: []` | Ask once: "What should we name your organization? (usually your company name)". Then agent runs `wayai org create "<name>"` and re-runs `status --json` to pick up the new org. (Manual fallback only if the CLI create errors: open `https://app.wayai.pro/settings/organizations/new`.) |
