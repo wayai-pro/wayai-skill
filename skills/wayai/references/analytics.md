@@ -347,7 +347,7 @@ pin_analytics_variable(
 
 ## CLI Access
 
-CLI command reference and flags live in [`AGENTS.md`](../../../../AGENTS.md) under "Files + CLI" / Analytics; this file stays focused on the conceptual model.
+CLI command reference and flags live in the skill's **Common CLI Commands** section (SKILL.md → Common CLI Commands); this file stays focused on the conceptual model.
 
 ## Common Workflows
 

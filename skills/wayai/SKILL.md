@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.4
+version: 6.22.5
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -368,9 +368,7 @@ If `push`/`pull` errors with a binding mismatch, **stop and ask the user before 
 
 ```
 .wayai.yaml                              # Repo config — organization scope (init-only)
-AGENTS.md                                # Pointer to this skill (init-only — yours to edit)
-AGENTS.local.md                          # Project-specific overrides (init-only — yours to edit)
-CLAUDE.md                                # Claude Code shim — `@AGENTS.md @AGENTS.local.md` (init-only)
+AGENTS.md                                # Optional — your own root agent notes; NOT written by wayai, yours to author
 .claude/skills/wayai/                    # Claude Code skill install (provisioned by `npx skills add wayai-pro/wayai-skill -y`)
 ├── SKILL.md
 └── references/                          # On-demand deep-dive references (see index below)
