@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.12
+version: 6.22.13
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -227,6 +227,9 @@ For deeper schemas, see [`references/states.md`](references/states.md).
 | `language` | `en`, `pt`, `es` | `en` | Language for hub-sent text (e.g. the pending-access notice on `require_permission` channels) |
 | `access_approval_role` | `admin`, `team` | `admin` | Who may approve/block a pending contact: hub admins only, or also support team members |
 | `access_request_message` | string | — | Optional override for the "your access is pending approval" auto-reply (else a localized default by `language`) |
+| `auto_close_inactive_days` | `1`–`180` | `7` | Days of inactivity (no user/team message) before a conversation is force-closed. Every hub has one |
+| `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` before cleanup (archival still happens at close) |
+| `mcp_access` | `disabled`, `read_only`, `read_write` | `read_only` | Whether external MCP clients can reach this hub's tools. **UI only** (Hub → Users tab) — not settable via `hub.yaml`; `read_write` downgrades to `read_only` when published to production |
 
 ## First-time setup (cold start)
 
@@ -415,11 +418,14 @@ preview_label: experiment-a      # server-owned, set by `wayai pull` — do not 
 
 hub:
   name: Customer Support
+  # description: Handles refunds, order status, and billing questions   # optional, human-facing
   hub_type: chat                 # chat | task
   ai_mode: pilot+copilot         # pilot | copilot | pilot+copilot | turned_off
   timezone: America/New_York
   non_app_permission: everyone
   # tags: [retail, vip]          # org tag slug names (create in UI first); gate which org credentials this hub can resolve. Omit to leave unchanged; [] clears. See references/connections.md#organization-tags
+  # auto_close_inactive_days: 7  # force-close a conversation after N days of inactivity (see Hub Settings)
+  # conversation_retention_days: 7  # keep an ended conversation's DO alive N days for post-hoc `annotate` (see Hub Settings)
   kanban_statuses:
     - slug: new
       name: New
