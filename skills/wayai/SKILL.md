@@ -23,7 +23,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 - **Interface:** if you have filesystem/shell access (code-harness agents — Claude Code, Codex, Cursor, OpenCode), drive WayAI through the **`wayai` CLI and workspace files**, and do not call any `mcp__wayai__*` tools that may also be in your toolset. If you do **not** have filesystem/shell access (app-harness agents — Claude Desktop, etc.), use the `mcp__wayai__*` tools — they are your interaction surface for everything below
 - Only provide information from this skill, tool descriptions, or reference documentation
 - Do not invent URLs, paths, or steps
-- Hub config flows through files + the `wayai` CLI; one-time setup (orgs, OAuth, publish) goes through the platform UI
+- Hub config flows through files + the `wayai` CLI; one-time setup (orgs, OAuth) goes through the platform UI. Publishing preview → production is now CLI-capable (`wayai publish`) or UI
 - Always `wayai pull -y` before editing — catches out-of-band changes
 - Always `wayai push -y` immediately after editing — editing and pushing are a single action
 - Never auto-commit — show `git diff`, wait for user approval
@@ -51,7 +51,8 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Workspace discovery | CLI (`wayai list`) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
-| Publish/sync to production, delete hubs | UI |
+| Publish/sync a preview to production | CLI (`wayai publish`, alias `wayai sync`) or UI |
+| Delete hubs | UI |
 | Replicate a preview, set/clear a preview's label | CLI (`wayai replicate` / `wayai relabel`) or UI |
 | User management | UI |
 
@@ -61,7 +62,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 Organization              ← CLI (`wayai org create`) or UI
 ├── Org Credentials       ← CLI or UI (store API keys once, reuse across hubs)
 └── Project               ← CLI or UI
-    └── Hub               ← CLI (auto-creates on push) or UI; publish/sync via UI
+    └── Hub               ← CLI (auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
         ├── Connections   ← Auto-created from org credentials (non-OAuth); OAuth via UI
         └── Agents        ← CLI
             ├── Tools     ← CLI
@@ -151,12 +152,12 @@ Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schem
 | Environment | Description |
 |-------------|-------------|
 | `preview` | Default. Editable workspace for configuring and testing |
-| `production` | Read-only. Serves live traffic. Changes flow from preview via UI sync |
+| `production` | Read-only. Serves live traffic. Changes flow from preview via publish/sync |
 
 **Lifecycle:**
 1. New hubs start as `preview` — edit freely. `wayai push --label <l>` names the first preview at creation
-2. **Publish** (UI) — first promotion creates a `production` hub cloned from preview
-3. **Sync** (UI) — pushes subsequent preview changes to the linked production
+2. **Publish** (CLI `wayai publish`, or UI) — first promotion creates a `production` hub cloned from preview
+3. **Sync** (CLI `wayai publish` / alias `wayai sync`, or UI) — pushes subsequent preview changes to the linked production. The one command auto-detects first-publish vs sync; it confirms by default (shows the preview→production diff) and `-y` skips the prompt. Promotes the pushed **preview** state, so `wayai push` first
 4. **Replicate Preview** (CLI `wayai replicate [hub] --label <l>` or UI) — creates a new sibling preview (from a preview or production) for experimentation
 5. **Relabel** (CLI `wayai relabel <label>` / `--clear`, or UI) — set/clear a preview's `preview_label` (the sibling disambiguator). NOT editable via `hub.yaml` + push — it's server-owned
 
@@ -260,7 +261,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connection Types → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
 | 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
-| 10 | User confirms publish | User handoff: "Open `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` and click Publish." |
+| 10 | User confirms publish | Agent runs `wayai publish` — shows the preview→production diff, then confirms (or `wayai publish -y` to skip the prompt). First publish clones preview → a new production hub; later runs sync. **Paid plans only** — if the CLI reports publishing requires a paid plan, manual fallback: open the publish deeplink below to upgrade + Publish in the UI. |
 
 ### Deeplinks (canonical URLs — never breadcrumbs)
 
@@ -269,7 +270,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 3 (org create — manual fallback) | `https://app.wayai.pro/settings/organizations/new` |
 | 6 (credential pre-fill) | `https://app.wayai.pro/settings/organizations/<org_id>/credentials?type=bearer&name=<key-name>&prefill=true` |
 | 7 (OAuth connection) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/connections?connector=<whatsapp\|instagram\|google-calendar\|mcp-server>` |
-| 10 (publish) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
+| 10 (publish — manual fallback) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 
 ### Rules
 
@@ -290,7 +291,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
 7. **Test** — `wayai send-message "Hello"`
 8. **Review** — run `git diff`, ask user to confirm. **Never auto-commit.** User commits and pushes to `main`
-9. **Go live** — sync preview → production via the platform UI when ready
+9. **Go live** — `wayai publish` (or the platform UI) when ready: shows the preview→production diff, confirms, then first-publishes (clones preview → new production hub) or syncs subsequent changes. `push` first — it promotes the pushed preview state, not unpushed local edits
 
 ### New hub (from scratch)
 1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
@@ -330,6 +331,7 @@ wayai push              # Push local changes (-y skips confirmation; auto-pulls 
 wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
 wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
 wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub to target). Renames the local folder. The server-owned way to change preview_label
+wayai publish           # Promote the preview to production (alias: wayai sync). Auto-detects first-publish (clones preview → new production) vs sync (pushes changes to the linked production); shows the preview→production diff and confirms (-y skips). Paid plans only. `wayai push` first — promotes the pushed preview state
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unbind            # Clear the worktree hub binding
 wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
