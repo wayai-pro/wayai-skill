@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.11
+version: 6.22.12
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -36,6 +36,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, Google Calendar, MCP OAuth) | Platform UI |
+| Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
 | Inspect what an agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) |
@@ -319,6 +320,7 @@ wayai update            # Update CLI (run before any operation)
 wayai login             # OAuth — or `wayai login --token` for headless/CI
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
+wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
@@ -417,6 +419,7 @@ hub:
   ai_mode: pilot+copilot         # pilot | copilot | pilot+copilot | turned_off
   timezone: America/New_York
   non_app_permission: everyone
+  # tags: [retail, vip]          # org tag slug names (create in UI first); gate which org credentials this hub can resolve. Omit to leave unchanged; [] clears. See references/connections.md#organization-tags
   kanban_statuses:
     - slug: new
       name: New
@@ -487,6 +490,7 @@ connections:
   - name: anthropic
     type: Agent
     service: Anthropic
+    # sync_credentials_to_production: true   # default; false keeps production's credential separate (set it via `wayai set-connection-credential`). See references/connections.md#credential-propagation-to-production-sync_credentials_to_production
   - name: my-api-connection
     type: Tool - Custom
     service: User Tool
@@ -502,6 +506,8 @@ name: Pilot Agent
 role: pilot
 connection: anthropic              # connection display name
 # instructions resolved by convention from agents/<slug>.md
+# additional_context_template:     # per-turn context, emitted as an <additional_context> tag on the last user message (same {{...}} syntax as instructions). Put high-churn placeholders ({{now()}}, {{state()}}) HERE, not in instructions, to keep the system prompt cache-stable (see references/agents/instructions.md#additional-context-cache-friendly)
+# response_format:                 # {schema_name, schema_json} — force structured JSON output instead of free text (see references/agents/roles-and-settings.md#response-format-structured-output)
 # enabled: true                    # default; omitted
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
 settings:
@@ -509,6 +515,7 @@ settings:
   temperature: 0.7
   max_tokens: 4096
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
+  # file_handling_mode: always_attach  # or metadata_only (historical files sent as metadata; agent fetches via read_file). max_attachment_size_mb caps always_attach size (see roles-and-settings.md#file-handling-all-llm-connectors)
 tools:
   native:
     - send_text_message
@@ -537,7 +544,7 @@ tools:
           required: [email]
 ```
 
-For full agent options (settings per connector, native tool params, custom tool fields, `composed_tools`, placeholders), see [`references/agents/`](references/agents/).
+For full agent options (settings per connector, `additional_context_template`, `response_format`, file handling, native tool params, custom tool fields, `composed_tools`, placeholders), see [`references/agents/`](references/agents/).
 
 **Evaluation variables** — `conversation_evaluator` / `message_evaluator` agents carry an `evaluation_variables` list (the structured fields they emit per conversation/message), round-tripped via pull/push. See [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md#evaluation-variables).
 
@@ -545,6 +552,8 @@ For full agent options (settings per connector, native tool params, custom tool 
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
 - **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
+- **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
+- **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve — an untagged hub sees only untagged credentials; a tagged hub sees credentials sharing ≥1 tag. See [`references/connections.md`](references/connections.md#organization-tags)
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from a `Tool - MCP` connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)
