@@ -180,7 +180,7 @@ connections:
 
 A hub starts as a `preview`; publishing clones it to a `production` hub and later changes flow via sync. By default a connection's credential is **copied into production** on publish/sync — fine when preview and production share the same secret.
 
-Set `sync_credentials_to_production: false` on a connection to **keep production's credential separate** — the preview credential is not copied, and production's credential is set directly on the production connection instead (in the UI's connection screen; production hubs are otherwise read-only). Until a production credential is set, that connection raises a "production credential missing" alert.
+Set `sync_credentials_to_production: false` on a connection to **keep production's credential separate** — the preview credential is not copied, and production's credential is set directly on the production connection instead (via `wayai set-connection-credential` or the UI; production hubs are otherwise read-only). Until a production credential is set, that connection raises a "production credential missing" alert.
 
 ```yaml
 connections:
@@ -193,6 +193,22 @@ connections:
 
 - **Default is `true`** (copy on publish/sync) — omit the field to keep that behavior.
 - **Non-secret config field:** it lives in `hub.yaml`, is set by `wayai push`, and round-trips on `wayai pull` (emitted only when `false`). It is **not** a secret — the credential itself never goes in YAML.
+
+### Setting a connection's credential directly (`wayai set-connection-credential`)
+
+Besides binding an org credential in YAML (above), you can set a **connection-specific** credential imperatively — for a one-off secret, or for a **production** connection whose `sync_credentials_to_production` is off. Works on preview and production hubs. Two modes (exactly one), mirroring the UI's "Org Credential / Direct Input":
+
+```bash
+# Link an organization credential by name (recommended for shared/rotatable secrets):
+wayai set-connection-credential --hub <id|name> --connection "OpenAI" --org-credential "openai-prod-key"
+
+# Set a raw secret directly — read from stdin, NEVER an argument or YAML:
+echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connection "OpenAI" --field api_key --stdin
+```
+
+- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`.
+- The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
+- **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
 
 ### Requirements
 
