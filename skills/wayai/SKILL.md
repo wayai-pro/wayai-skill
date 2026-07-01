@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.13
+version: 6.22.14
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -336,7 +336,7 @@ wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder n
 wayai unbind            # Clear the worktree hub binding
 wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
 wayai template pull <slug> [--lang <locale>] [--force] [--dry-run]  # Write a template's config into wayai-ws/hubs/<slug>/, then `wayai push`. --lang picks a localized variant (en|pt|es); omitted = the template's default, an untranslated language falls back with a note. Refuses to overwrite existing files in the target dir (lists them) — pass --force to overwrite; --dry-run previews the file map without writing
-wayai send-message      # Test message to a preview hub
+wayai send-message      # Test message to a hub (preview or production)
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
                         # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
                         # `wayai conversations <id> observability --message-id <id>` — full record for one turn (prompt, completion, tool calls, tokens; --json for raw)
