@@ -101,6 +101,9 @@ connections:
   - name: openai-main
     type: Agent
     service: OpenAI
+    # Default true (copy the credential to production on publish/sync). Set false to
+    # keep production's credential separate — set it directly on the production connection.
+    # sync_credentials_to_production: false
 
 resources:
   - name: Company FAQ

@@ -176,6 +176,24 @@ connections:
 
 > **Round-trip.** `wayai pull` writes the bound credential back as `credential: "<name>"` (or `no_auth: true` for an intentional no-auth endpoint) so the binding is visible in review and GitOps diffs. The secret itself is never exported. **Only the primary `credential` round-trips** — a dual-credential connection's secondary `access_token_credential` is push-only (the connection stores a single credential reference), so re-add it by hand if you recreate such a connection from a pulled file. `headers` likewise remain write-only (may carry an `Authorization` value) and are not echoed on pull.
 
+### Credential propagation to production (`sync_credentials_to_production`)
+
+A hub starts as a `preview`; publishing clones it to a `production` hub and later changes flow via sync. By default a connection's credential is **copied into production** on publish/sync — fine when preview and production share the same secret.
+
+Set `sync_credentials_to_production: false` on a connection to **keep production's credential separate** — the preview credential is not copied, and production's credential is set directly on the production connection instead (in the UI's connection screen; production hubs are otherwise read-only). Until a production credential is set, that connection raises a "production credential missing" alert.
+
+```yaml
+connections:
+  - name: openai
+    type: Agent
+    service: OpenAI
+    credential: openai-sandbox-key          # preview uses the sandbox key…
+    sync_credentials_to_production: false    # …production uses its own, set separately
+```
+
+- **Default is `true`** (copy on publish/sync) — omit the field to keep that behavior.
+- **Non-secret config field:** it lives in `hub.yaml`, is set by `wayai push`, and round-trips on `wayai pull` (emitted only when `false`). It is **not** a secret — the credential itself never goes in YAML.
+
 ### Requirements
 
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
