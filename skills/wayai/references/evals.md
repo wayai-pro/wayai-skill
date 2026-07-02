@@ -214,11 +214,24 @@ Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_cal
 wayai run-eval                           # run the hub's sole enabled scenario set
 wayai run-eval --set <name>              # run a specific scenario set
 wayai run-eval --eval <name>             # run the set the named eval belongs to
+wayai run-eval --pacing conservative     # slower run pacing (see below)
+wayai run-eval --pacing 1500             # custom interval: 1500ms between runs
 ```
 
 A run session targets **exactly one scenario set**. With no flag the hub's sole enabled set runs; on a multi-set hub the run fails with `ambiguous_scenario_set` — pick one with `--set`/`--eval` (mutually exclusive). `--eval <name>` runs the *whole set* that eval belongs to, not just that one eval.
 
 Each run executes the scenario `runs` times (default 1, configurable per scenario, capped at 100), passes the result to the hub's `message_evaluator` agent, and records the score.
+
+**Run pacing (`--pacing`).** Controls how fast runs are dispatched, so a big eval set doesn't exhaust the LLM provider's rate-limit budget (which is org-scoped — the same key serving production shares it). Accepts a named preset or a millisecond interval; omit it to take the platform default (`balanced`).
+
+| Value | Interval | When |
+|---|---|---|
+| `conservative` | ~3s/run (~20/min) | Key shared with heavy production traffic, tighter providers (Gemini / low-tier OpenAI), or Start-tier orgs |
+| `balanced` *(default)* | ~1s/run (~60/min) | Anthropic Build+/Scale and most modern provider tiers |
+| `fast` | ~0.3s/run (~200/min) | High-tier providers, off-peak |
+| `<milliseconds>` | that exact gap (50–60000) | A custom pace |
+
+Pacing is a per-run choice, not stored in the scenario YAML — set it each `run-eval` (the UI and MCP `create_eval_session` expose the same presets).
 
 A session is capped at **1000 total runs** across all enabled scenarios in the set (Σ `runs`). A session that would exceed it is rejected with `too_many_runs` — reduce the enabled scenarios or their `runs`.
 
