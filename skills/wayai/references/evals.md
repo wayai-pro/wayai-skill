@@ -67,6 +67,33 @@ evaluator_instructions: |
 
 **Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions` is optional.
 
+### Per-run variables (`{{var()}}`) — parallelize mutating evals
+
+A scenario may declare `variables:` — a map of author-provided arrays. Run *i* of `runs: N` resolves `{{var(NAME)}}` / `{{var(NAME).field}}` against `variables.NAME[i-1]` in `input`, `history`, `expected`, and `evaluator_instructions`. Resolution happens **once per run**, so the prompt and the assertion always see the same value — and each run leases a **disjoint** fixture, so a data-mutating scenario can run all its `runs` in parallel without colliding with itself. Values may be objects, so one index yields a coherent bundle (a patient's name + id + slot move together).
+
+```yaml
+runs: 3
+variables:
+  case:
+    - { name: "Mariana Alves Pereira", cpf: "258.147.036-44", patient_id: pat-0001,
+        starts_at: "2026-06-18T10:00:00-03:00", slot_id: "andre.fernandes::2026-06-18T10:00:00-03:00" }
+    - { name: "João Ribeiro Souza",     cpf: "391.204.517-88", patient_id: pat-0002,
+        starts_at: "2026-06-18T11:00:00-03:00", slot_id: "andre.fernandes::2026-06-18T11:00:00-03:00" }
+    - { name: "Beatriz Nunes Carvalho", cpf: "702.845.193-05", patient_id: pat-0003,
+        starts_at: "2026-06-18T12:00:00-03:00", slot_id: "andre.fernandes::2026-06-18T12:00:00-03:00" }
+input:
+  role: user
+  content: "Sou {{var(case).name}}, CPF {{var(case).cpf}}, quero marcar para {{var(case).starts_at}}."
+expected:
+  role: assistant
+  tool_calls:
+    - function:
+        name: book_appointment
+        arguments: '{"data": {"patient_id": "{{var(case).patient_id}}", "starts_at": "{{var(case).starts_at}}", "slot_id": "{{var(case).slot_id}}"}}'
+```
+
+Rules: every declared array MUST have at least `runs` entries — a session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. Seeding and reset of the underlying fixtures stay **agent-managed** — see principle 5 under [Authoring](#authoring); `variables` is only the templating + per-run indexing primitive that makes the runs disjoint so a single set-level reset is safe.
+
 `expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
 
 > **History replay.** Scenario `history` is replayed into the responder agent's context before `input`, so scenarios can be **multi-turn**. The `history` field accepts `user` / `assistant` turns, `assistant` turns carrying `tool_calls` (text optional), and `tool` result turns (each needs a `tool_call_id` pairing it to a preceding call). Unpaired tool calls/results are dropped. `role: system` items are accepted but **not** replayed (a mid-history system note isn't a conversational turn — this matches how live conversations reconstruct history). Capturing from a real conversation (`scenario-from-conversation`) preserves tool turns: prior `assistant` tool calls and their `tool` results are reconstructed into `history` with `tool_calls` / `tool_call_id` intact. The captured `expected` is the agent's final exchange — its concluding text plus **every** tool call the agent made to produce that reply, frozen into `expected.tool_calls`. This holds whether the final turn was itself a tool call or a text reply that followed a tool loop (e.g. `book_makeup` → "Done, booked"), so action turns assert their required calls automatically — no need to hand-edit the captured scenario to re-add the tool call.
@@ -165,11 +192,17 @@ step_config:                   # optional per-step overrides, keyed by step_id
   <step-uuid>:
     runs: 3                    # number of times to run this step's eval (default 1)
     evaluator_instructions: "Confirm the cancel_order tool was called"
+variables:                     # optional per-run variables (gh #3007) — propagate to every step
+  case:
+    - { name: "Ana", order_id: "123" }
+    - { name: "Bruno", order_id: "124" }
 ```
 
 Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
 
-**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
+**Per-run variables on a journey.** A journey-level `variables:` map (same shape and `{{var()}}` semantics as [scenario variables](#per-run-variables-var--parallelize-mutating-evals)) **propagates to every derived step eval**, so run *i* of the whole journey — every step — resolves against the same `variables.NAME[i-1]` row. That makes a multi-turn **mutating** journey runnable at `runs: N` in parallel with each run on its own disjoint fixture. Give each step the same `runs` (or a `step_config` that never exceeds the array length) so the per-step indices stay aligned; a step whose `runs` exceeds a variable array is rejected with `insufficient_variables` at run-launch, same as a scenario.
+
+**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
 
 > **Pull after creating a journey.** The backend mints stable `step_id`s when a journey is first created (whether via `journey capture` or a `push` of a hand-authored transcript with no `step_id`s). Those ids land in the DB but not on your disk. **Run `wayai pull` after creating or first-pushing a journey** to sync the ids (and the assigned `id`) back — same discipline as entity `id`s. Re-pushing a transcript that's missing the server's `step_id`s re-mints them, which severs the derived evals' history.
 
@@ -248,7 +281,7 @@ The sections above are the *mechanics*; these are the *judgment calls*. Domain-n
 2. **For ACTION evals, assert on the tool call** (`expected.tool_calls`), not the text. Plausible prose is not proof the agent *did* anything — the harness fails a skipped-but-required tool call even when the reply reads fine (see [Scenario File Format](#scenario-file-format)).
 3. **Pin only what's deterministic.** Hard-code the stable parts in `expected`; push runtime ids/timestamps into `evaluator_instructions` ("the `order_id` must match the one in history") rather than a brittle literal.
 4. **Unit-test a DECISION, not just the whole flow.** Isolating one mid-flow decision makes the failure point sharp. Stage the decision's precondition either as prior turns in `history` (replayed into the responder — see [Scenario File Format](#scenario-file-format)) or inline in the `input` message, then pin criteria in `expected` / `evaluator_instructions`. Keep the setup minimal: the fewer turns it takes to reach the decision, the sharper the signal.
-5. **Mutating evals need a seed/reset.** WayAI runs the **real** agent with its **real** tools, so an eval that triggers a write hits the live backend — without a known starting state it passes on residue from the last run. Seed/reset, or assert against state you control.
+5. **Mutating evals need a seed/reset.** WayAI runs the **real** agent with its **real** tools, so an eval that triggers a write hits the live backend — without a known starting state it passes on residue from the last run. Seed/reset, or assert against state you control. To run a mutating scenario at `runs: N` **in parallel** without it colliding with itself, give each run a disjoint fixture via [per-run `variables`](#per-run-variables-var--parallelize-mutating-evals): seed a pool, derive one `variables.case` row per run, run the set, then reset once after it completes.
 6. **Repurpose or retire an eval when a structural fix makes its failure mode impossible.** A surface change (see [`tool-principles.md`](agents/tool-principles.md)) can make a bad call un-expressible — the eval guarding it now tests nothing. Retire it or re-point it at the next real risk.
 
 ### Interpreting
