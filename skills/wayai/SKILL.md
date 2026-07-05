@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.15
+version: 6.22.16
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -283,8 +283,8 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 ## Workflow
 
 ### Existing hub
-1. **Update CLI** — `wayai update` (always run before any operation)
-2. **Update skill if stale** — `wayai status --json` and apply state machine row 1c: if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue.
+1. **Update CLI** — `wayai update` (always run before any operation; if the CLI isn't installed yet, bootstrap with `npm i -g @wayai/cli@latest`)
+2. **Update skill if stale** — run `wayai status --json`; if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue. (Cold-start onboarding runs the same check as state-machine row 1c.)
 3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
 4. **Read context** — `wayai-ws/hubs/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
 5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
