@@ -92,7 +92,38 @@ expected:
         arguments: '{"data": {"patient_id": "{{var(case).patient_id}}", "starts_at": "{{var(case).starts_at}}", "slot_id": "{{var(case).slot_id}}"}}'
 ```
 
-Rules: every declared array MUST have at least `runs` entries — a session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. Seeding and reset of the underlying fixtures stay **agent-managed** — see principle 5 under [Authoring](#authoring); `variables` is only the templating + per-run indexing primitive that makes the runs disjoint so a single set-level reset is safe.
+Rules: every declared array MUST have at least `runs` entries — a session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. `variables` is the templating + per-run indexing primitive that makes the runs disjoint; the fixture reset/clear around them is the [seed hooks](#seed-fixtures-fixture--repeatable-mutating-evals) below.
+
+### Seed fixtures (`fixture:`) — repeatable mutating evals
+
+A scenario **set** or a **journey** may declare a named `fixture:` — the Rekor fixture its agent turn mutates. `run-eval` owns the session lifecycle, so it **resets the fixture before the session and clears it after, in `try/finally`**: a data-mutating eval starts from a known baseline every run and a mid-run failure or abort can't leave the shared base dirty. Sets/journeys with no `fixture:` behave exactly as before.
+
+```yaml
+# evals/failure-modes/book-exact-slot.yaml — declare on the scenario
+fixture: clinic-baseline    # the Rekor fixture this set depends on
+runs: 3
+variables: { case: [ ... ] }   # pairs with the fixture (see below)
+input: { role: user, content: "..." }
+expected: { role: assistant, tool_calls: [ ... ] }
+```
+
+```yaml
+# journeys/create-agreement.yaml — a journey owns its set, so declare it once
+name: Create Agreement
+agent: Collections Pilot
+fixture: debtor-baseline
+transcript: [ ... ]
+```
+
+Lifecycle and rules:
+- **Reset before** — at session start `run-eval` resets the fixture against the base the responder agent's Rekor connection resolves to (delete-owned + re-apply → the declared baseline). If the pre-session seed **fails** (no Rekor connection/credential, or Rekor rejects), the session is **aborted** with a clear `fixture_seed_failed` — no runs are scored, because an unseeded base is a setup failure, not an assertion failure.
+- **Clear after** — on every terminal path (completed, stopped, deleted mid-run, or watchdog-reaped) the fixture is cleared (delete-owned). Teardown is guaranteed, not best-effort.
+- **Set-level agreement** — the fixture is a property of the shared base, so **all enabled scenarios in a set must declare the same fixture** (or none); two different fixtures in one set is rejected with `fixture_mismatch`. A journey declares it once for its whole flow.
+- **`target_base` (reserved)** — an optional override of the base seeded against; omit it (Phase 1) and it defaults to the toolset's preview base. It is the seam a future per-run ephemeral-isolation mode uses without re-authoring the session.
+
+**The supported pattern for MUTATING evals** is `fixture:` **+** per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals): the fixture makes each run start from a known baseline, and disjoint `variables` give each parallel run its own row within it — collision-free as long as each run's write footprint fits its leased row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handle the baseline automatically.
+
+> Requires a Rekor Memory connection (the `rec_` token + base id) reachable from the responder agent or hub, and Rekor's fixture primitive (`seed reset`/`clear` by name). Until that ships the hooks are inert — a declared `fixture:` surfaces the loud `fixture_seed_failed` abort rather than running against an unseeded base.
 
 `expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
 
@@ -235,6 +266,8 @@ Pacing is a per-run choice, not stored in the scenario YAML — set it each `run
 
 A session is capped at **1000 total runs** across all enabled scenarios in the set (Σ `runs`). A session that would exceed it is rejected with `too_many_runs` — reduce the enabled scenarios or their `runs`.
 
+If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals), the session first resets it against Rekor; a failed pre-session seed aborts the run with `fixture_seed_failed` (nothing is scored), and enabled scenarios declaring different fixtures are rejected with `fixture_mismatch`.
+
 ---
 
 ## Inspecting Results
@@ -294,7 +327,7 @@ The sections above are the *mechanics*; these are the *judgment calls*. Domain-n
 2. **For ACTION evals, assert on the tool call** (`expected.tool_calls`), not the text. Plausible prose is not proof the agent *did* anything — the harness fails a skipped-but-required tool call even when the reply reads fine (see [Scenario File Format](#scenario-file-format)).
 3. **Pin only what's deterministic.** Hard-code the stable parts in `expected`; push runtime ids/timestamps into `evaluator_instructions` ("the `order_id` must match the one in history") rather than a brittle literal.
 4. **Unit-test a DECISION, not just the whole flow.** Isolating one mid-flow decision makes the failure point sharp. Stage the decision's precondition either as prior turns in `history` (replayed into the responder — see [Scenario File Format](#scenario-file-format)) or inline in the `input` message, then pin criteria in `expected` / `evaluator_instructions`. Keep the setup minimal: the fewer turns it takes to reach the decision, the sharper the signal.
-5. **Mutating evals need a seed/reset.** WayAI runs the **real** agent with its **real** tools, so an eval that triggers a write hits the live backend — without a known starting state it passes on residue from the last run. Seed/reset, or assert against state you control. To run a mutating scenario at `runs: N` **in parallel** without it colliding with itself, give each run a disjoint fixture via [per-run `variables`](#per-run-variables-var--parallelize-mutating-evals): seed a pool, derive one `variables.case` row per run, run the set, then reset once after it completes.
+5. **Mutating evals need a seed/reset.** WayAI runs the **real** agent with its **real** tools, so an eval that triggers a write hits the live backend — without a known starting state it passes on residue from the last run. Declare a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) so `run-eval` resets it before the session and clears it after (`try/finally`), or assert against state you control. To run a mutating scenario at `runs: N` **in parallel** without it colliding with itself, pair the fixture with per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals): seed a pool, give each run one disjoint `variables.case` row within the reset baseline.
 6. **Repurpose or retire an eval when a structural fix makes its failure mode impossible.** A surface change (see [`tool-principles.md`](agents/tool-principles.md)) can make a bad call un-expressible — the eval guarding it now tests nothing. Retire it or re-point it at the next real risk.
 
 ### Interpreting
