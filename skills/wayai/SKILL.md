@@ -1,22 +1,25 @@
 ---
 name: wayai
-version: 6.22.18
+version: 6.23.0
 description: |
-  Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
+  Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
-  connections, kanban, states, resources, eval scenarios, outbound campaigns; running analytics
-  or evals; reviewing or editing workspace YAML (hub.yaml, agents/*.yaml) or agent instruction
-  Markdown; installing a ready-made hub template (`wayai template list`/`pull`); using the wayai CLI
-  (push, pull, send-message, conversations, sync-skills, create-credential, analytics, run-eval,
-  eval capture, template, init); or interpreting WayAI platform
-  terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles).
+  connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns;
+  running analytics or evals; annotating conversation outcomes; reviewing or editing workspace YAML
+  (hub.yaml, agents/*.yaml) or agent instruction Markdown; installing a ready-made hub template
+  (`wayai template list`/`pull`); using the wayai CLI (push, pull, publish, send-message,
+  conversations, sync-skills, create-credential, update-credential, analytics, run-eval,
+  eval capture, evals sql, org, template, init); or interpreting WayAI platform
+  terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles, journeys).
 ---
 
 # WayAI Skill
 
-WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI agents and a human team across channels (WhatsApp, Email, Instagram, native App). This workspace stores **one hub** as code: `hub.yaml` + `agents/*.{yaml,md}` synced bidirectionally to the platform via the `wayai` CLI.
+WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI agents and a human team across channels (WhatsApp, Email, Instagram, Telegram, native App). This workspace stores hubs as code — one folder per hub (`hub.yaml` + `agents/*.{yaml,md}` + `evals/`, `journeys/`, `resources/`) synced bidirectionally to the platform via the `wayai` CLI.
 
 **Platform is the source of truth.** Workspace files are the edit surface — changes flow through files → `wayai push` → platform. Always `wayai pull` before editing to catch out-of-band changes.
+
+**How to use this skill:** this file is the complete concept map — every WayAI primitive is defined here with enough depth to decide what to build and which files to touch. Field-level schemas, per-provider specifics, and mechanics live in `references/`; each domain section below ends with a pointer to its deep-dive file — open it when you're about to author or debug that domain. Before generating a full hub from scratch, read [`references/canonical-example/README.md`](references/canonical-example/README.md) once — it shows how the pieces wire together. The full routing table is at the end ([Reference Documentation](#reference-documentation)).
 
 ## Agent Guidelines
 
@@ -37,16 +40,18 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, Google Calendar, MCP OAuth) | Platform UI |
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
+| Org credentials — create / rotate / edit | CLI (`wayai create-credential` / `wayai update-credential`) or UI |
+| Org-level shared resources (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
 | Inspect what an agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) |
 | Record a post-hoc business outcome on an ended conversation (e.g. customer purchased) as an analytics dimension | CLI (`wayai conversations <id> annotate --set key=value [--type ...]`) |
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
+| List eval scenarios / raw SQL over eval results | CLI (`wayai evals`, `wayai evals sql`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
 | Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
 | Delete eval session(s) / run history | CLI (`wayai eval session delete <session_id>`, or `--all` for every session on the hub) |
-| Org credentials | CLI (`wayai create-credential`) or UI |
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
 | Organization — create | CLI (`wayai org create`) or UI |
@@ -54,22 +59,31 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Publish/sync a preview to production | CLI (`wayai publish`, alias `wayai sync`) or UI |
 | Delete hubs | UI |
 | Replicate a preview, set/clear a preview's label | CLI (`wayai replicate` / `wayai relabel`) or UI |
-| User management | UI |
+| Teams, team users, hub users, admins, contact approval | UI (Hub → Users tab) |
+| Org tags (create/edit) | UI (referenced from `hub.yaml` `tags:` by slug) |
 
 ## Entity Hierarchy
 
 ```
-Organization              ← CLI (`wayai org create`) or UI
-├── Org Credentials       ← CLI or UI (store API keys once, reuse across hubs)
-└── Project               ← CLI or UI
-    └── Hub               ← CLI (auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
-        ├── Connections   ← Auto-created from org credentials (non-OAuth); OAuth via UI
-        └── Agents        ← CLI
-            ├── Tools     ← CLI
-            └── Resources ← CLI (linked from hub.yaml)
+Organization                ← CLI (`wayai org create`) or UI
+├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
+├── Org Tags                ← UI — gate which credentials each hub can resolve
+├── Org Resources           ← CLI (`wayai org pull/push`) — shared knowledge/skills, fan out to linked hubs
+└── Hub                     ← CLI (auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
+    ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI
+    ├── Channels            ← auto-provisioned, never authored (see Channels)
+    ├── Agents              ← CLI — `agents/<slug>.yaml` + `<slug>.md`
+    │   ├── Tools           ← CLI — native, custom HTTP, MCP, delegation
+    │   └── Resource links  ← CLI — `resources:` block in agent YAML
+    ├── Kanban statuses     ← CLI — `hub.yaml` (workflow stages for conversations)
+    ├── States              ← CLI — `hub.yaml` (JSON-schema data agents read/write)
+    ├── Resources           ← CLI — `hub.yaml` + `resources/` folder (knowledge + skills)
+    ├── Evals + Journeys    ← CLI — `evals/`, `journeys/`
+    ├── Outbound            ← CLI — `hub.yaml` (contacts, lists, schedules)
+    └── Teams + Users       ← UI (Hub → Users) — teams, admins, team users, hub users
 ```
 
-Setup order: Organization (CLI `wayai org create` or UI) → Org Credentials (CLI or UI) → Project (CLI or UI) → Hub (CLI push or UI) → configure agents, tools, connections via CLI.
+Setup order: Organization (CLI `wayai org create` or UI) → Org Credentials (CLI or UI) → Hub (CLI push auto-creates, or UI) → configure agents, tools, connections via CLI.
 
 The `wayai` connection (native tools) is auto-created when a hub is created — no setup needed.
 
@@ -77,19 +91,31 @@ The `wayai` connection (native tools) is auto-created when a hub is created — 
 
 | Type | Conversations | Channels | Use Case |
 |------|--------------|----------|----------|
-| `chat` | ONE per end user | WhatsApp, Instagram, Email, App | Person-centered: support, sales, helpdesk |
+| `chat` | ONE per end user | WhatsApp, Instagram, Email, Telegram, App | Person-centered: support, sales, helpdesk |
 | `task` | MULTIPLE per user | App only | Task-centered: invoices, inventory, approvals |
 
-Decision: WhatsApp/Instagram/Email needed → `chat`. Object/task processing → `task`.
+Decision: external channels (WhatsApp/Instagram/Email/Telegram) needed → `chat`. Object/task processing → `task`.
 
-## AI Modes
+## AI Modes & the Conversation Model
+
+Hub-level `ai_mode` sets what the AI does:
 
 | Mode | Behavior |
 |------|----------|
 | `pilot` | AI handles end users autonomously |
 | `copilot` | AI suggests responses to the support team (no channel delivery) |
-| `pilot+copilot` | Switches dynamically based on `current_responder_type` |
+| `pilot+copilot` | Switches dynamically based on who currently responds |
 | `turned_off` | AI disabled; humans only |
+
+A **conversation** is the runtime session between an end user and the hub (config entities define behavior; conversations and messages are what they act on):
+
+- `conversation_status`: `agent` (AI handles it) | `team` (human team handles it) | `ended` (closed + archived)
+- Status selects the active agent **track**: status `agent` → **Pilot** track replies to the end user through the channel; status `team` (with `copilot`/`pilot+copilot` mode) → **Copilot** track drafts suggestions the team sees in `/support`
+- Track switches: the `transfer_to_team` tool (agent → team) or a team handback in the support UI (team → agent). `transfer_to_agent`/`consult_agent` move between agents *within* a track
+- Close paths: the agent's `close_conversation` tool, transitioning into an `isTerminalStatus` kanban status (any surface — agent tool, team drag-drop, REST/MCP), the team UI, or the hub's `auto_close_inactive_days`. Ended conversations are archived and listed in the Ended tab; within `conversation_retention_days` they still accept post-hoc `wayai conversations <id> annotate`
+- An agent's reply text is delivered automatically — **there is no send-message tool**; tools exist for actions beyond replying
+
+Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom slugs like `qualified`), not who is responding.
 
 ## Agent Roles
 
@@ -100,7 +126,7 @@ Decision: WhatsApp/Instagram/Email needed → `chat`. Object/task processing →
 | `pilot_specialist` / `copilot_specialist` | Both | Multiple | Delegation target — full transfer via `transfer_to_agent` |
 | `pilot_advisor` / `copilot_advisor` | Both | 1 each | Advisory input via `consult_agent`; returns control |
 | `monitor` | Background | 1 | Observes silently |
-| `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing |
+| `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing. Their `evaluation_variables` feed Analytics; the `message_evaluator` also scores eval runs |
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
 
 `transfer_to_agent` targets **any same-track agent** — a `*_specialist` *or* the entry `pilot`/`copilot`, so the pilot can act as a **hub-and-spoke router** (specialists transfer cross-domain requests back to it for re-dispatch). Cross-track and advisor/background roles are never transfer targets.
@@ -119,33 +145,123 @@ When a conversation changes hands — `transfer_to_agent` or `transfer_to_team` 
 
 The summarizer agent exposes `summarization_threshold_tokens` (default 120000, min 1000, max 1000000) as a top-level key in `agents/summarizer.yaml`. Lower it for testing; raise it for very long conversations. The summarizer's `connection` defaults to the pilot's; edit `agents/summarizer.yaml` to change its model or system prompt. The `conversation_summary` state's schema is round-trippable like any other state — extra fields beyond the anchors are allowed but the anchors are load-bearing. (Previously a hub-level `hub.yaml` setting — relocated to the summarizer agent.)
 
-## Connection Types
+## Connections & Credentials
+
+A **connection** is a configured instance of a connector (a catalog entry: LLM provider, channel API, tool API, speech service) with its credential, scoped to one hub. An **org credential** stores the secret once at the organization level; connections reference it by name — raw secrets never enter YAML.
 
 | Category | Examples |
 |----------|----------|
 | **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter (required for AI) |
-| **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend, Telegram (API Key — auto-created) |
+| **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend (email), Telegram (API Key — auto-created) |
 | **Tool — Native** | Wayai (auto-created), Google Calendar (OAuth), External Resources (API Key) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
 | **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
-| **Speech** | Groq STT, OpenAI TTS, ElevenLabs |
+| **Speech** | STT transcribes inbound voice notes (Groq, OpenAI); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs) |
 
-**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. OAuth connections must be set up in the UI first.
+**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged hub sees only untagged credentials; a tagged hub sees credentials sharing ≥1 tag) and credential `environment`. OAuth connections must be set up in the UI first.
 
 **OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, Google Calendar, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → Bearer Token), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
-For per-provider setup, see [`references/connections.md`](references/connections.md).
+For per-provider setup, credential binding (`credential:`, `no_auth:`), tags, and production-credential decoupling, see [`references/connections.md`](references/connections.md).
 
-## Tool Types
+## Channels
+
+Communication endpoints on a hub — where messages arrive and replies get delivered. **Channels are never authored in YAML:**
+
+- `app` (in-app chat) and `system` (internal) channels are created automatically with the hub
+- WhatsApp / Instagram / Email (Resend) / Telegram channels are provisioned automatically when their **Channel connection** is created
+
+Channel uniqueness (phone / page / inbound address) is enforced across **production** hubs only — a preview can share endpoints with its production, and external channels are testable on previews via `#test CODE` tester registration (see Hub Environments).
+
+## Tools
+
+Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with text needs no tool — tools are for everything else.
 
 | Type | Source | How |
 |------|--------|-----|
-| Native | Platform built-ins (e.g., `send_text_message`, `update_kanban_status`, `transfer_to_human`) | Listed by name in `agents/<slug>.yaml` |
-| Custom | HTTP endpoints you define | Defined in `agents/<slug>.yaml` with `connection`, `method`, `path`, `config` |
-| MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` in `agents/<slug>.yaml` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
-| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`) or agent-to-team (`transfer_to_team`) | Declared with `target` in `agents/<slug>.yaml` |
+| Native | Platform built-ins (e.g., `update_kanban_status`, `get_state`, `send_files`, `close_conversation`, `read_file`) | Listed by name under `tools.native` |
+| Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
+| MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
+| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`) or agent-to-team (`transfer_to_team`) | Declared under `tools.delegation` with `target` (agent display name or team name) |
 
-Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. See [`references/agents/native-tools.md`](references/agents/native-tools.md).
+Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. Full native catalog + params: [`references/agents/native-tools.md`](references/agents/native-tools.md); custom tool schema: [`references/agents/custom-tools.md`](references/agents/custom-tools.md); designing *which* tools/params to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md).
+
+## Kanban & States
+
+**Kanban statuses** are workflow stages for conversations (visible in support/task views), defined per hub in `hub.yaml`:
+
+- Identity: immutable lowercase `slug` (stored in conversations, analytics, tool params; **never renameable**) + freely editable display `name`. Tools accept only slugs (display names ride along as labels) — instructions must reference statuses by slug
+- Behavioral flags: `isInitialStatus` (exactly one per hub), `triggersAgentResponse` (transition fires an agent turn), `allowsAgentUpdate`, `isTerminalStatus` (**entering it closes the conversation**), `isSchedulingStatus` (+ `eventName`). Several combinations are mutually exclusive — validated server-side on every write
+- `allowed_next_statuses` — optional transition allowlist, enforced at runtime on every surface. Omit = unrestricted; `[]` rejected (use `isTerminalStatus`)
+- **Followups** — per-status timed messages: `inactivity` (after silence) or `before_event` (requires `isSchedulingStatus`), with threshold/timeUnit, quiet hours, holiday exclusion
+- **Additional context on transition** — a `triggersAgentResponse` status may declare `additional_context_schema` (JSON-Schema form the team fills on transition) + `additional_instructions` (prose template with `{{path.to.field}}` / `{{additional_data}}` placeholders injected into the triggered turn)
+- **Lanes** — optional presentational board grouping; no behavioral effect
+
+Full field specs, constraint matrix, warnings, and a complete example: [`references/kanban.md`](references/kanban.md).
+
+**States** are JSON-schema data agents read/write during conversations — via native tools (`get_state`, `update_state`, `set_state_path`, `reset_state`, all addressing a state by its `slug`) and the `{{state(scope, slug)}}` instruction placeholder. Each state has `conversation` or `user` scope, a `json_schema`, and an optional `initial_value` (pre-populated virtual record rendered until the first real write; omit to keep state silent until written).
+
+**Kanban vs State:** kanban tracks workflow progression; state tracks structured data. Both coexist. Schemas and patterns: [`references/states.md`](references/states.md).
+
+## Resources
+
+Knowledge and skills attached to agents. Content lives as real files under `resources/<slugified-name>/` (the filesystem is the source of truth **for resource content**); `hub.yaml` `resources:` declares only name/type/description.
+
+| Type | What | Runtime behavior |
+|------|------|------------------|
+| `knowledge` (default) | Document collections — FAQ, catalogs, policies | Listed to the agent; it explores content via `list_resource_files` / `read_file` native tools (or the `{{resources()}}` placeholder lists them in instructions) |
+| `skill` | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
+
+Agents link resources in `agents/<slug>.yaml` under a `resources:` block (by name, with `priority`). Org-level resources shared across hubs live in `wayai-ws/org/` via `wayai org pull/push` (push fans out to linked hubs).
+
+File handling (text vs binary, 10 MB cap), skill authoring, execution modes: [`references/resources.md`](references/resources.md).
+
+## Evals
+
+Test scenarios that run the **real** agent with its **real** tools and score the result. The primitives:
+
+- **Scenario** (`evals/<name>.yaml` or `evals/<set>/<name>.yaml`) — optional multi-turn `history`, one `input`, an `expected` response (text and/or `tool_calls`), optional `evaluator_instructions`. Scored by the hub's `message_evaluator` agent; a required-but-skipped tool call fails the eval even when the reply text reads fine
+- **Scenario set** — first-level subfolder (one level only). `wayai run-eval` runs exactly one set per session
+- **Journey** (`journeys/<slug>.yaml`, flat folder) — a stored happy-path transcript that materializes one derived eval per agent turn. The default way to build broad regression coverage: `wayai eval journey capture <conversation_id>`, then `wayai pull` (syncs server-minted step ids)
+- **Per-run `variables`** + `runs: N` — reliability is a distribution, not a 1/1 sample; each run resolves `{{var(name)}}` against its own disjoint row
+- **Seed `fixture:`** — for any eval that *writes*: names a Rekor fixture that `run-eval` resets before the session and clears after, so runs start from a known baseline instead of the last run's residue
+- **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
+
+Good practice for tool-dependent evals: compose **journey + `fixture:` + `variables`** for repeatable, parallel runs. Full YAML shapes, seed-connection setup, run pacing, and authoring/interpreting principles: [`references/evals.md`](references/evals.md).
+
+## Outbound
+
+Proactive messaging — the hub contacts people before they write. Three `hub.yaml` blocks:
+
+- `outbound_contacts` — named contacts with ≥1 channel identifier (`phone` E.164 / `email` / `instagram_sid`) + free-form tags
+- `outbound_lists` — named static collections of contacts (referenced by contact name)
+- `outbound_schedules` — cron expression + timezone + list + channel + execution mode: `direct_message` (template / free text sent as-is) or `agent_trigger` (a system message triggers the agent, which opens the conversation naturally using its tools and instructions)
+
+WhatsApp/Instagram delivery is constrained by the 24-hour messaging window (WhatsApp falls back to an approved template; Instagram skips). Inline contacts are practical to ~500 — beyond that, import via UI/API. Shapes, channel rules, limits: [`references/outbound.md`](references/outbound.md).
+
+## Analytics
+
+Every conversation lands in the analytics store with variables from five origins:
+
+| Origin | Path | Set by |
+|--------|------|--------|
+| System metrics | `data.system.*` | Platform — message counts, response times, durations, tokens (~25 metrics) |
+| Agent-defined variables | `data.variables.*` | `evaluation_variables` declared on `conversation_evaluator` / `message_evaluator` agents |
+| Metadata | `data.meta.*` | Platform — subject, kanban_status, hub_type |
+| Post-hoc annotations | `data.annotations.*` | `wayai conversations <id> annotate --set key=value` — real business outcomes (purchased, churned) recorded after the conversation ends; correlate predictions vs reality |
+| Eval scores | `data.eval_scores.*` | Eval runs only (`is_eval = true` rows — excluded from production analytics) |
+
+Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--filter`, `--period`), `wayai analytics query` (structured: multi-variable, group_by, correlations), or `wayai evals sql` (raw SQL over eval rows). Defining *good* variables happens on the evaluator agents ([roles-and-settings.md → Evaluation Variables](references/agents/roles-and-settings.md#evaluation-variables)); filters, aggregations, and workflows: [`references/analytics.md`](references/analytics.md).
+
+## Teams, Users & Access
+
+People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML:
+
+- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` or `/task`
+- **Hub Team User** — support team member handling conversations in `/support`; grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
+- **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
+- **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
+- **MCP access** — whether external MCP clients reach the hub's tools: `mcp_access` (see Hub Settings; UI-only)
 
 ## Hub Environments
 
@@ -166,58 +282,6 @@ Production is read-only — all config mutations flow through preview. Multiple 
 WhatsApp/Instagram/Telegram channels can be exercised on a preview before publishing — register a tester via a `#test CODE` claim code (see `references/connections.md` → Channel → "Testing a channel on a preview before publishing").
 
 Only preview hubs are editable. `wayai pull` also writes the linked production hub as a **read-only mirror** folder (bare slug — no `--<label>` suffix — with a marker comment in `hub.yaml`) so the live production config is browsable alongside the preview; `wayai push` refuses it and it's excluded from auto-select. Use `wayai diff --production` for a clean preview-vs-production diff.
-
-## Kanban & States
-
-**Kanban statuses** are workflow stages for conversations (visible in support/task views), defined per hub in `hub.yaml`. Each status has a stable `slug` (immutable identifier), a `name` (display label), behavioral flags, and optional time-based followups.
-
-**Identity model:**
-- `slug` — immutable lowercase identifier (`^[a-z][a-z0-9_]{0,49}$`). Stored in `conversation.kanban_status`, ClickHouse `data.meta.kanban_status`, native tool params, and transition references. **Cannot be renamed** after the status is saved.
-- `name` — display label shown in the UI and tool descriptions. Freely editable.
-
-Behavioral flags: `isInitialStatus`, `triggersAgentResponse`, `allowsAgentUpdate`, `isTerminalStatus`, `isSchedulingStatus` (requires `eventName`).
-
-**Allowed transitions** (`allowed_next_statuses`) — optional list of slugs this status can transition to. Omit (= `undefined`) for unrestricted (any next status). Empty array `[]` is rejected; use `isTerminalStatus: true` for "no outbound."
-
-Followup types:
-- `inactivity` — sent after a period of silence
-- `before_event` — sent before a scheduled event (requires parent status `isSchedulingStatus: true`)
-
-Both support `threshold` + `timeUnit` (seconds/minutes/hours/days), optional quiet hours (`excludedTimeStart`/`excludedTimeEnd`), and `excludeHolidays` (default `true`).
-
-**Additional context on transition** (only meaningful when `triggersAgentResponse: true`):
-- `additional_context_schema` — JSON Schema (Draft 2020-12) defining the form rendered when a team member transitions a conversation into this status. Submitted values are validated against the schema server-side; any violation fails the request with a path-anchored error. Capped at 16 KB JSON-serialized. Top-level property name `additional_data` is reserved (collides with the dump placeholder below).
-- `additional_instructions` — prose template injected into the agent turn on transition. Supports two placeholder forms:
-  - `{{path.to.field}}` — dotted access, whitespace-tolerant. Strings/numbers/booleans render verbatim; arrays of primitives render comma-joined; nested objects/arrays of objects render as 2-space-indented JSON.
-  - `{{additional_data}}` — full payload dumped as 2-space-indented JSON. Useful when the schema has lots of fields and you want them all in one block without per-field placeholders.
-- The agent receives a single `<system_additional_instructions>` block containing the interpolated prose. The tag is emitted only when there's content to send (no empty tag noise); the agent turn fires regardless via `triggersAgentResponse`.
-
-**Constraints** (enforced server-side on every write — REST, CLI `wayai push`, MCP):
-- Exactly one status must have `isInitialStatus: true`
-- Slugs must be unique within a hub and match `^[a-z][a-z0-9_]{0,49}$`
-- Every entry in `allowed_next_statuses` must reference a sibling slug; `[]` is rejected
-- Mutually exclusive flags (cannot both be `true` on the same status):
-  - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
-  - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
-- `isSchedulingStatus: true` requires non-empty `eventName`
-- `before_event` followups require the parent status to have `isSchedulingStatus: true`
-- Followups with `delivery_mode: direct` require non-empty `direct_text`
-- `additional_context_schema` must be a well-formed JSON Schema; the schema's `properties` must not declare a top-level `additional_data` key (reserved placeholder name); JSON-serialized size ≤ 16 KB
-
-**Non-blocking warnings** (returned alongside successful saves):
-- `unreachable` — a non-initial status that no other status lists in its `allowed_next_statuses`.
-- `placeholder_unresolved` — a `{{path.to.field}}` placeholder in `additional_instructions` does not resolve against `additional_context_schema`. At runtime that placeholder renders as empty string.
-- `unused_lane` — a declared lane no status is assigned to.
-
-**Lanes** (optional, presentational grouping for the kanban board filter). A hub may declare a `lanes` array (`{ slug, name, color?, order? }`); each non-initial status may set `lane_slug` to one of them. Lanes are organizational only — they do **not** change transitions (those stay in `allowed_next_statuses`) and are not visible to agents. Constraints (server-side, all write paths): lane slugs unique + `^[a-z][a-z0-9_]{0,49}$`; a status's `lane_slug` must reference a declared lane; the initial status must **not** have a `lane_slug` (it's the shared entry point). The board filters by lane; the initial status shows in every lane.
-
-**Runtime transition gate:** When a conversation transitions kanban status (drag-drop, native tool, REST, MCP), the configured `allowed_next_statuses` is enforced. Disallowed transitions return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy "any → any" behavior.
-
-**States** are JSON-schema data the agent reads/writes during conversations. Each state has either `conversation` or `user` scope, a `json_schema` (shape), and an optional `initial_value` (opt-in pre-populated virtual record rendered in both the `{{state()}}` placeholder and the `<state>` tag until the first real write). Omit `initial_value` to keep state silent until something is actually written.
-
-**Kanban vs State:** kanban tracks workflow progression; state tracks structured data. Both coexist.
-
-For deeper schemas, see [`references/states.md`](references/states.md).
 
 ## Hub Settings
 
@@ -258,7 +322,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
 | 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
-| 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connection Types → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
+| 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connections & Credentials → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
 | 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | Agent runs `wayai publish` — shows the preview→production diff, then confirms (or `wayai publish -y` to skip the prompt). First publish clones preview → a new production hub; later runs sync. **Paid plans only** — if the CLI reports publishing requires a paid plan, manual fallback: open the publish deeplink below to upgrade + Publish in the UI. |
@@ -322,10 +386,16 @@ After the hub exists, follow the existing-hub workflow.
 ```bash
 wayai update            # Update CLI (run before any operation)
 wayai login             # OAuth — or `wayai login --token` for headless/CI
+wayai logout            # Sign out and clear stored credentials
+wayai whoami            # Show the authenticated identity
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
+wayai org pull          # Org-as-code: fetch org-level shared resources → wayai-ws/org/
+wayai org push          # Org-as-code: apply local org resources to the platform (fans out to linked hubs); `wayai org diff` previews
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
+wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
+wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
 wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
@@ -346,6 +416,8 @@ wayai sync-skills       # Sync skills to provider connections; --connection-id <
 wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale schemas); --connection <name|uuid>
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
+wayai evals             # List eval scenarios for the hub (--enabled / --disabled)
+wayai evals sql         # Raw single-SELECT SQL over the hub's eval result rows ("SELECT …"; --schema prints the column + eval-score-path catalog; --limit, --json)
 wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs; --pacing conservative|balanced|fast|<ms> to throttle run dispatch)
 wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
@@ -428,42 +500,19 @@ hub:
   # tags: [retail, vip]          # org tag slug names (create in UI first); gate which org credentials this hub can resolve. Omit to leave unchanged; [] clears. See references/connections.md#organization-tags
   # auto_close_inactive_days: 7  # force-close a conversation after N days of inactivity (see Hub Settings)
   # conversation_retention_days: 7  # keep an ended conversation's DO alive N days for post-hoc `annotate` (see Hub Settings)
-  kanban_statuses:
+  kanban_statuses:               # full field specs + constraints: references/kanban.md
     - slug: new
       name: New
       order: 0
       color: "#22c55e"
       isInitialStatus: true
-      allowed_next_statuses: [qualified, waiting_for_customer, resolved]
-    - slug: qualified
-      name: Qualified
+      allowed_next_statuses: [in_progress, waiting_for_customer, resolved]
+    - slug: in_progress
+      name: In Progress
       order: 1
       color: "#3b82f6"
-      triggersAgentResponse: true
+      triggersAgentResponse: true   # transition fires an agent turn; can carry additional_context_schema + additional_instructions (see references/kanban.md)
       allowed_next_statuses: [waiting_for_customer, resolved]
-      additional_context_schema:           # JSON Schema (Draft 2020-12)
-        type: object
-        properties:
-          contact:
-            type: object
-            properties:
-              display_name: { type: string }
-              relationship: { type: string }
-            required: [display_name]
-          students:
-            type: array
-            items:
-              type: object
-              properties:
-                student_name: { type: string }
-                modality: { type: string }
-              required: [student_name]
-        required: [contact, students]
-      additional_instructions: |
-        A qualified contact just transitioned in. Greet {{contact.display_name}}
-        ({{contact.relationship}} of the student) and confirm interest.
-        Students:
-        {{additional_data}}
     - slug: waiting_for_customer
       name: Waiting for Customer
       order: 2
@@ -526,8 +575,9 @@ settings:
   # file_handling_mode: always_attach  # or metadata_only (historical files sent as metadata; agent fetches via read_file). max_attachment_size_mb caps always_attach size (see roles-and-settings.md#file-handling-all-llm-connectors)
 tools:
   native:
-    - send_text_message
     - update_kanban_status
+    - get_state
+    - update_state
   delegation:
     - type: agent
       tool: transfer_to_agent
@@ -550,19 +600,24 @@ tools:
           properties:
             email: { type: string, description: Customer email }
           required: [email]
+resources:
+  - name: Company FAQ              # links a hub resource by name (see Resources)
+    resource_id: "resource-uuid"   # set by pull
+    priority: 0
 ```
 
 For full agent options (settings per connector, `additional_context_template`, `response_format`, file handling, native tool params, custom tool fields, `composed_tools`, placeholders), see [`references/agents/`](references/agents/).
 
-**Evaluation variables** — `conversation_evaluator` / `message_evaluator` agents carry an `evaluation_variables` list (the structured fields they emit per conversation/message), round-tripped via pull/push. See [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md#evaluation-variables).
+**Evaluation variables** — `conversation_evaluator` / `message_evaluator` agents carry an `evaluation_variables` list (the structured fields they emit per conversation/message, which become `data.variables.*` in Analytics), round-tripped via pull/push. See [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md#evaluation-variables).
 
 ## Key Rules
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
 - **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
 - **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
-- **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve — an untagged hub sees only untagged credentials; a tagged hub sees credentials sharing ≥1 tag. See [`references/connections.md`](references/connections.md#organization-tags)
+- **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve (matching rule in Connections & Credentials above). See [`references/connections.md`](references/connections.md#organization-tags)
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from a `Tool - MCP` connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
+- **Names are foreign keys:** cross-entity references resolve by display name at push/runtime — agent `connection:`, delegation `target:` (agent name or UI-managed team name), agent `resources[].name`, eval `agent:`, custom tool `connection:`. A dangling name fails the push or the runtime call — when renaming anything, update its referrers in the same edit
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)
 - **Entity matching (sync/diff):** `id` first (stable UUID), then fallback. Exceptions: states match by `name` (unique per hub regardless of scope); evals match by `name + path`; native tools by `tool_name` per agent
@@ -589,21 +644,22 @@ Examples: `Mario's Pizza` → `marios-pizza`; `Suporte Nível 2` → `suporte-ni
 
 ## Reference Documentation
 
-References mirror the hub navigation. Open the relevant file when working on that domain.
+One reference per domain, following the hub navigation order. Concepts live in this file; open the domain's reference when you're about to author its YAML, need field-level schemas or per-provider specifics, or are debugging behavior in that domain.
 
 | Domain | Reference | When to read |
 |--------|-----------|--------------|
-| **Connections** | [`references/connections.md`](references/connections.md) | Wiring up a channel, agent provider, tool API, or speech connector |
-| **Agents** | [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md) | Choosing an agent role, delegation flow, connector-specific settings |
-| **Agents** | [`references/agents/native-tools.md`](references/agents/native-tools.md) | Native tool parameters per connector, meta tools (`get_tool_schema`, `execute_tool`) |
+| **Connections** | [`references/connections.md`](references/connections.md) | Wiring up a channel, agent provider, tool API, or speech connector; credential binding, org tags, production credentials |
+| **Agents** | [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md) | Choosing an agent role, delegation flow, connector-specific settings, evaluation variables, response format |
+| **Agents** | [`references/agents/native-tools.md`](references/agents/native-tools.md) | Native tool catalog + parameters, meta tools (`get_tool_schema`, `execute_tool`), MCP tool assignment |
 | **Agents** | [`references/agents/custom-tools.md`](references/agents/custom-tools.md) | Custom HTTP tool format, OpenAI function schema, `composed_tools` side effects |
 | **Agents** | [`references/agents/tool-principles.md`](references/agents/tool-principles.md) | Designing a tool surface a fallible agent calls reliably — surface curation > validation > prompt, one-tool-one-intent, fail-loud, guarded atomic ops |
 | **Agents** | [`references/agents/instructions.md`](references/agents/instructions.md) | Placeholder syntax (`{{now()}}`, `{{state()}}`, etc.) for `agents/<slug>.md` |
 | **Agents** | [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md) | Placing & structuring context for reliable execution — context-to-slot-lifetime, cache hygiene, state vs tool-history, flow-before-style, positive framing, voice as its own section |
-| **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
+| **Kanban** | [`references/kanban.md`](references/kanban.md) | Kanban field specs: flags, transitions, followups, additional-context schema/instructions, lanes, constraint matrix, warnings |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
+| **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
+| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, authoring & interpreting principles |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
-| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code (`journeys/<slug>.yaml`, `wayai pull`/`push`), `wayai eval capture` / `wayai eval journey capture` from production. **Good practice for tool-dependent evals:** compose journey + `fixture:` + `variables` for repeatable, parallel runs |
-| **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
+| **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
-| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |
+| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |

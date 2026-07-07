@@ -78,11 +78,13 @@ states:
 
 Agents access states through native tools (provided by the Wayai connector):
 
+All four tools address a state by its **`state_slug`** (the immutable slug, not the display name); scope is inferred from the state's definition. Parameter tables: [agents/native-tools.md](agents/native-tools.md#state-tools).
+
 | Tool | Purpose |
 |------|---------|
 | `get_state` | Read a state's current value (returns the full object) |
-| `update_state` | Replace the entire state value |
-| `set_state_path` | Update a single dot-notation path (e.g., `items.0.quantity`) |
+| `update_state` | **Merge** key-value updates into the current value |
+| `set_state_path` | Set one path without touching the rest — `path` is an ordered array of keys (e.g., `["items", "0", "quantity"]`) |
 | `reset_state` | Delete the persisted row (next read falls back to `initial_value` if set, else `{}`) |
 
 To make these available, list them under `tools.native` for the agent:
@@ -96,10 +98,10 @@ tools:
     - reset_state
 ```
 
-Inside agent instructions, reference state values using the `{{state(name)}}` placeholder:
+Inside agent instructions, reference state values using the two-argument `{{state(scope, slug)}}` placeholder. A single argument is parsed as a *scope*: `{{state(conversation)}}` returns that whole scope's object, while `{{state(order_tracking)}}` does **not** read the `order_tracking` state — it's an unknown scope and stays unresolved:
 
 ```markdown
-Current order: {{state(order_tracking)}}
+Current order: {{state(conversation, order_tracking)}}
 ```
 
 See [agents/instructions.md](agents/instructions.md) for full placeholder syntax.
@@ -113,7 +115,7 @@ See [agents/instructions.md](agents/instructions.md) for full placeholder syntax
 - **When set**, both channels render it as the effective state until a real write happens:
   - the `{{state(<scope>, <slug>)}}` placeholder substitutes its JSON content
   - the `<conversation_state>` / `<user_state>` tag emits it on the user turn (when `inject_in_last_message` is on)
-- **When omitted**, the placeholder renders empty and the tag is suppressed. The state stays silent until the agent or a tool writes to it for the first time.
+- **When omitted**, the tag is suppressed and a `{{state(scope, slug)}}` read of the unwritten state stays **unresolved** (the literal placeholder text remains — another reason to keep volatile state reads in `additional_context_template`). The state stays silent until the agent or a tool writes to it for the first time.
 - After `reset_state`, the persisted row is deleted; the next read falls back to `initial_value` if set, otherwise `{}`.
 - After `set_state_path` or `update_state`, the persisted row contains ONLY what was explicitly written — it does NOT include the surrounding `initial_value` shape. If the agent needs the rest of the structure, it should read `initial_value` separately or always go through `get_state`.
 

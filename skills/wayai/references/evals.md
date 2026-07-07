@@ -306,6 +306,17 @@ Requires `--session <id>` or `--eval <name>` — there is no hub-wide default. T
 
 Results come from ClickHouse — eval rows are tagged `is_eval = true` and excluded from production analytics. See [analytics.md](analytics.md) for the eval-only analytics surface.
 
+### Listing scenarios & ad-hoc SQL
+
+```bash
+wayai evals                          # list the hub's eval scenarios (--enabled / --disabled to filter)
+wayai evals sql "SELECT count() FROM conversation"                          # raw SQL over eval result rows
+wayai evals sql "SELECT eval_id, count() FROM conversation GROUP BY 1" --json
+wayai evals sql --schema             # column + eval-score-path catalog (incl. discovered data.eval_scores.* dimensions)
+```
+
+`wayai evals sql` is for aggregate questions `eval-results` can't answer (pass rates across sessions, score trends, per-dimension breakdowns). Server-enforced guardrails: scoped to the current hub + `is_eval = true`, single-SELECT only, 10k row cap (`--limit` to lower).
+
 ---
 
 ## Debug: what did the agent actually see?

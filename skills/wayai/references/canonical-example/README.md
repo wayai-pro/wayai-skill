@@ -26,9 +26,9 @@ canonical-example/
 `agents/support-pilot.yaml` field `connection: openai-main` matches the entry in `hub.yaml` `connections:` with `name: openai-main`. On `wayai push`, that connection auto-creates from the first org credential matching `type: Agent` + `service: OpenAI` (auth type: API Key). OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist in the UI; the agent file references them by name only — see `references/connections.md`.
 
 ### 2. Agent → State (two paths)
-**Tool path:** `agents/support-pilot.yaml` `tools.native` lists `get_state`, `update_state`, `set_state_path`. At runtime the agent calls these with `state_name` matching a name in `hub.yaml` `states[]` (e.g., `ticket_intake`, `customer_profile`). Scope is derived from the state definition — the agent passes only the name.
+**Tool path:** `agents/support-pilot.yaml` `tools.native` lists `get_state`, `update_state`, `set_state_path`. At runtime the agent calls these with `state_slug` matching a slug in `hub.yaml` `states[]` (e.g., `ticket_intake`, `customer_profile`). Scope is derived from the state definition — the agent passes only the slug.
 
-**Placeholder path:** `agents/support-pilot.md` (and the `additional_context_template` in the YAML) reads state values via `{{state(<scope>, <name>)}}` — `{{state(conversation, ticket_intake)}}`, `{{state(user, customer_profile)}}`. The scope and name **must** match a `hub.yaml` `states[]` entry. A mismatch silently renders empty (placeholder rule from `references/agents/instructions.md`).
+**Placeholder path:** `agents/support-pilot.md` (and the `additional_context_template` in the YAML) reads state values via `{{state(<scope>, <slug>)}}` — `{{state(conversation, ticket_intake)}}`, `{{state(user, customer_profile)}}`. The scope and slug **must** match a `hub.yaml` `states[]` entry. A mismatch leaves the placeholder unresolved — the literal `{{state(...)}}` text lands in the prompt (placeholder rule from `references/agents/instructions.md`).
 
 Note where each lives: stable identity in `instructions` (system prompt — cached), high-churn reads in `additional_context_template` (per-turn — outside the cache). This split is what makes Anthropic/OpenAI prompt-cache hits possible. See `references/agents/instructions.md#additional-context-cache-friendly`.
 
@@ -38,7 +38,7 @@ Note where each lives: stable identity in `instructions` (system prompt — cach
 The agent invokes the resource at runtime via the native tools `list_resource_files` (discover what's there) and `read_file` (read the content) — both declared in `tools.native`. The instructions reinforce this: look up the FAQ before promising anything.
 
 ### 4. Kanban slug invariant
-`agents/support-pilot.md` instructs the agent to call `update_kanban_status` with slugs: `in_progress`, `waiting_for_customer`, `resolved`. These **must** match `hub.yaml` `hub.kanban_statuses[].slug` exactly — the slug is the stable identifier (`references/agents/native-tools.md#update_kanban_status`). The display `name` is for humans; the agent never sees it.
+`agents/support-pilot.md` instructs the agent to call `update_kanban_status` with slugs: `in_progress`, `waiting_for_customer`, `resolved`. These **must** match `hub.yaml` `hub.kanban_statuses[].slug` exactly — the slug is the stable identifier and the tool's only accepted wire value (`references/agents/native-tools.md#update_kanban_status`); display names appear only as descriptive labels in the tool description.
 
 Allowed transitions: `hub.yaml` declares `allowed_next_statuses` per status. The native tool rejects transitions that violate the list or that originate from `isTerminalStatus: true`.
 

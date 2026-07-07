@@ -2,7 +2,7 @@
 
 Setup guide for WayAI hub connections. Non-OAuth connections are **auto-created by `wayai push`** from organization credentials. OAuth connections require **UI** setup.
 
-For the canonical, programmatic source of connector definitions (auth schemas, settings schemas, model lists), inspect [`packages/core/src/catalog/connectors.ts`](../../../../../packages/core/src/catalog/connectors.ts) — this reference reflects that catalog and is updated alongside it.
+For the canonical, programmatic source of connector definitions (auth schemas, settings schemas, model lists), inspect `packages/core/src/catalog/connectors.ts` in the WayAI platform monorepo — this reference reflects that catalog and is updated alongside it.
 
 ## Table of Contents
 - [Organization Credentials](#organization-credentials)
@@ -109,7 +109,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 - Tool - Native (Google Calendar)
 - Tool - MCP (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
 
-OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connection Types → OAuth connection handoff) — then `wayai pull` once they finish.
+OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
 
 ---
 
@@ -261,7 +261,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 **Prerequisites:** OpenAI API key from [platform.openai.com](https://platform.openai.com)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Agent** group, click the **OpenAI** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -273,7 +273,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 **Prerequisites:** Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Agent** group, click the **Anthropic** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -285,7 +285,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 **Prerequisites:** Google AI Studio API key from [aistudio.google.com](https://aistudio.google.com)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Agent** group, click the **Google AI Studio** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -297,7 +297,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 **Prerequisites:** OpenRouter API key from [openrouter.ai](https://openrouter.ai)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Agent** group, click the **OpenRouter** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -337,7 +337,7 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 - Meta Business account
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Channel** group, click the **Instagram** card
 3. Click "Connect with Meta"
 4. Authorize Instagram messaging permissions
@@ -353,7 +353,7 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 - Phone number for WhatsApp Business (can be new or existing)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Channel** group, click the **WhatsApp** card
 3. Click "Connect with Meta" → Meta embedded signup opens
 
@@ -412,7 +412,7 @@ Email send + receive via [Resend](https://resend.com). Resend uses an API key ti
 - A `from` email address on your verified domain (e.g., `support@yourdomain.com`)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Channel** group, click the **Resend** card
 3. Fill the form:
    - **Account ID** (required): Your `from` email address (e.g., `support@yourdomain.com`)
@@ -432,7 +432,7 @@ Send and receive Telegram messages via the [Bot API](https://core.telegram.org/b
 
 **Setup:**
 1. In Telegram, message [@BotFather](https://t.me/BotFather), send `/newbot`, follow the prompts, and copy the resulting token
-2. Settings → Organizations → Project → Hub → Connections
+2. Settings → Organizations → Hub → Connections
 3. In the **Channel** group, click the **Telegram** card
 4. Fill the form:
    - **Account ID** (required): Bot username (e.g., `@my_bot`)
@@ -477,7 +477,7 @@ This is the core native toolset providing:
 **Prerequisites:** Google account with Calendar access
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Tool - Native** group, click the **Google Calendar** card
 3. Click "Connect with Google"
 4. Authorize calendar access
@@ -490,7 +490,7 @@ This is the core native toolset providing:
 Connect to external file storage services for agent file access.
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Tool - Native** group, click the **External Resources** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -519,7 +519,7 @@ See [agents/custom-tools.md](agents/custom-tools.md) for how to create custom to
 Connect to any REST API using API key, basic auth, or bearer token authentication.
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Tool - Custom** group, click the **REST API** card
 3. Choose an authentication type:
    - **API Key** — provide an API key (and optional access token)
@@ -553,7 +553,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 **Prerequisites:** MCP server URL (Streamable HTTP endpoint)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **Tool - MCP** group, click the **MCP Server** card
 3. Choose an authentication type:
    - **Bearer Token** — provide a bearer token (or leave empty for no auth). Bind a **Bearer Token** org credential to reuse it across connections.
@@ -567,7 +567,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 
 **After setup:** Use the Sync button to refresh available tools when the MCP server is updated.
 
-> **MCP OAuth is UI-only.** `wayai push` auto-creates only the **Bearer Token** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connection Types → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
+> **MCP OAuth is UI-only.** `wayai push` auto-creates only the **Bearer Token** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connections & Credentials → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
 
 **Features:** OAuth connections include automatic token refresh (1 hour).
 
@@ -589,7 +589,7 @@ Speech-to-text services for transcribing voice messages.
 **Prerequisites:** Groq API key from [console.groq.com](https://console.groq.com)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **STT** group, click the **Groq STT** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -603,7 +603,7 @@ Speech-to-text services for transcribing voice messages.
 **Prerequisites:** OpenAI API key
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **STT** group, click the **OpenAI STT** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -631,7 +631,7 @@ Text-to-speech services for generating voice responses.
 **Prerequisites:** OpenAI API key
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **TTS** group, click the **OpenAI TTS** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -649,7 +649,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 **Prerequisites:** Groq API key from [console.groq.com](https://console.groq.com)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **TTS** group, click the **Groq TTS** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
@@ -665,7 +665,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 **Prerequisites:** ElevenLabs API key from [elevenlabs.io](https://elevenlabs.io)
 
 **Setup:**
-1. Settings → Organizations → Project → Hub → Connections
+1. Settings → Organizations → Hub → Connections
 2. In the **TTS** group, click the **ElevenLabs TTS** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection

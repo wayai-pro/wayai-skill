@@ -33,8 +33,8 @@ Before structuring instructions, decide *what even belongs in them*. Match each 
 
 ## C. Execution discipline
 
-5. **One action = one explicit procedure.** Write multi-step actions as a **numbered, imperative** list. Every external effect is a **named tool call** (native or custom — e.g. `send_text_message`, `update_kanban_status`, a custom write tool). State the rule plainly: **never claim an action is done until its tool call returns success.** Models silently skip steps otherwise.
-6. **State discipline.** Carry exact identifiers in conversation / user state and **copy them verbatim** from tool results — never let the model reconstruct, guess, or reformat an id. Read them back with `{{state(scope, name).field}}`; persist them with the agent's write tools.
+5. **One action = one explicit procedure.** Write multi-step actions as a **numbered, imperative** list. Every external effect is a **named tool call** (native or custom — e.g. `update_kanban_status`, `close_conversation`, a custom write tool); replying with text is the exception — delivery is automatic, no tool. State the rule plainly: **never claim an action is done until its tool call returns success.** Models silently skip steps otherwise.
+6. **State discipline.** Carry exact identifiers in conversation / user state and **copy them verbatim** from tool results — never let the model reconstruct, guess, or reformat an id. Read them back with `{{state(scope, slug).field}}`; persist them with the agent's write tools.
 
 ## D. Voice
 

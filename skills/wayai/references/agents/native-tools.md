@@ -1,6 +1,8 @@
 # Native Tools
 
-Tools provided by native connectors. Added to agents by listing them under `tools.native` in `agents/<slug>.yaml` and running `wayai push`.
+Tools provided by native connectors. Added to agents by listing them under `tools.native` in `agents/<slug>.yaml` and running `wayai push`. This file mirrors the platform catalog (`packages/core/src/catalog/native-tools.ts` + `native-tool-schemas.ts`) — every tool below exists with exactly this name; a name not listed here does not exist.
+
+All tools except the Google Calendar group belong to the **Wayai** connector (auto-created and enabled with every hub — no setup). Google Calendar tools require a **Google Calendar** connection (OAuth, UI setup — see [connections.md](../connections.md)).
 
 ## YAML form
 
@@ -9,7 +11,7 @@ Two forms are accepted under `tools.native`:
 ```yaml
 tools:
   native:
-    - send_text_message                                        # short form: catalog defaults
+    - update_kanban_status                                     # short form: catalog defaults
     - name: get_tool_schema                                    # object form: per-instance overrides
       keep_in_history: true
     - name: generate_monthly_report
@@ -27,238 +29,291 @@ Other native fields (schema, instructions, operation) come from the platform cat
 
 ## Table of Contents
 - [Conversation Tools](#conversation-tools)
-- [Resource Tools](#resource-tools)
+- [State Tools](#state-tools)
+- [Resource & File Tools](#resource--file-tools)
+- [Skill Tools](#skill-tools)
+- [History & Summary Tools](#history--summary-tools)
 - [Google Calendar Tools](#google-calendar-tools)
 - [Meta Tools](#meta-tools)
 - [MCP Tools](#mcp-tools)
+- [Quick Reference](#quick-reference)
 
 ---
 
 ## Conversation Tools
 
-**Connector:** Wayai
-**connector_id:** `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4`
-
-Tools for managing conversations, transfers, and agent consultations.
-
-| Tool | tool_native_id |
-|------|----------------|
-| Close Conversation | `8db2461f-7b43-4e06-aca7-b110dbd4317d` |
-| Consult Agent | `f3c7d8e9-1a2b-4e5f-8901-234567abcdef` |
-| Get Internal Files | `e5e6f7a8-9abc-0def-1234-567890abcdef` |
-| Schedule Followup | `9f8e7d6c-5b4a-3e2d-1c0b-9a8f7e6d5c4b` |
-| Send Internal Files | `f6f7a8b9-0bcd-1def-2345-678901bcdef0` |
-| Transfer to Agent | `e1f2a3b4-5c6d-7e8f-9012-345678abcdef` |
-| Transfer to Team | `1fcac563-34d5-4546-80cd-9ac9c3f19ef7` |
-| Update Kanban Status | `c8f7e2b1-9a4d-4e8c-b3f6-1d5a8e9c7b2f` |
+Routing, workflow, and delivery. (Replying with plain text needs no tool — delivery is automatic.)
 
 ### transfer_to_agent
 
-Transfer to agent by name (dynamic lookup).
+Hand off the conversation to another AI agent on the same track (specialist, or back to the entry pilot/copilot as router). The harness reinvokes the target immediately — call it silently (see [roles-and-settings.md](roles-and-settings.md#delegation-flow)).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `agent_name` | string | Yes | Name of agent to transfer to |
+| `agent_name` | string | Yes | Name of the AI agent to transfer to |
 
 ### transfer_to_team
 
-Transfer to team by name (dynamic lookup).
+Hand off the conversation to a human support team. The result returns to the caller — confirm to the user *after* the call.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `team_name` | string | Yes | Name of team to transfer to |
-
-### close_conversation
-
-Close/end a conversation.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `new_status` | string | No | Status after closing (default: 'ended') |
-
-### update_kanban_status
-
-Update conversation's kanban board status. The enum is constrained to the hub's agent-updateable status **slugs**; the tool description renders `slug (Display Name)` pairs so the LLM can reason about the choice. Transitions are rejected when the source status is `isTerminalStatus: true` (any outbound transition fails) or defines an `allowed_next_statuses` list that excludes the target. Both rejections return an error message beginning with `invalid_kanban_transition:` — terminal-status rejections name the source and target slug; `allowed_next_statuses` rejections additionally append `Allowed targets: <slugs>`.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `new_kanban_status` | string | Yes | Target status **slug** (immutable identifier from `hub.kanban_statuses[].slug`, not the display `name`) |
-
-### schedule_followup
-
-Schedule a followup message for later.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `scheduled_time` | string | Yes | ISO 8601 datetime |
-| `message` | string | Yes | Message to send |
+| `team_name` | string | Yes | Name of the team to transfer to (a team defined in Hub → Users → Teams; unknown names fail at runtime) |
 
 ### consult_agent
 
-Consult with another agent without transferring.
+Consult another agent for advice without transferring; the advice returns to the caller.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `agent_name` | string | Yes | Name of agent to consult |
-| `consult_question` | string | Yes | Question to ask |
+| `agent_name` | string | Yes | Name of the AI agent to consult |
+| `consult_question` | string | Yes | The specific question to ask |
+
+### close_conversation
+
+Close the current conversation and mark it resolved. **No parameters.** The conversation is archived and leaves the active list. (Transitioning into an `isTerminalStatus: true` kanban status also closes the conversation — see [kanban.md](../kanban.md); use whichever matches the workflow.)
+
+### update_kanban_status
+
+Update conversation's kanban board status. The enum is constrained to the hub's agent-updateable status **slugs**; the tool description renders `slug (Display Name)` pairs so the LLM can reason about the choice. Transitions are rejected when the source status is `isTerminalStatus: true` (any outbound transition fails) or defines an `allowed_next_statuses` list that excludes the target. Both rejections return an error message beginning with `invalid_kanban_transition:` — terminal-status rejections name the source and target slug; `allowed_next_statuses` rejections additionally append `Allowed targets: <slugs>`. Transitioning **into** a terminal status closes the conversation.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `new_kanban_status` | string | Yes | Target status **slug** (immutable identifier from `hub.kanban_statuses[].slug`; display names appear only as labels in the description) |
+| `scheduled_event_date` | string | No | For `isSchedulingStatus` statuses: event datetime, RFC3339 with timezone |
+| `event_description` | string | No | Description of the scheduled event |
+| `event_sid` | string | No | External event ID for integration purposes |
+
+### schedule_followup
+
+Schedule a custom manual followup at an exact future time. The receiver is determined automatically from conversation status + hub AI mode. Separate from automatic kanban-based followups.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `scheduled_time` | string | Yes | ISO 8601 datetime with timezone; must be in the future |
+| `message` | string | Yes | The followup message. May embed AI instructions in brackets: `"Text [AI Context: instructions]"` |
 
 ---
 
-## Resource Tools
+## State Tools
 
-**Connector:** Wayai Resource
-**connector_id:** `d45e6f78-9abc-4def-8901-23456789abcd`
+Read/write the hub's configured [states](../states.md). All four are keyed by **`state_slug`** — the state's immutable slug, not its display name (the schema enumerates the hub's slugs with display names as labels). Scope (`conversation` vs `user`) is inferred from the state's definition — the agent never passes it.
 
-Tools for accessing and managing resource bases.
+### get_state
 
-| Tool | tool_native_id |
-|------|----------------|
-| Get Resource Item | `d4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f` |
-| List Resources | `c3c4d5e6-7f8a-9b0c-1d2e-3f4a5b6c7d8e` |
-| Retrieve Resource Content | `a1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c` |
-| Update Resource Content | `b2b3c4d5-6e7f-8a9b-0c1d-2e3f4a5b6c7d` |
-
-### retrieve_resource_content
-
-Search and retrieve resource items with filtering.
+Retrieve a state's current value.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `entity_type` | string | No | 'organization' or 'hub' |
-| `entity_id` | string | No | Entity ID to scope search |
-| `resource_id` | string | No | Specific resource base ID |
-| `search_query` | string | No | Search text |
-| `tags` | array | No | Filter by tags |
-| `content_format` | array | No | Filter by format |
-| `limit` | number | No | Max results (default 10, max 100) |
-| `offset` | number | No | Pagination offset |
+| `state_slug` | string | Yes | Slug of the state to read |
 
-### list_resources
+### update_state
 
-List available resources.
+**Merge** key-value updates into the state's current value (not a full replace).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `resource_name` | string | No | Filter by specific name |
+| `state_slug` | string | Yes | Slug of the state to update |
+| `updates` | object | Yes | Key-value pairs merged into the current value |
 
-### get_resource_item
+### set_state_path
 
-Get a specific resource item by ID.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `resource_item_id` | string | Yes | Resource item ID |
-
-### update_resource_content
-
-Update an existing resource item.
+Set one path inside the state object without touching the rest.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `resource_item_id` | string | Yes | Item ID to update |
-| `resource_item_content` | string | Yes | New content |
-| `resource_item_title` | string | No | New title |
+| `state_slug` | string | Yes | Slug of the state to update |
+| `path` | array of strings | Yes | Path as an **ordered list of keys** (e.g. `["items", "0", "quantity"]`) |
+| `value` | any JSON | Yes | Value written at that path |
+
+### reset_state
+
+Reset a state to its initial value (deletes the persisted row; reads fall back to `initial_value` if defined, else `{}`).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `state_slug` | string | Yes | Slug of the state to reset |
+
+---
+
+## Resource & File Tools
+
+Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. `resource_id` values come from the `{{resources()}}` placeholder ([instructions.md](instructions.md)).
+
+### list_resource_folders
+
+List folders in a resource (with `parent_folder_id` for hierarchy).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `resource_id` | string | Yes | Resource to query |
+| `search_query` | string | No | Filter folders by name |
+| `metadata_filter` | object | No | MongoDB-style operators (`$eq`, `$ne`, `$gt/$gte/$lt/$lte`, `$in/$nin`, `$contains`, `$and/$or/$not`; nested paths like `"location.city"`) against `folder_metadata_schema` |
+
+### list_resource_files
+
+List files in a resource; returns metadata including the `file_id` used by `read_file`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `resource_id` | string | Yes | Resource to query |
+| `folder_id` | string | No | Filter by folder. Omit = all files; `00000000-0000-0000-0000-000000000000` = root-level only |
+| `search_query` | string | No | Search files by title |
+| `tags` | array | No | Match files with any of the tags |
+| `metadata_filter` | object | No | Same operator syntax as `list_resource_folders`, against `file_metadata_schema` |
+| `limit` | integer | No | Max results (default 50, max 100) |
+| `offset` | integer | No | Pagination offset |
+
+### read_file
+
+Retrieve a file by ID and inject it into the conversation context for analysis.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file_id` | string | Yes | From conversation messages or `list_resource_files` |
+
+### send_files
+
+Send files to the end user through their channel (App, WhatsApp, email, …). WhatsApp sends files individually (caption on the last one); email sends all as attachments of one message.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file_ids` | array | No | File IDs to send (conversation or resource files) |
+| `folder_ids` | array | No | Resource folder IDs — sends all files in them (alternative to `file_ids`) |
+| `message_text` | string | No | Accompanying text (WhatsApp caption / email body) |
+
+### download_file
+
+Mount a **text** resource file into the provider's code-execution sandbox for editing (Anthropic: `/tmp/<filename>`; OpenAI: `/mnt/data/<filename>` — use the returned `sandbox_path`). Returns `{ sandbox_path, filename, sandbox_file_id }`. Bytes never enter conversation context.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file_id` | string | Yes | Resource file to mount (binary files rejected) |
+
+### upload_file
+
+Persist a sandbox file back to the resource library. Two modes: **UPDATE** (pass `file_id` of the existing resource file) or **CREATE** (pass `resource_id` + `filename`, optional `folder_id`). Requires `write_enabled` on the agent↔resource binding.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sandbox_file_id` | string | Yes | Provider-specific ID of the file inside the sandbox |
+| `file_id` | string | UPDATE mode | Existing resource file to overwrite |
+| `resource_id` | string | CREATE mode | Resource the new file belongs to |
+| `filename` | string | CREATE mode | Filename (MIME inferred from extension; text only) |
+| `folder_id` | string | No | CREATE mode: target folder (omit for root) |
+
+---
+
+## Skill Tools
+
+Read [skill-resource](../resources.md#skill-resources) content on demand (tool-based execution mode). `skill_id` = the skill's `resource_id` from the `<available_skills>` context block.
+
+### read_skill
+
+Read a skill's `SKILL.md`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `skill_id` | string | Yes | The skill's resource_id |
+
+### read_skill_file
+
+Read a file inside a skill by relative path (no need to call `read_skill` first if the path is known).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `skill_id` | string | Yes | The skill's resource_id |
+| `file_path` | string | Yes | Relative path from skill root (e.g. `references/menu.md`) |
+
+---
+
+## History & Summary Tools
+
+### get_conversations_summary
+
+Timeline of the current user's past conversations (summaries + conversation IDs).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `max_conversations` | integer | No | Max past conversations (default 10) |
+| `max_characters` | integer | No | Output cap (default 20000, max 40000; truncates oldest first) |
+
+### get_conversation
+
+Full transcript of one past conversation (find IDs via `get_conversations_summary`).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `conversation_id` | string | Yes | Conversation to retrieve |
+| `max_characters` | integer | No | Output cap (default 30000, max 60000) |
+
+### expand_summary
+
+Retrieve the original messages behind a section of the rolling `<conversation_summary>` block (see the summarizer role in SKILL.md → Agent Roles). An unknown `section_id` returns `available_section_ids` for retry.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `section_id` | string | Yes | Section `id` from the `<conversation_summary>` block |
 
 ---
 
 ## Google Calendar Tools
 
-**Connector:** Google Calendar
-**connector_id:** `189c2e74-2275-43b6-8dac-0fb3b782e9de`
+**Connector:** Google Calendar (OAuth — see [connections.md](../connections.md)). Six tools: `google_calendar_list_calendars`, `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_update_event`, `google_calendar_delete_event`, `google_calendar_check_availability`.
 
-Tools for managing calendar events and availability.
-
-| Tool | tool_native_id |
-|------|----------------|
-| Check Availability - Google Calendar | `a5e8c649-0f7d-4b3e-b9ac-96efb8e4c93b` |
-| Create Event - Google Calendar | `2482de79-2f7d-444f-a6a1-e943faf59ec6` |
-| Delete Event - Google Calendar | `763413b8-4464-44d2-989e-682d4c2e8385` |
-| List Events - Google Calendar | `37f60e18-eb76-4efa-968d-1f961bd8325d` |
-| Update Event - Google Calendar | `24f82d08-ee88-439e-851f-a33f48c8471e` |
+These schemas run in **strict mode**: every listed field must be present in the call (fields documented "Optional:" still get passed, possibly empty). Times are RFC3339 with timezone; `timeZone` is an IANA name (e.g. `America/Sao_Paulo`); `calendarId` accepts `"primary"`.
 
 ### google_calendar_list_calendars
 
-List all calendars available to user.
-
-*No parameters required.*
-
-### google_calendar_get_calendar
-
-Get specific calendar info.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID (default: 'primary') |
+List the calendars available to the authenticated user. *No parameters.*
 
 ### google_calendar_list_events
 
-List events within a time range.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID |
-| `timeMin` | string | No | Start time (ISO 8601) |
-| `timeMax` | string | No | End time (ISO 8601) |
-| `timeZone` | string | Yes | Timezone (e.g., 'America/Sao_Paulo') |
-| `maxResults` | number | No | Max events to return |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `calendarId` | string | Calendar to fetch from |
+| `timeMin` / `timeMax` | string | Range bounds, RFC3339 with timezone |
+| `timeZone` | string | IANA timezone for display |
+| `maxResults` | integer | Max events to return |
 
 ### google_calendar_create_event
 
-Create a new calendar event.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID |
-| `event.summary` | string | Yes | Event title |
-| `event.start` | string | Yes | Start datetime (ISO 8601) |
-| `event.end` | string | Yes | End datetime (ISO 8601) |
-| `event.timeZone` | string | Yes | Timezone |
-| `event.description` | string | No | Event description |
-| `event.attendees` | array | No | List of attendee emails |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `calendarId` | string | Target calendar |
+| `event` | object | `summary`, `description`, `start`, `end` (RFC3339), `timeZone`, `location`, `attendees[] ({email})` — strict mode: all present |
 
 ### google_calendar_update_event
 
-Update an existing event.
+Same `event` object as create, plus:
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID |
-| `eventId` | string | Yes | Event ID to update |
-| `event` | object | Yes | Event fields to update |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `calendarId` | string | Calendar containing the event |
+| `eventId` | string | Event to update (from a previous list/create) |
 
 ### google_calendar_delete_event
 
-Delete a calendar event.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID |
-| `eventId` | string | Yes | Event ID to delete |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `calendarId` | string | Calendar containing the event |
+| `eventId` | string | Event to delete (irreversible) |
 
 ### google_calendar_check_availability
 
-Check if a time slot is available.
+Free/busy status for a time range — check before creating events.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `calendarId` | string | No | Calendar ID |
-| `timeMin` | string | Yes | Start time (ISO 8601) |
-| `timeMax` | string | Yes | End time (ISO 8601) |
-| `timeZone` | string | Yes | Timezone |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `timeMin` / `timeMax` | string | Range bounds, RFC3339 with timezone |
+| `timeZone` | string | IANA timezone |
+| `calendarId` | string | Calendar to check |
 
 ---
 
 ## Meta Tools
 
-**Connector:** Wayai
-**connector_id:** `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4`
-
 Tools for meta-level tool management and execution (part of the Wayai connector).
-
-| Tool | tool_native_id |
-|------|----------------|
-| Execute Tool | `b4c997fe-91ab-4f4e-85f9-5bc66d2d9e7e` |
-| Get Tool Schema | `a28d74c7-5b78-4847-9a5b-046e398fa6ae` |
 
 ### get_tool_schema
 
@@ -322,10 +377,13 @@ hub → **Connections** → set up the `Tool - MCP` connection → **Sync MCP to
 
 ## Quick Reference
 
-| Module | Key Tools |
-|--------|-----------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `close_conversation`, `consult_agent` |
-| Resource | `retrieve_resource_content`, `list_resources`, `get_resource_item` |
-| Google Calendar | `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_check_availability` |
-| Meta Tools | `get_tool_schema`, `execute_tool` |
+| Module | Tools |
+|--------|-------|
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
+| State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
+| Resource & File | `list_resource_folders`, `list_resource_files`, `read_file`, `send_files`, `download_file`, `upload_file` |
+| Skill | `read_skill`, `read_skill_file` |
+| History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
+| Google Calendar | `google_calendar_list_calendars`, `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_update_event`, `google_calendar_delete_event`, `google_calendar_check_availability` |
+| Meta | `get_tool_schema`, `execute_tool` |
 | MCP | per-agent tools assigned via `tools.mcp` (YAML) or the Platform UI |

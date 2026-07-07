@@ -51,7 +51,7 @@ Placeholders are processed in:
 
 **Rules:**
 - Context parameters (`hub_id`, `user_id`, `conversation_id`, `agent_id`) are auto-injected — never pass them manually
-- If a placeholder function fails, it's silently removed from the text. If a property path doesn't exist, it's replaced with an empty string
+- If a placeholder can't resolve — unknown function, wrong args, or a missing property path — it is **left literal**: the raw `{{...}}` text stays in the prompt (deliberate, so a bad path is visible to the author). The one exception is `{{var(...)}}`: a missing subfield of a *present* variable renders as empty string
 - A placeholder can appear multiple times in the same text — all occurrences are replaced
 
 ---
@@ -149,9 +149,9 @@ Conversation-level or user-level state values (defined in Hub > State).
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `scope` | Yes | `conversation` or `user` |
-| `state_name` | Yes | Name as defined in the state table |
+| `state_slug` | Yes | The state's immutable slug (`hub.yaml` `states[].slug`) |
 
-Returns the full state JSON. Use path access for specific fields.
+Returns the full state JSON. Use path access for specific fields. A wrong scope or slug — or a state that has no written value and no `initial_value` — leaves the placeholder **literal** in the prompt. (`{{state(scope)}}` returns that scope's full object; a bare `{{state()}}` returns the conversation scope.)
 
 ```
 {{state(conversation, cart)}}
