@@ -123,7 +123,19 @@ Lifecycle and rules:
 - **Set-level agreement** — the fixture is a property of the shared base, so **all enabled scenarios in a set must declare the same fixture** (or none); two different fixtures in one set is rejected with `fixture_mismatch`. A journey declares it once for its whole flow.
 - **`target_base`** — the Rekor **base** the fixture is seeded against. Required alongside `fixture:` (the hub seed connection supplies the API origin + token; the base rides the eval config). Must agree across a set, same as the fixture.
 
-**Setup (once per hub):** create a **seed connection** — a **REST API** connection (the `Tool - Custom` connector) whose **Base URL** is the Rekor API origin (`https://api.rekor.pro`) and whose bearer/API-key credential is a Rekor token scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it by setting the hub's **`seed_connection_id`** to that connection id. `seed_connection_id` is a hub setting (not a `wayai push` field): set it with the `update_hub` MCP tool or `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`.
+**Setup (once per hub):** create a **seed connection** — a **REST API** connection (the `Tool - Custom` connector) whose **Base URL** is the Rekor API origin (`https://api.rekor.pro`) and whose bearer/API-key credential is a Rekor token scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it. **Config-as-code (recommended for CI):** declare that connection under `connections:` and set the hub's **`seed_connection: <connection name>`** field in `hub.yaml`, then `wayai push`. The binding resolves by name (the Base URL is validated on push, same guard as the setup PATCH) and round-trips on `wayai pull`. Omitting the field leaves the binding unchanged; `seed_connection: null` clears it. It is also settable imperatively via the `update_hub` MCP tool or `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`.
+
+```yaml
+# hub.yaml — bind the seed connection by name (config-as-code)
+connections:
+  - name: Rekor Seeds
+    type: Tool - Custom
+    service: REST API
+    base_url: https://api.rekor.pro
+    credential: Rekor Write Seeds   # org credential holding the write:seeds token
+hub:
+  seed_connection: Rekor Seeds
+```
 
 **The supported pattern for MUTATING evals** is `fixture:` **+** per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals): the fixture makes each run start from a known baseline, and disjoint `variables` give each parallel run its own row within it — collision-free as long as each run's write footprint fits its leased row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handle the baseline automatically.
 
