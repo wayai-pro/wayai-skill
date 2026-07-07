@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.25.1
+version: 6.26.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -350,7 +350,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 1. **Update CLI** — `wayai update` (always run before any operation; if the CLI isn't installed yet, bootstrap with `npm i -g @wayai/cli@latest`)
 2. **Update skill if stale** — run `wayai status --json`; if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue. (Cold-start onboarding runs the same check as state-machine row 1c.)
 3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
-4. **Read context** — `wayai-ws/hubs/<hub>/AGENTS.md` for hub-specific notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively
+4. **Read context** — first ensure the repo-root `AGENTS.md` matches [`references/agents-md-template.md`](references/agents-md-template.md) (write it if missing or drifted — it's the session bootstrap the CLI seeds), then read `wayai-ws/hubs/<hub>/AGENTS.md` for this hub's notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load `AGENTS.md` natively
 5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
 6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
 7. **Test** — `wayai send-message "Hello"`
@@ -368,12 +368,13 @@ After the hub exists, follow the existing-hub workflow.
 
 ### Hub-Folder Memory
 
-`wayai-ws/hubs/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — purpose, key decisions, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder.
+`wayai-ws/hubs/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — the contextual information the config files (`hub.yaml`, `agents/`) can't capture: purpose, key decisions and *why*, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. `wayai pull`/`push` seed a placeholder `AGENTS.md` (+ a `CLAUDE.md` shim) if the folder has none, absence-guarded. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder.
 
 **Maintain it actively:**
 - After significant changes (new agent, new tool, business rule update), update `AGENTS.md` so future sessions inherit the context
-- If `AGENTS.md` is missing for a hub, create it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
+- If a hub folder has no `AGENTS.md` (or only the seeded placeholder), fill it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
 - Keep it focused on *why* decisions were made and *what* makes this hub different. Don't restate platform mechanics — those live in this skill
+- **Rekor bases get the same treatment.** If you're also working with a Rekor base, record the context its settings can't capture in the base folder's `AGENTS.md` (create it + a `CLAUDE.md` shim if missing) — the Rekor skill owns the details
 
 **Overflow content goes into `wayai-ws/hubs/<hub>/references/`:**
 - When `AGENTS.md` grows past ~200 lines or starts mixing topics, extract the deeper material into focused files under `wayai-ws/hubs/<hub>/references/`
@@ -453,7 +454,8 @@ If `push`/`pull` errors with a binding mismatch, **stop and ask the user before 
 
 ```
 .wayai.yaml                              # Repo config — organization scope (init-only)
-AGENTS.md                                # Optional — your own root agent notes; NOT written by wayai, yours to author
+AGENTS.md                                # Session bootstrap — seeded by the CLI (init/pull/push), reconciled against references/agents-md-template.md; yours to edit
+CLAUDE.md                                # Root Claude Code shim — `@AGENTS.md` (seeded if absent, NOT overwritten)
 .claude/skills/wayai/                    # Claude Code skill install (provisioned by `npx skills add wayai-pro/wayai-skill -y`)
 ├── SKILL.md
 └── references/                          # On-demand deep-dive references (see index below)
@@ -475,8 +477,8 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
         ├── journeys/                    # Eval journeys (synced; flat folder, one file per journey)
         │   └── <slug>.yaml
         ├── resources/                   # Knowledge & skill resource files (synced)
-        ├── AGENTS.md                    # Hub-level agent context (NOT synced; yours to edit)
-        ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (init-only, NOT synced)
+        ├── AGENTS.md                    # Hub-specific memory — scaffold seeded on pull/push (NOT synced; fill it in)
+        ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (seeded if absent, NOT synced)
         └── references/                  # Hub-specific supporting files (NOT synced)
     └── <hub-slug>/                      # Linked production hub: READ-ONLY mirror (bare slug, no --label). Refreshed each pull; never pushed
 ```
@@ -664,3 +666,4 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
+| **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | Canonical repo-root `AGENTS.md` bootstrap (reconcile a stale copy against it at session start) + the per-hub / Rekor-base memory pattern |
