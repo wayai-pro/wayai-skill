@@ -101,6 +101,7 @@ A scenario **set** or a **journey** may declare a named `fixture:` — the Rekor
 ```yaml
 # evals/failure-modes/book-exact-slot.yaml — declare on the scenario
 fixture: clinic-baseline    # the Rekor fixture this set depends on
+target_base: clinic-preview # the Rekor base it is seeded against
 runs: 3
 variables: { case: [ ... ] }   # pairs with the fixture (see below)
 input: { role: user, content: "..." }
@@ -112,18 +113,19 @@ expected: { role: assistant, tool_calls: [ ... ] }
 name: Create Agreement
 agent: Collections Pilot
 fixture: debtor-baseline
+target_base: collections-preview
 transcript: [ ... ]
 ```
 
 Lifecycle and rules:
-- **Reset before** — at session start `run-eval` resets the fixture against the base the responder agent's Rekor connection resolves to (delete-owned + re-apply → the declared baseline). If the pre-session seed **fails** (no Rekor connection/credential, or Rekor rejects), the session is **aborted** with a clear `fixture_seed_failed` — no runs are scored, because an unseeded base is a setup failure, not an assertion failure.
+- **Reset before** — at session start `run-eval` resets the fixture against the base (delete-owned + re-apply → the declared baseline). If the pre-session seed **fails** (no hub seed connection, no `target_base`, no credential, or Rekor rejects), the session is **aborted** with a clear `fixture_seed_failed` — no runs are scored, because an unseeded base is a setup failure, not an assertion failure.
 - **Clear after** — on every terminal path (completed, stopped, deleted mid-run, or watchdog-reaped) the fixture is cleared (delete-owned). Teardown is guaranteed, not best-effort.
 - **Set-level agreement** — the fixture is a property of the shared base, so **all enabled scenarios in a set must declare the same fixture** (or none); two different fixtures in one set is rejected with `fixture_mismatch`. A journey declares it once for its whole flow.
-- **`target_base` (reserved)** — an optional override of the base seeded against; omit it (Phase 1) and it defaults to the toolset's preview base. It is the seam a future per-run ephemeral-isolation mode uses without re-authoring the session.
+- **`target_base`** — the Rekor **base** the fixture is seeded against. Required alongside `fixture:` (the hub seed connection supplies the API origin + token; the base rides the eval config). Must agree across a set, same as the fixture.
+
+**Setup (once per hub):** create a **seed connection** — a `Tool - Custom` connection whose **Base URL** is the Rekor API origin (`https://api.rekor.pro`) and whose bearer/API-key credential is a Rekor token scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it by setting the hub's **`seed_connection_id`** to that connection id. `seed_connection_id` is a hub setting (not a `wayai push` field): set it with the `update_hub` MCP tool or `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`.
 
 **The supported pattern for MUTATING evals** is `fixture:` **+** per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals): the fixture makes each run start from a known baseline, and disjoint `variables` give each parallel run its own row within it — collision-free as long as each run's write footprint fits its leased row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handle the baseline automatically.
-
-> Requires a Rekor Memory connection (the `rec_` token + base id) reachable from the responder agent or hub, and Rekor's fixture primitive (`seed reset`/`clear` by name). Until that ships the hooks are inert — a declared `fixture:` surfaces the loud `fixture_seed_failed` abort rather than running against an unseeded base.
 
 `expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
 
