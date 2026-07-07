@@ -1,6 +1,6 @@
 # Custom Tools
 
-Create custom API integrations for agents using `Tool - Custom` connections.
+Create custom API integrations for agents using REST API connections (`type: Tool`, `service: REST API`).
 
 ## Table of Contents
 - [Overview](#overview)
@@ -15,7 +15,7 @@ Create custom API integrations for agents using `Tool - Custom` connections.
 ## Overview
 
 Custom tools allow agents to call external APIs. They require:
-1. A **Tool - Custom connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI
+1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
 ---
@@ -50,7 +50,7 @@ tools:
 # hub.yaml (connections section)
 connections:
   - name: my-api-connection
-    type: Tool - Custom
+    type: Tool
     service: REST API
 ```
 
@@ -219,7 +219,7 @@ tools:
 # hub.yaml (connections section)
 connections:
   - name: my-api
-    type: Tool - Custom
+    type: Tool
     service: REST API
 ```
 
@@ -298,7 +298,7 @@ The agent doesn't see `generate_monthly_report` in its tool list each turn. To u
 **Use case:** API requiring both API key and access token.
 
 **Connection setup (UI):**
-- Connector: REST API (Tool - Custom) · Auth type: API Key
+- Connector: REST API (`type: Tool`, `service: REST API`) · Auth type: API Key
 - Base URL: `https://api.service.com`
 - API Key: `key-xxx`
 - Access Token: `token-yyy`

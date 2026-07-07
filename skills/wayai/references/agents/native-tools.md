@@ -344,7 +344,7 @@ Execute a tool with parameters.
 
 ## MCP Tools
 
-**Connector:** MCP Server (`Tool - MCP`, supports Bearer Token and OAuth authentication)
+**Connector:** MCP Server (`type: Tool`, `service: MCP Server`; supports Bearer Token and OAuth authentication)
 
 An agent uses an external MCP server's tools by assigning them individually — there is **no dynamic "discover and call anything at runtime" path**. Each assigned tool is a reviewed, per-agent allowlist entry (the static allowlist keeps third-party tools least-privilege; the server's tool descriptions are wrapped as untrusted input).
 
@@ -357,7 +357,7 @@ Declare MCP tools under an agent's `tools:` map. The reference is `(name, connec
 tools:
   mcp:
     - name: search_documents       # the discovered MCP tool's name
-      connection: My MCP Server    # the Tool - MCP connection's display name
+      connection: My MCP Server    # the MCP Server connection's display name
 ```
 
 - **`wayai push` discovers + assigns in one run.** If the named tool isn't in the hub's discovered catalog yet, push runs discovery against the server (equivalent to the UI's "Sync MCP tools" action), then assigns it — so a single push can create the connection (declared in `hub.yaml`) and assign its tools. **The MCP server must be reachable**; if it isn't, push fails with a clear, retryable error.
@@ -367,7 +367,7 @@ tools:
 
 ### Assigning MCP tools via the Platform UI
 
-hub → **Connections** → set up the `Tool - MCP` connection → **Sync MCP tools** → hub → **Agents** → the agent → **Add tool** → pick the MCP tool. Equivalent to `tools.mcp`; the next `wayai pull` materializes these as YAML.
+hub → **Connections** → set up the MCP Server connection → **Sync MCP tools** → hub → **Agents** → the agent → **Add tool** → pick the MCP tool. Equivalent to `tools.mcp`; the next `wayai pull` materializes these as YAML.
 
 **Refreshing a changed catalog (UI):** click **Sync MCP tools** on the connection again to re-discover and refresh the stored tool schemas after the server changes them — the UI equivalent of `wayai sync-mcp`. Use this (or the CLI command) whenever an MCP server adds/renames a tool's params; `wayai push` alone won't refresh an already-catalogued tool's schema.
 

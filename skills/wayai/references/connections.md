@@ -11,9 +11,10 @@ For the canonical, programmatic source of connector definitions (auth schemas, s
 - [Connector Types](#connector-types)
 - [Agent](#agent)
 - [Channel](#channel)
-- [Tool - Native](#tool---native)
-- [Tool - Custom](#tool---custom)
-- [Tool - MCP](#tool---mcp)
+- [Tool](#tool)
+  - [Native variant](#native-variant)
+  - [Custom variant (REST API)](#custom-variant-rest-api)
+  - [MCP variant (MCP Server)](#mcp-variant-mcp-server)
 - [STT](#stt)
 - [TTS](#tts)
 - [Quick Reference](#quick-reference)
@@ -41,7 +42,7 @@ connections:
     type: Agent
     service: Anthropic
   - name: my-api
-    type: Tool - Custom
+    type: Tool
     service: REST API
 ```
 
@@ -98,16 +99,16 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 **Supported connectors (non-OAuth):**
 - All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter)
 - Channel connectors with API Key auth (Resend, Telegram)
-- Tool - Custom (REST API)
-- Tool - MCP (MCP Server — Bearer Token auth)
-- Tool - Native (External Resources)
+- Tool / custom variant (REST API)
+- Tool / mcp variant (MCP Server — Bearer Token auth)
+- Tool / native variant (External Resources)
 - STT (Groq STT, OpenAI STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS)
 
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
-- Tool - Native (Google Calendar)
-- Tool - MCP (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
+- Tool / native variant (Google Calendar)
+- Tool / mcp variant (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
 
 OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
 
@@ -125,10 +126,10 @@ connections:
     type: Agent               # Connector type (see Quick Reference)
     service: Anthropic        # Connector name (the card label in the UI)
   - name: my-custom-api
-    type: Tool - Custom
+    type: Tool
     service: REST API
   - name: mcp-server
-    type: Tool - MCP
+    type: Tool
     service: MCP Server
     base_url: https://mcp.example.com/mcp   # Streamable HTTP endpoint (required for MCP)
 ```
@@ -157,14 +158,14 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 connections:
   # Pin a specific org credential by name
   - name: rekor-clinica
-    type: Tool - MCP
+    type: Tool
     service: MCP Server
     base_url: https://mcp.example.com/mcp
     credential: clinica-medica-mcp          # org credential display name
 
   # Deliberately no-auth MCP server (optional-auth connector)
   - name: public-mcp
-    type: Tool - MCP
+    type: Tool
     service: MCP Server
     base_url: https://public.example.com/mcp
     no_auth: true
@@ -235,9 +236,7 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 |------|-------------|
 | `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
-| `Tool - Native` | Platform-provided tool integrations (Wayai, Google Calendar, External Resources) |
-| `Tool - Custom` | Custom API integrations you create (REST API) |
-| `Tool - MCP` | External MCP server connections |
+| `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, Google Calendar, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
 
@@ -444,13 +443,17 @@ Send and receive Telegram messages via the [Bot API](https://core.telegram.org/b
 
 ---
 
-## Tool - Native
+## Tool
+
+Agent tools — one connector type (`type: Tool`) with three delivery **variants**, chosen by the `service:` (connector name) in YAML: **native** (platform built-ins), **custom** (your own REST APIs), **mcp** (external MCP servers). The stored `connector_type` is always `Tool`; the variant is a catalog property, not a stored field.
+
+### Native variant
 
 Platform-provided tool integrations that extend agent capabilities.
 
 See [agents/native-tools.md](agents/native-tools.md) for available tools and their parameters.
 
-### Available Connectors
+#### Available Connectors
 
 | Connector | connector_id | Auth | Status | Description |
 |-----------|--------------|------|--------|-------------|
@@ -458,7 +461,7 @@ See [agents/native-tools.md](agents/native-tools.md) for available tools and the
 | Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | OAuth | Enabled | Manage Google Calendar events and check availability. |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | API Key | Enabled | Connect to external file storage services. |
 
-### Wayai (Auto-enabled)
+#### Wayai (Auto-enabled)
 
 > **Important:** The Wayai connection is **automatically created and enabled** when a hub is created. No manual setup required.
 
@@ -472,26 +475,26 @@ This is the core native toolset providing:
 
 **Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `read_file`, `send_files`, `list_resource_folders`, `list_resource_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
 
-### Google Calendar
+#### Google Calendar
 
 **Prerequisites:** Google account with Calendar access
 
 **Setup:**
 1. Settings → Organizations → Hub → Connections
-2. In the **Tool - Native** group, click the **Google Calendar** card
+2. In the **Tool** group, click the **Google Calendar** card
 3. Click "Connect with Google"
 4. Authorize calendar access
 5. Connection created automatically
 
 **Agent tools:** `list_events`, `create_event`, `update_event`, `delete_event`, `check_availability`
 
-### External Resources
+#### External Resources
 
 Connect to external file storage services for agent file access.
 
 **Setup:**
 1. Settings → Organizations → Hub → Connections
-2. In the **Tool - Native** group, click the **External Resources** card
+2. In the **Tool** group, click the **External Resources** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
    - **Storage API URL** (required): External storage service API endpoint (e.g., `https://storage.example.com/api`)
@@ -500,27 +503,25 @@ Connect to external file storage services for agent file access.
 
 **Agent tools:** `get_external_files`, `send_external_files`
 
----
+### Custom variant (REST API)
 
-## Tool - Custom
-
-Custom API integrations you create. Connect agents to your own APIs or third-party services. A Tool - Custom connection is **required** before creating custom tools — each tool must reference a connection for authentication.
+Custom API integrations you create. Connect agents to your own APIs or third-party services. A custom-variant (REST API) connection is **required** before creating custom tools — each tool must reference a connection for authentication.
 
 See [agents/custom-tools.md](agents/custom-tools.md) for how to create custom tools.
 
-### Available Connectors
+#### Available Connectors
 
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
 | REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | API Key, Basic Auth, Bearer Token | Connect custom REST APIs using API key, basic auth, or bearer token authentication. |
 
-### REST API
+#### REST API
 
 Connect to any REST API using API key, basic auth, or bearer token authentication.
 
 **Setup:**
 1. Settings → Organizations → Hub → Connections
-2. In the **Tool - Custom** group, click the **REST API** card
+2. In the **Tool** group, click the **REST API** card
 3. Choose an authentication type:
    - **API Key** — provide an API key (and optional access token)
    - **Basic Auth** — provide username and password
@@ -532,21 +533,19 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
    - **Custom Headers** (optional): Additional headers to include in all requests
 5. Click Save
 
-**Usage:** A Tool - Custom connection is required before creating custom tools. Each custom tool must reference a connection for authentication.
+**Usage:** A custom-variant (REST API) connection is required before creating custom tools. Each custom tool must reference a connection for authentication.
 
----
-
-## Tool - MCP
+### MCP variant (MCP Server)
 
 Connect external MCP (Model Context Protocol) servers to extend agent capabilities.
 
-### Available Connectors
+#### Available Connectors
 
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Bearer Token, OAuth | Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication. |
 
-### MCP Server
+#### MCP Server
 
 Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication. MCP's authorization standard is OAuth 2.1; the non-OAuth fallback is a static token sent as `Authorization: Bearer <token>` — a **Bearer Token**, not an API Key.
 
@@ -554,7 +553,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 
 **Setup:**
 1. Settings → Organizations → Hub → Connections
-2. In the **Tool - MCP** group, click the **MCP Server** card
+2. In the **Tool** group, click the **MCP Server** card
 3. Choose an authentication type:
    - **Bearer Token** — provide a bearer token (or leave empty for no auth). Bind a **Bearer Token** org credential to reuse it across connections.
    - **OAuth** — complete OAuth 2.0 authorization flow (RFC 9728)
@@ -688,11 +687,11 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Instagram | `f9e8d7c6-5b4a-3210-9876-543210fedcba` | Channel | OAuth |
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | Channel | API Key |
 | Telegram | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000002` | Channel | API Key |
-| **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | Tool - Native | None (auto-created) |
-| Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool - Native | OAuth |
-| External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool - Native | API Key |
-| REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool - Custom | API Key, Basic Auth, Bearer Token |
-| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool - MCP | Bearer Token, OAuth |
+| **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | Tool | None (auto-created) |
+| Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool | OAuth |
+| External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool | API Key |
+| REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool | API Key, Basic Auth, Bearer Token |
+| MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool | Bearer Token, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | STT | API Key |
 | OpenAI TTS | `b2c3d4e5-f6a7-4b89-c012-3456789abcdf` | TTS | API Key |
