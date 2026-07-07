@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.24.0
+version: 6.25.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -69,7 +69,7 @@ Organization                ← CLI (`wayai org create`) or UI
 ├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
 ├── Org Tags                ← UI — gate which credentials each hub can resolve
 ├── Org Resources           ← CLI (`wayai org pull/push`) — shared knowledge/skills, fan out to linked hubs
-└── Hub                     ← CLI (auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
+└── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
     ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI
     ├── Channels            ← auto-provisioned, never authored (see Channels)
     ├── Agents              ← CLI — `agents/<slug>.yaml` + `<slug>.md`
@@ -83,7 +83,7 @@ Organization                ← CLI (`wayai org create`) or UI
     └── Teams + Users       ← UI (Hub → Users) — teams, admins, team users, hub users
 ```
 
-Setup order: Organization (CLI `wayai org create` or UI) → Org Credentials (CLI or UI) → Hub (CLI push auto-creates, or UI) → configure agents, tools, connections via CLI.
+Setup order: Organization (CLI `wayai org create` or UI) → Org Credentials (CLI or UI) → Hub (CLI `wayai create`, or push auto-creates, or UI) → configure agents, tools, connections via CLI.
 
 The `wayai` connection (native tools) is auto-created when a hub is created — no setup needed.
 
@@ -271,7 +271,7 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 | `production` | Read-only. Serves live traffic. Changes flow from preview via publish/sync |
 
 **Lifecycle:**
-1. New hubs start as `preview` — edit freely. `wayai push --label <l>` names the first preview at creation
+1. New hubs start as `preview` — edit freely. `wayai create --label <l>` (or `wayai push --label <l>` on auto-create) names the first preview at creation
 2. **Publish** (CLI `wayai publish`, or UI) — first promotion creates a `production` hub cloned from preview
 3. **Sync** (CLI `wayai publish` / alias `wayai sync`, or UI) — pushes subsequent preview changes to the linked production. The one command auto-detects first-publish vs sync; it confirms by default (shows the preview→production diff) and `-y` skips the prompt. Promotes the pushed **preview** state, so `wayai push` first
 4. **Replicate Preview** (CLI `wayai replicate [hub] --label <l>` or UI) — creates a new sibling preview (from a preview or production) for experimentation
@@ -323,7 +323,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
 | 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
 | 7 | Hub needs an OAuth connection (WhatsApp / Instagram / Google Calendar / MCP OAuth) | Apply the **OAuth connection handoff** (Connections & Credentials → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
-| 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai push -y`. |
+| 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai create -y` to create + push the new hub (`wayai push -y` also auto-creates when the workspace has just this one new folder). |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
 | 10 | User confirms publish | Agent runs `wayai publish` — shows the preview→production diff, then confirms (or `wayai publish -y` to skip the prompt). First publish clones preview → a new production hub; later runs sync. **Paid plans only** — if the CLI reports publishing requires a paid plan, manual fallback: open the publish deeplink below to upgrade + Publish in the UI. |
 
@@ -361,7 +361,7 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
 2. **Init** — `wayai init` (interactive) or `wayai init --org <uuid>`
 3. **Create files** — `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md`
-4. **Push** — `wayai push -y` auto-creates the hub, non-OAuth connections, and applies all config
+4. **Create** — `wayai create -y` creates the hub, non-OAuth connections, and applies all config (auto-binds the worktree). `create <folder>` when the workspace has more than one hub folder. (`wayai push -y` also auto-creates when it resolves to a single new folder; in a multi-hub workspace it requires `--hub`, so `create` is the explicit, unambiguous verb.)
 5. **Test** — `wayai send-message "Hello"`
 
 After the hub exists, follow the existing-hub workflow.
@@ -397,7 +397,8 @@ wayai set-connection-credential  # Set a connection's credential directly — --
 wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
 wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
-wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back)
+wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back). Auto-creates a lone new folder; a multi-hub workspace needs --hub or `wayai create`
+wayai create [folder]   # Explicitly create a new hub from an idless folder, then push (--label names the preview). The discoverable verb when a workspace has more than one hub folder
 wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
 wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
 wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub to target). Renames the local folder. The server-owned way to change preview_label
@@ -488,7 +489,7 @@ Preview hub folders use `hub-slug--<preview_label>` or `hub-slug--<hub_id_prefix
 version: 1
 hub_id: "abc-123-def"           # set by `wayai pull` — do not edit
 hub_environment: preview         # set by `wayai pull` — do not edit
-preview_label: experiment-a      # server-owned, set by `wayai pull` — do not edit (only on previews; sets the hub folder's `--<label>` suffix). Editing here is IGNORED on push (push warns); change it with `wayai relabel <label>` / `--clear`, or set it at creation with `wayai replicate --label` / `wayai push --label`
+preview_label: experiment-a      # server-owned, set by `wayai pull` — do not edit (only on previews; sets the hub folder's `--<label>` suffix). Editing here is IGNORED on push (push warns); change it with `wayai relabel <label>` / `--clear`, or set it at creation with `wayai create --label` / `wayai replicate --label` / `wayai push --label`
 
 hub:
   name: Customer Support
