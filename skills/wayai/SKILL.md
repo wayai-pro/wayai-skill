@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.17
+version: 6.22.18
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -603,7 +603,7 @@ References mirror the hub navigation. Open the relevant file when working on tha
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
-| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code (`journeys/<slug>.yaml`, `wayai pull`/`push`), `wayai eval capture` / `wayai eval journey capture` from production |
+| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code (`journeys/<slug>.yaml`, `wayai pull`/`push`), `wayai eval capture` / `wayai eval journey capture` from production. **Good practice for tool-dependent evals:** compose journey + `fixture:` + `variables` for repeatable, parallel runs |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | `wayai analytics` and `wayai analytics query` flags, metric paths, filters |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`, `/user/...`), hub-detail tabs, query-string deep links |

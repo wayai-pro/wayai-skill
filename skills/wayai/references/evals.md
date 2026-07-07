@@ -2,6 +2,13 @@
 
 Evals are test scenarios that verify agent behavior. Each scenario is a YAML file under `wayai-ws/hubs/<hub>/evals/`, synced bidirectionally to the platform via `wayai push` / `wayai pull`. Run them with `wayai run-eval` and inspect results with `wayai eval-results`.
 
+> **Good-practice defaults — reach for these first, not advanced extras.** A solid eval suite leans on three primitives; under-using them on tool/mutating evals is the common mistake:
+> - **[Journeys](#journeys-hub-as-code)** — capture a real conversation (`wayai eval journey capture`) and let it materialize one eval per turn. The default for covering a whole multi-turn flow as regression protection; hand-write targeted scenarios for failure modes *on top* (see [Authoring](#authoring) principle 1).
+> - **Per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals) + higher `runs`** — reliability is a *distribution*, not a 1/1 sample. The default for anything you trust: raise `runs`, give each run a distinct input row, read the pass *rate*.
+> - **Seed [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals)** — the default for any eval that *writes*. `run-eval` resets the fixture before the session and clears it after, so every run starts from a known baseline instead of the last run's residue.
+>
+> **They compose.** When an eval's correctness depends on **tool values** (the agent reads or writes backend data), the good practice is all three *together* — **journey + `fixture:` + `variables`** — for **repeatable, parallel** session runs. A stateless text/tone eval that touches no tools needs none of them. See [the recommended pattern](#seed-fixtures-fixture--repeatable-mutating-evals) for the full shape.
+
 ## Table of Contents
 - [Directory Structure](#directory-structure)
 - [Scenario File Format](#scenario-file-format)
@@ -69,7 +76,7 @@ evaluator_instructions: |
 
 ### Per-run variables (`{{var()}}`) — parallelize mutating evals
 
-A scenario may declare `variables:` — a map of author-provided arrays. Run *i* of `runs: N` resolves `{{var(NAME)}}` / `{{var(NAME).field}}` against `variables.NAME[i-1]` in `input`, `history`, `expected`, and `evaluator_instructions`. Resolution happens **once per run**, so the prompt and the assertion always see the same value — and each run leases a **disjoint** fixture, so a data-mutating scenario can run all its `runs` in parallel without colliding with itself. Values may be objects, so one index yields a coherent bundle (a patient's name + id + slot move together).
+**Good practice: declare `variables:` whenever you raise `runs` on a scenario that varies by input or writes data** — it buys reliability sampling and safe parallelism in one move. `variables:` is a map of author-provided arrays. Run *i* of `runs: N` resolves `{{var(NAME)}}` / `{{var(NAME).field}}` against `variables.NAME[i-1]` in `input`, `history`, `expected`, and `evaluator_instructions`. Resolution happens **once per run**, so the prompt and the assertion always see the same value — and each run leases a **disjoint** fixture, so a data-mutating scenario can run all its `runs` in parallel without colliding with itself. Values may be objects, so one index yields a coherent bundle (a patient's name + id + slot move together).
 
 ```yaml
 runs: 3
@@ -96,7 +103,7 @@ Rules: every declared array MUST have at least `runs` entries — a session whos
 
 ### Seed fixtures (`fixture:`) — repeatable mutating evals
 
-A scenario **set** or a **journey** may declare a named `fixture:` — the Rekor fixture its agent turn mutates. `run-eval` owns the session lifecycle, so it **resets the fixture before the session and clears it after, in `try/finally`**: a data-mutating eval starts from a known baseline every run and a mid-run failure or abort can't leave the shared base dirty. Sets/journeys with no `fixture:` behave exactly as before.
+**Any eval that writes SHOULD start from a known baseline — declare a `fixture:`** (or assert against state you control; see [Authoring](#authoring) principle 5). It is the recommended default for mutating evals, not an optional add-on. A scenario **set** or a **journey** names the Rekor fixture its agent turn mutates, and `run-eval` owns the session lifecycle, so it **resets the fixture before the session and clears it after, in `try/finally`**: a data-mutating eval starts from a known baseline every run and a mid-run failure or abort can't leave the shared base dirty. Sets/journeys with no `fixture:` behave exactly as before — but an un-fixtured mutating eval silently passes on the *previous* run's residue.
 
 ```yaml
 # evals/failure-modes/book-exact-slot.yaml — declare on the scenario
@@ -137,7 +144,7 @@ hub:
   seed_connection: Rekor Seeds
 ```
 
-**The supported pattern for MUTATING evals** is `fixture:` **+** per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals): the fixture makes each run start from a known baseline, and disjoint `variables` give each parallel run its own row within it — collision-free as long as each run's write footprint fits its leased row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handle the baseline automatically.
+**The recommended pattern for tool-dependent evals** — anywhere the agent's correctness hinges on values its tools read or write — is **[journey](#journeys-hub-as-code) + `fixture:` + per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals)** together, and its whole point is **repeatable and parallel session runs**. The **journey** captures the multi-turn tool flow (one graded eval per turn); the **`fixture:`** makes each session **repeatable** (reset-before / clear-after → a known baseline every run, not last run's residue); disjoint **`variables`** make the runs **parallel** (each run mutates its own leased row) — collision-free as long as each run's write footprint fits its row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handles the baseline automatically. For a stateless text/tone eval that touches no tools, none of the three is needed — the pattern earns its place precisely when tool values are in play.
 
 `expected` can match on text content, tool calls, or both. The evaluator (a `message_evaluator` agent on the hub) is automatically given the `expected` response and the agent's actual response — both text **and** tool calls — and scores whether they match. A required tool call the agent skipped fails the eval even if it replied with plausible text. `evaluator_instructions` is optional: it layers extra, scenario-specific scoring criteria on top of that automatic comparison.
 
@@ -203,6 +210,8 @@ This calls `POST /api/evals/journeys/from-conversation`. Like scenario capture, 
 ## Journeys (hub-as-code)
 
 A **journey** is a stored happy-path transcript that materializes into single-turn evals — one per agent turn. Journeys are first-class hub-as-code: `wayai pull` writes them to `journeys/<slug>.yaml`, `wayai push` creates/updates/deletes them, `wayai diff` previews the changes.
+
+**Prefer a journey to cover a whole multi-turn flow.** One `wayai eval journey capture` of a real conversation gives per-step regression coverage in a single command — a truer baseline than a hand-written multi-turn scenario, and every step is graded independently against the ideal prefix. This is the recommended way to grow broad coverage fast; reserve standalone `evals/*.yaml` scenarios for isolating a specific decision or failure mode.
 
 **On-disk layout.** `journeys/` is a **flat folder** — one file per journey, `journeys/<slug>.yaml` (filename slug = journey name). There are NO scenario-set subfolders (that's evals): a journey owns its own **server-managed scenario set**, which is **not authored** and never appears in YAML. The derived single-turn evals are also server-managed (materialized from the transcript) and are **excluded from the eval diff** — you never see or edit them as `evals/*.yaml`.
 
@@ -337,7 +346,7 @@ The sections above are the *mechanics*; these are the *judgment calls*. Domain-n
 
 ### Authoring
 
-1. **Test KNOWN failure modes, not happy paths.** An eval that only ever passes proves nothing. Target where the agent actually breaks.
+1. **Test KNOWN failure modes, not happy paths.** An eval that only ever passes proves nothing. Target where the agent actually breaks. (A happy-path **journey** is the deliberate exception: it's regression coverage of a known-good flow — pair it with failure-mode scenarios, never rely on it alone.)
 2. **For ACTION evals, assert on the tool call** (`expected.tool_calls`), not the text. Plausible prose is not proof the agent *did* anything — the harness fails a skipped-but-required tool call even when the reply reads fine (see [Scenario File Format](#scenario-file-format)).
 3. **Pin only what's deterministic.** Hard-code the stable parts in `expected`; push runtime ids/timestamps into `evaluator_instructions` ("the `order_id` must match the one in history") rather than a brittle literal.
 4. **Unit-test a DECISION, not just the whole flow.** Isolating one mid-flow decision makes the failure point sharp. Stage the decision's precondition either as prior turns in `history` (replayed into the responder — see [Scenario File Format](#scenario-file-format)) or inline in the `input` message, then pin criteria in `expected` / `evaluator_instructions`. Keep the setup minimal: the fewer turns it takes to reach the decision, the sharper the signal.
