@@ -171,6 +171,8 @@ Markdown-formatted metadata for resources (knowledge bases and skills) linked to
 
 Returns a Markdown block with resource names, IDs, descriptions, and file counts. If `include_structure_in_prompt` is enabled on the resource, also includes folder/file listings.
 
+> **Note:** this placeholder is not yet populated at runtime — it currently renders empty (tracked for a fix). Agents don't need it to discover resource ids: the `list_resource_folders` / `list_resource_files` native tools now list the agent's linked resource ids directly in their `resource_id` parameter (see [native-tools.md](native-tools.md)).
+
 ```
 {{resources()}}
 {{resources(kb)}}
@@ -182,6 +184,8 @@ Returns a Markdown block with resource names, IDs, descriptions, and file counts
 ### `{{agent_skills()}}`
 
 XML-formatted skill metadata for skills linked to the agent. Used for progressive disclosure — the agent sees available skills and can load them on demand.
+
+> **Note:** this placeholder is not yet populated at runtime — it currently renders empty (tracked for a fix). Agents don't need it to discover skills: the `read_skill` / `read_skill_file` native tools now list the agent's linked skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
 
 Returns:
 ```xml

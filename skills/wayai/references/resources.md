@@ -19,7 +19,7 @@ Resources are knowledge bases (documents) or skills (versioned agent capability 
 
 | Type | Purpose | Entry Point | Execution |
 |------|---------|-------------|-----------|
-| `knowledge` (default) | Document collections (FAQ, product docs, manuals) | Any file(s) | Listed to the agent (`{{resources()}}` placeholder); content read on demand via the `list_resource_folders` / `list_resource_files` / `read_file` native tools |
+| `knowledge` (default) | Document collections (FAQ, product docs, manuals) | Any file(s) | The linked resource ids are injected into the `list_resource_folders` / `list_resource_files` native-tool schemas at turn time; content is read on demand via those tools + `read_file` |
 | `skill` | Versioned agent capability package | `SKILL.md` with YAML frontmatter | Tool-based or native integration |
 
 `knowledge` is the default — `type` can be omitted in YAML when the resource is a knowledge base.

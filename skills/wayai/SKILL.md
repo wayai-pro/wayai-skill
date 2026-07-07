@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.23.0
+version: 6.23.2
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -209,7 +209,7 @@ Knowledge and skills attached to agents. Content lives as real files under `reso
 
 | Type | What | Runtime behavior |
 |------|------|------------------|
-| `knowledge` (default) | Document collections — FAQ, catalogs, policies | Listed to the agent; it explores content via `list_resource_files` / `read_file` native tools (or the `{{resources()}}` placeholder lists them in instructions) |
+| `knowledge` (default) | Document collections — FAQ, catalogs, policies | The linked resource ids are injected into the `list_resource_files` / `list_resource_folders` native-tool schemas at turn time; the agent explores content via those tools + `read_file` |
 | `skill` | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
 
 Agents link resources in `agents/<slug>.yaml` under a `resources:` block (by name, with `priority`). Org-level resources shared across hubs live in `wayai-ws/org/` via `wayai org pull/push` (push fans out to linked hubs).

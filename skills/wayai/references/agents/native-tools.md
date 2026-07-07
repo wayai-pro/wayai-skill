@@ -138,7 +138,7 @@ Reset a state to its initial value (deletes the persisted row; reads fall back t
 
 ## Resource & File Tools
 
-Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. `resource_id` values come from the `{{resources()}}` placeholder ([instructions.md](instructions.md)).
+Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. The knowledge resources linked to the agent are injected — as `id (name)` — into the `list_resource_folders` / `list_resource_files` `resource_id` parameter descriptions at turn time, so the agent discovers ids in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
 
 ### list_resource_folders
 
@@ -206,7 +206,7 @@ Persist a sandbox file back to the resource library. Two modes: **UPDATE** (pass
 
 ## Skill Tools
 
-Read [skill-resource](../resources.md#skill-resources) content on demand (tool-based execution mode). `skill_id` = the skill's `resource_id` from the `<available_skills>` context block.
+Read [skill-resource](../resources.md#skill-resources) content on demand (tool-based execution mode). `skill_id` = the skill's `resource_id`; the ids of the skills linked to the agent are injected into the `skill_id` parameter description at turn time, so the agent can discover them without any hand-written ids. (The handler also resolves a skill by name.)
 
 ### read_skill
 
