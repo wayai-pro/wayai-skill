@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.22.16
+version: 6.22.17
 description: |
   Configure WayAI hubs, agents, tools, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -501,7 +501,7 @@ connections:
     # sync_credentials_to_production: true   # default; false keeps production's credential separate (set it via `wayai set-connection-credential`). See references/connections.md#credential-propagation-to-production-sync_credentials_to_production
   - name: my-api-connection
     type: Tool - Custom
-    service: User Tool
+    service: REST API
 ```
 
 `hub.yaml` also holds `resources:`, `outbound_contacts:`, `outbound_lists:`, `outbound_schedules:` blocks. See the per-domain references for full schemas.

@@ -51,7 +51,7 @@ tools:
 connections:
   - name: my-api-connection
     type: Tool - Custom
-    service: User Tool
+    service: REST API
 ```
 
 Then run `wayai push` to create the tools on the hub.
@@ -109,7 +109,7 @@ Placeholders are replaced at runtime in URLs, headers, query params, and body.
 
 | Placeholder | Source | Description |
 |-------------|--------|-------------|
-| `{{api_key}}` | Connection secrets | API key from User Tool connection |
+| `{{api_key}}` | Connection secrets | API key from REST API connection |
 | `{{access_token}}` | Connection secrets | Access token (for dual-credential APIs) |
 | `{{param_name}}` | AI parameters | Value provided by AI during tool call |
 
@@ -220,7 +220,7 @@ tools:
 connections:
   - name: my-api
     type: Tool - Custom
-    service: User Tool
+    service: REST API
 ```
 
 **Connection setup (UI — org credential):**
@@ -298,7 +298,7 @@ The agent doesn't see `generate_monthly_report` in its tool list each turn. To u
 **Use case:** API requiring both API key and access token.
 
 **Connection setup (UI):**
-- Connector: User Tool (Tool - Custom) · Auth type: API Key
+- Connector: REST API (Tool - Custom) · Auth type: API Key
 - Base URL: `https://api.service.com`
 - API Key: `key-xxx`
 - Access Token: `token-yyy`

@@ -42,7 +42,7 @@ connections:
     service: Anthropic
   - name: my-api
     type: Tool - Custom
-    service: User Tool
+    service: REST API
 ```
 
 **Benefits:**
@@ -98,7 +98,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 **Supported connectors (non-OAuth):**
 - All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter)
 - Channel connectors with API Key auth (Resend, Telegram)
-- Tool - Custom (User Tool)
+- Tool - Custom (REST API)
 - Tool - MCP (MCP Server — Bearer Token auth)
 - Tool - Native (External Resources)
 - STT (Groq STT, OpenAI STT)
@@ -126,14 +126,14 @@ connections:
     service: Anthropic        # Connector name (the card label in the UI)
   - name: my-custom-api
     type: Tool - Custom
-    service: User Tool
+    service: REST API
   - name: mcp-server
     type: Tool - MCP
     service: MCP Server
     base_url: https://mcp.example.com/mcp   # Streamable HTTP endpoint (required for MCP)
 ```
 
-> **`service:` is the connector name** — the card label shown in the UI and the **Connector Types** tables below (`Anthropic`, `MCP Server`, `User Tool`, `Google AI Studio`, `OpenAI`, …). The internal `service_name` (e.g. `Other`, `Openai`) is also accepted, but prefer the connector name.
+> **`service:` is the connector name** — the card label shown in the UI and the **Connector Types** tables below (`Anthropic`, `MCP Server`, `REST API`, `Google AI Studio`, `OpenAI`, …). The internal `service_name` (e.g. `Other`, `Openai`) is also accepted, but prefer the connector name. (`REST API` was formerly named `User Tool`, which still resolves for backward compatibility.)
 
 ### How Auto-Creation Works
 
@@ -236,7 +236,7 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 | `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool - Native` | Platform-provided tool integrations (Wayai, Google Calendar, External Resources) |
-| `Tool - Custom` | Custom API integrations you create (User Tool) |
+| `Tool - Custom` | Custom API integrations you create (REST API) |
 | `Tool - MCP` | External MCP server connections |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
@@ -512,15 +512,15 @@ See [agents/custom-tools.md](agents/custom-tools.md) for how to create custom to
 
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
-| User Tool | `b15fb991-63e1-4a79-a174-d10aa66f4414` | API Key, Basic Auth, Bearer Token | Connect custom REST APIs using API key, basic auth, or bearer token authentication. |
+| REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | API Key, Basic Auth, Bearer Token | Connect custom REST APIs using API key, basic auth, or bearer token authentication. |
 
-### User Tool
+### REST API
 
 Connect to any REST API using API key, basic auth, or bearer token authentication.
 
 **Setup:**
 1. Settings → Organizations → Project → Hub → Connections
-2. In the **Tool - Custom** group, click the **User Tool** card
+2. In the **Tool - Custom** group, click the **REST API** card
 3. Choose an authentication type:
    - **API Key** — provide an API key (and optional access token)
    - **Basic Auth** — provide username and password
@@ -691,7 +691,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | Tool - Native | None (auto-created) |
 | Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool - Native | OAuth |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool - Native | API Key |
-| User Tool | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool - Custom | API Key, Basic Auth, Bearer Token |
+| REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool - Custom | API Key, Basic Auth, Bearer Token |
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool - MCP | Bearer Token, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | STT | API Key |
