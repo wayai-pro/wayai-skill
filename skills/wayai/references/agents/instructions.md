@@ -163,15 +163,13 @@ User preference: {{state(user, preferences).language}}
 
 ### `{{resources()}}`
 
-Markdown-formatted metadata for resources (knowledge bases and skills) linked to the agent.
+Markdown-formatted catalog of the resources (knowledge bases and skills) linked to the current agent.
 
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `resource_type` | `all` | `all`, `kb` (knowledge only), or `skill` (skills only) |
 
-Returns a Markdown block with resource names, IDs, descriptions, and file counts. If `include_structure_in_prompt` is enabled on the resource, also includes folder/file listings.
-
-> **Note:** this placeholder is not yet populated at runtime — it currently renders empty (tracked for a fix). Agents don't need it to discover resource ids: the `list_resource_folders` / `list_resource_files` native tools now list the agent's linked resource ids directly in their `resource_id` parameter (see [native-tools.md](native-tools.md)).
+Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. When the agent's link to a resource has `include_structure_in_prompt` enabled, each file's relative path is listed underneath. An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_resource_folders` / `list_resource_files` native tools also expose these ids for on-demand browsing (see [native-tools.md](native-tools.md)).
 
 ```
 {{resources()}}
@@ -183,11 +181,9 @@ Returns a Markdown block with resource names, IDs, descriptions, and file counts
 
 ### `{{agent_skills()}}`
 
-XML-formatted skill metadata for skills linked to the agent. Used for progressive disclosure — the agent sees available skills and can load them on demand.
+XML-formatted skill metadata for the skills linked to the current agent. Used for progressive disclosure — the agent sees available skills and can load them on demand. Draws from the same linked-resource set as `{{resources(skill)}}`. The `read_skill` / `read_skill_file` native tools also list these skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
 
-> **Note:** this placeholder is not yet populated at runtime — it currently renders empty (tracked for a fix). Agents don't need it to discover skills: the `read_skill` / `read_skill_file` native tools now list the agent's linked skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
-
-Returns:
+Returns (empty `<available_skills></available_skills>` when no skills are linked):
 ```xml
 <available_skills>
 <skill>
@@ -200,6 +196,24 @@ Returns:
 
 ```
 {{agent_skills()}}
+```
+
+---
+
+### `{{resource_content(NAME)}}`
+
+Inlines the full text content of a resource linked to the current agent, resolved by name.
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `resource_name` | Yes | The resource's `resource_name` (or `skill_name` for a skill) |
+
+For a skill, returns its `SKILL.md`. For a knowledge base, returns its files concatenated with `## <path>` headers. Content is fetched per turn and capped (~100 KB per resource) to bound prompt size; an unknown or unlinked name leaves the placeholder literal. Reach for `read_skill` / `list_resource_files` when the agent should fetch on demand instead of always inlining the whole resource.
+
+> **Note:** content is inlined **raw and unescaped** into the system prompt (like `{{state()}}`), so only reference resources you trust — a knowledge base populated from externally-authored documents is placed verbatim into the agent's instructions.
+
+```
+{{resource_content(refund-policy)}}
 ```
 
 ---
@@ -250,6 +264,8 @@ Event information from conversation events (scheduling, appointments).
 ### `{{agent_settings()}}`
 
 Another agent's instructions and tools configuration (by agent name).
+
+> **Note:** this placeholder is not yet populated at runtime — an unresolved `{{agent_settings(NAME)}}` is left as the literal token (tracked separately). For the *current* agent's resources and skills, use `{{resources()}}` / `{{agent_skills()}}` instead.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
