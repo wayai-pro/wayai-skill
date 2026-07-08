@@ -142,7 +142,7 @@ settings:
   model: claude-sonnet-5
   temperature: 0.7
   max_tokens: 4096
-  thinking_enabled: true        # optional extended thinking (Claude 4+)
+  thinking_enabled: true        # extended thinking on/off (Claude 4+) — WayAI toggle mapping to the Anthropic `thinking` param; default false (off)
   effort: high                  # optional reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Fable 5)
 ```
 
@@ -179,7 +179,7 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 
 | Connector | Setting | Values | Maps to |
 |---|---|---|---|
-| Anthropic | `thinking_enabled` (boolean) | `true` / `false` | Adaptive thinking on Claude 4.6+; fixed budget on older 4.x. Temperature/top_p ignored when on. |
+| Anthropic | `thinking_enabled` (boolean, default `false`) | `true` / `false` | WayAI's on/off toggle for the Anthropic `thinking` param. `true` → adaptive thinking (Claude 4.6+) or a fixed budget (Sonnet 4.5 / Haiku 4.5 / Opus 4.5). `false` → thinking off — sent as an explicit disable on models that reason by default (Sonnet 5), so "off" always means off. Temperature/top_p are ignored when on. **Fable 5 always thinks** — the toggle is hidden there and can't turn thinking off (depth is still shaped by `effort`). |
 | Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable 5). `xhigh` = Opus 4.7+/Sonnet 5/Fable 5; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
 | OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+; older reasoning models clamp it to `high`. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
