@@ -1,11 +1,12 @@
 ---
 name: wayai
-version: 6.26.0
+version: 6.27.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
   connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns;
-  running analytics or evals; annotating conversation outcomes; reviewing or editing workspace YAML
+  running analytics or evals; annotating conversation outcomes; generating a shareable hub
+  progress/readiness report (progress.html); reviewing or editing workspace YAML
   (hub.yaml, agents/*.yaml) or agent instruction Markdown; installing a ready-made hub template
   (`wayai template list`/`pull`); using the wayai CLI (push, pull, publish, send-message,
   conversations, sync-skills, create-credential, update-credential, analytics, run-eval,
@@ -53,6 +54,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
 | Delete eval session(s) / run history | CLI (`wayai eval session delete <session_id>`, or `--all` for every session on the hub) |
 | Bug reporting | CLI (`wayai report create`) |
+| Build progress & readiness report — shareable `progress.html` (code-harness only) | Agent-generated file per [`references/progress-report.md`](references/progress-report.md) |
 | Workspace discovery | CLI (`wayai list`) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
@@ -357,6 +359,8 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 8. **Review** — run `git diff`, ask user to confirm. **Never auto-commit.** User commits and pushes to `main`
 9. **Go live** — `wayai publish` (or the platform UI) when ready: shows the preview→production diff, confirms, then first-publishes (clones preview → new production hub) or syncs subsequent changes. `push` first — it promotes the pushed preview state, not unpushed local edits
 
+If the hub folder has a `progress.html`, refresh it after the task's last push or publish — see [`references/progress-report.md`](references/progress-report.md) for when and how.
+
 ### New hub (from scratch)
 1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
 2. **Init** — `wayai init` (interactive) or `wayai init --org <uuid>`
@@ -374,6 +378,7 @@ After the hub exists, follow the existing-hub workflow.
 - After significant changes (new agent, new tool, business rule update), update `AGENTS.md` so future sessions inherit the context
 - If a hub folder has no `AGENTS.md` (or only the seeded placeholder), fill it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
 - Keep it focused on *why* decisions were made and *what* makes this hub different. Don't restate platform mechanics — those live in this skill
+- Record agreed scope in an optional `## Build plan` checkbox section and tick items as they land — the progress report renders it as plan-vs-actual ([`references/progress-report.md`](references/progress-report.md#the-build-plan-convention))
 - **Rekor bases get the same treatment.** If you're also working with a Rekor base, record the context its settings can't capture in the base folder's `AGENTS.md` (create it + a `CLAUDE.md` shim if missing) — the Rekor skill owns the details
 
 **Overflow content goes into `wayai-ws/hubs/<hub>/references/`:**
@@ -666,4 +671,5 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
+| **Progress report** | [`references/progress-report.md`](references/progress-report.md) | Creating or refreshing `wayai-ws/hubs/<hub>/progress.html` — the shareable build-progress & readiness snapshot — and the AGENTS.md `## Build plan` convention. Code-harness agents only |
 | **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | Canonical repo-root `AGENTS.md` bootstrap (reconcile a stale copy against it at session start) + the per-hub / Rekor-base memory pattern |
