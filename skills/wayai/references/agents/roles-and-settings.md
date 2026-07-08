@@ -140,18 +140,18 @@ The `settings` block under each agent is connector-specific — it mirrors the `
 ```yaml
 settings:
   model: claude-sonnet-5
-  temperature: 0.7
   max_tokens: 4096
+  # temperature only on Opus 4.6 / Sonnet 4.6 & older — Sonnet 5 / Opus 4.7+ / Fable strip it (see below)
   thinking_enabled: true        # extended thinking on/off (Claude 4+) — WayAI toggle mapping to the Anthropic `thinking` param; default false (off)
-  effort: high                  # optional reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Fable 5)
+  effort: high                  # reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Sonnet 5/Fable 5)
 ```
 
 **OpenAI** (service: OpenAI):
 ```yaml
 settings:
   model: gpt-5.5
-  temperature: 0.7
   max_tokens: 4096
+  # temperature omitted — gpt-5.5 is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
   reasoning_effort: medium      # reasoning models: minimal|low|medium|high|xhigh|none (xhigh needs gpt-5.2+)
 ```
 
@@ -184,6 +184,13 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 | OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+; older reasoning models clamp it to `high`. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort`. `none` disables the override. OpenRouter maps the level to the nearest one each model supports. |
+
+**Temperature on newer Anthropic models.** `temperature` is the only sampling knob the Anthropic connector exposes (no `top_p`/`top_k`). Sonnet 5, Opus 4.7+, and Fable 5 **strip a non-default `temperature`** before the call (silently ignored, not an error) — set it only on Opus 4.6 / Sonnet 4.6 / Sonnet 4.5 / Opus 4.5 / Haiku 4.5. It's also ignored on any model whenever `thinking_enabled` is on.
+
+**Choosing thinking & effort (Anthropic).** Thinking is **off by default** (`thinking_enabled: false`) on every controllable model — including Sonnet 5, which won't reason unless you set `thinking_enabled: true` (despite reasoning by default at the raw API). When setting up an agent:
+- **Simple agents** (FAQ, routing, intent classification, short replies) — leave thinking off; optionally set `effort: low`/`medium` to trim tokens.
+- **Reasoning-heavy agents** (multi-step problem solving, complex tool orchestration, evaluators) — set `thinking_enabled: true` and/or raise `effort` to `high`/`xhigh`.
+- `effort` shapes total token spend (text + tool calls) with or without thinking, so it's the lever even when thinking is off (and the only one on Fable 5).
 
 ### File handling (all LLM connectors)
 

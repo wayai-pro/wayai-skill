@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.27.1
+version: 6.27.2
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -577,8 +577,8 @@ connection: anthropic              # connection display name
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
 settings:
   model: claude-sonnet-5
-  temperature: 0.7
   max_tokens: 4096
+  # temperature (only sampling knob): Sonnet 5 / Opus 4.7+ / Fable strip a non-default value — set it only on Opus 4.6 / Sonnet 4.6 & older
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
   # file_handling_mode: always_attach  # or metadata_only (historical files sent as metadata; agent fetches via read_file). max_attachment_size_mb caps always_attach size (see roles-and-settings.md#file-handling-all-llm-connectors)
 tools:

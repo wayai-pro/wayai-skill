@@ -3,8 +3,9 @@ role: pilot
 connection: openai-main
 settings:
   model: gpt-5
-  temperature: 0.4
   max_tokens: 2048
+  # temperature omitted — gpt-5 is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
+  # reasoning_effort: medium   # optional reasoning control (this agent is OpenAI); Anthropic agents use thinking_enabled + effort — see references/agents/roles-and-settings.md#reasoning--thinking-by-provider
 additional_context_template: |
   Current time: {{now()}}
   Active ticket: {{state(conversation, ticket_intake)}}
