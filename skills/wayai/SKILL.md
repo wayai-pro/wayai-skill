@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.27.2
+version: 6.27.3
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -158,7 +158,7 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 | **Tool — Native** | Wayai (auto-created), Google Calendar (OAuth), External Resources (API Key) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
 | **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
-| **Speech** | STT transcribes inbound voice notes (Groq, OpenAI); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs) |
+| **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs) |
 
 **Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged hub sees only untagged credentials; a tagged hub sees credentials sharing ≥1 tag) and credential `environment`. OAuth connections must be set up in the UI first.
 

@@ -102,7 +102,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 - Tool / custom variant (REST API)
 - Tool / mcp variant (MCP Server — Bearer Token auth)
 - Tool / native variant (External Resources)
-- STT (Groq STT, OpenAI STT)
+- STT (Groq STT, OpenAI STT, ElevenLabs STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS)
 
 **Not supported (OAuth — requires UI):**
@@ -237,7 +237,7 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 | `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, Google Calendar, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
-| `STT` | Speech-to-text services (Groq STT, OpenAI STT) |
+| `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
 
 ---
@@ -582,6 +582,7 @@ Speech-to-text services for transcribing voice messages.
 |-----------|--------------|------|-------------|
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | API Key | Fast speech-to-text transcription using Groq's Whisper implementation. |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | API Key | Speech-to-text transcription using OpenAI gpt-4o-transcribe models. |
+| ElevenLabs STT | `8a1a1917-3559-4858-bdef-313991341277` | API Key | Speech-to-text transcription using ElevenLabs Scribe v2 (state-of-the-art accuracy across 90+ languages). |
 
 ### Groq STT
 
@@ -610,6 +611,20 @@ Speech-to-text services for transcribing voice messages.
 4. Click Save
 
 **Usage:** Transcribes voice messages to text.
+
+### ElevenLabs STT
+
+**Prerequisites:** ElevenLabs API key from [elevenlabs.io](https://elevenlabs.io)
+
+**Setup:**
+1. Settings → Organizations → Hub → Connections
+2. In the **STT** group, click the **ElevenLabs STT** card
+3. Fill the form:
+   - **Connection Name** (required): A name to identify this connection
+   - **API Key** (required): Your ElevenLabs API key
+4. Click Save
+
+**Usage:** Transcribes voice messages to text using the Scribe v2 model.
 
 ---
 
@@ -694,6 +709,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool | Bearer Token, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
 | OpenAI STT | `c3d4e5f6-7a8b-4c9d-0e1f-2a3b4c5d6e7f` | STT | API Key |
+| ElevenLabs STT | `8a1a1917-3559-4858-bdef-313991341277` | STT | API Key |
 | OpenAI TTS | `b2c3d4e5-f6a7-4b89-c012-3456789abcdf` | TTS | API Key |
 | Groq TTS | `d7e8f9a0-1b2c-4d3e-8f40-5a6b7c8d9e0f` | TTS | API Key |
 | ElevenLabs TTS | `a1b2c3d4-e5f6-4789-a012-3456789abcde` | TTS | API Key |
