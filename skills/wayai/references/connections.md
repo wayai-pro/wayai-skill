@@ -228,6 +228,16 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 5. wayai push -y                                → auto-creates connections, agents, tools
 ```
 
+### Troubleshooting connection health (`wayai alerts`)
+
+When a hub misbehaves at runtime — audio/TTS not delivered, the agent goes silent, a tool fails — the cause is often an **invalid or expired provider credential**, not a platform bug. The platform raises a Status & Notices alert for these, surfaced by:
+
+```
+wayai alerts [--hub <uuid|name>]   # active connection/credential alerts for the hub
+```
+
+A rejected key shows as `connection_auth` (e.g. `OpenAI TTS · 401`); a rate/quota limit as `connection_quota`; an expired channel token as `channel_token`. **Run this FIRST** — before reading source or filing `wayai report create`. The fix is to re-enter the credential (`wayai set-connection-credential`, or the UI), which auto-resolves the alert.
+
 ---
 
 ## Connector Types

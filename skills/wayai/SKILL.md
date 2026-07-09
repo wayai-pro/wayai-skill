@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.27.3
+version: 6.28.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -45,6 +45,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Org-level shared resources (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
+| Diagnose why a hub misbehaves (audio/TTS not delivered, agent silent, a tool failing) — check connection/credential health FIRST | CLI (`wayai alerts`) — surfaces active Status & Notices alerts (e.g. an invalid provider key shows as `connection_auth` 401). Run this before reading code or filing a report |
 | Inspect what an agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) |
 | Record a post-hoc business outcome on an ended conversation (e.g. customer purchased) as an analytics dimension | CLI (`wayai conversations <id> annotate --set key=value [--type ...]`) |
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
@@ -414,6 +415,7 @@ wayai unbind            # Clear the worktree hub binding
 wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
 wayai template pull <slug> [--lang <locale>] [--force] [--dry-run]  # Write a template's config into wayai-ws/hubs/<slug>/, then `wayai push`. --lang picks a localized variant (en|pt|es); omitted = the template's default, an untranslated language falls back with a note. Refuses to overwrite existing files in the target dir (lists them) — pass --force to overwrite; --dry-run previews the file map without writing
 wayai send-message      # Test message to a hub (preview or production)
+wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` 401 here instead of forcing a guess from code. --hub <uuid|name>, --json
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
                         # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
                         # `wayai conversations <id> observability --message-id <id>` — full record for one turn (prompt, completion, tool calls, tokens; --json for raw)
@@ -433,7 +435,7 @@ wayai eval session delete   # Delete an eval session + its run history (<session
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
-wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error)
+wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error). With --hub, auto-attaches the hub's active alerts so triage sees a credential/connection cause up front — check `wayai alerts` yourself first, it's often not a platform bug
 wayai report edit       # Amend your own pending report (<id> --title/--description/--error/--steps/--context)
 wayai report list       # List your reports (newest first; --status <s>, --json)
 wayai report get        # Show a report's status + message thread (<id>, --json)
