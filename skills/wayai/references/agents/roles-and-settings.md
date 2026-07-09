@@ -149,9 +149,9 @@ settings:
 **OpenAI** (service: OpenAI):
 ```yaml
 settings:
-  model: gpt-5.5
+  model: gpt-5.6-sol
   max_tokens: 4096
-  # temperature omitted — gpt-5.5 is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
+  # temperature omitted — gpt-5.6 Sol is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
   reasoning_effort: medium      # reasoning models: minimal|low|medium|high|xhigh|none (xhigh needs gpt-5.2+)
 ```
 
@@ -167,7 +167,7 @@ settings:
 **OpenRouter** (service: OpenRouter):
 ```yaml
 settings:
-  model: openai/gpt-5.5
+  model: openai/gpt-5.6-sol
   temperature: 0.7
   max_tokens: 4096
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
