@@ -615,6 +615,8 @@ Speech-to-text services for transcribing voice messages.
    - **API Key** (required): Your Groq API key
 4. Click Save
 
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `model` (`whisper-large-v3` / `whisper-large-v3-turbo`), `language` (ISO-639-1, empty = auto-detect), `prompt` (context/vocabulary hints, ≤224 tokens).
+
 **Usage:** Transcribes voice messages to text using Whisper models.
 
 ### OpenAI STT
@@ -628,6 +630,8 @@ Speech-to-text services for transcribing voice messages.
    - **Connection Name** (required): A name to identify this connection
    - **API Key** (required): Your OpenAI API key
 4. Click Save
+
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `model` (`gpt-4o-mini-transcribe` / `gpt-4o-transcribe`), `language` (ISO-639-1, empty = auto-detect), `prompt` (context/vocabulary hints).
 
 **Usage:** Transcribes voice messages to text.
 
