@@ -132,9 +132,18 @@ connections:
     type: Tool
     service: MCP Server
     base_url: https://mcp.example.com/mcp   # Streamable HTTP endpoint (required for MCP)
+  - name: elevenlabs-tts
+    type: TTS
+    service: ElevenLabs TTS
+    settings:                 # Per-connection parameters (keys from the connector's connector_settings_schema)
+      voiceId: pNInz6obpgDQGcFmaJgB
+      modelId: eleven_multilingual_v2
+      languageCode: pt
 ```
 
 > **`service:` is the connector name** — the card label shown in the UI and the **Connector Types** tables below (`Anthropic`, `MCP Server`, `REST API`, `Google AI Studio`, `OpenAI`, …). The internal `service_name` (e.g. `Other`, `Openai`) is also accepted, but prefer the connector name. (`REST API` was formerly named `User Tool`, which still resolves for backward compatibility.)
+
+> **`settings:`** carries per-connection parameters (voice, model, language, etc.) and round-trips via `wayai pull`/`push` — the same values you can set on the connection form in the UI. The valid keys per connector are its `connector_settings_schema`: see each STT/TTS connector's **Settings** line below (or inspect `packages/core/src/catalog/connectors.ts`). Keys the connector doesn't recognize are persisted as-is but ignored at runtime.
 
 ### How Auto-Creation Works
 
@@ -634,6 +643,8 @@ Speech-to-text services for transcribing voice messages.
    - **API Key** (required): Your ElevenLabs API key
 4. Click Save
 
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `model` (`scribe_v2`), `language` (ISO-639-1, empty = auto-detect), `tagAudioEvents` (annotate `(laughter)`-style events in the transcript; default on).
+
 **Usage:** Transcribes voice messages to text using the Scribe v2 model.
 
 ---
@@ -695,6 +706,8 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
    - **Connection Name** (required): A name to identify this connection
    - **API Key** (required): Your ElevenLabs API key
 4. Click Save
+
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `voiceId`, `modelId` (`eleven_v3` / `eleven_flash_v2_5` / `eleven_turbo_v2_5` / `eleven_multilingual_v2`), `stability`, `similarityBoost`, `style`, `useSpeakerBoost`, `speed`, `languageCode`.
 
 **Usage:** High-quality voice synthesis with custom voices.
 

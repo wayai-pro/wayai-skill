@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.28.0
+version: 6.28.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -561,6 +561,12 @@ connections:
   - name: my-api-connection
     type: Tool
     service: REST API
+  - name: elevenlabs-tts
+    type: TTS
+    service: ElevenLabs TTS
+    settings:            # Per-connection params (voice/model/language, etc.); keys = connector_settings_schema. See references/connections.md
+      voiceId: pNInz6obpgDQGcFmaJgB
+      modelId: eleven_multilingual_v2
 ```
 
 `hub.yaml` also holds `resources:`, `outbound_contacts:`, `outbound_lists:`, `outbound_schedules:` blocks. See the per-domain references for full schemas.
