@@ -245,7 +245,7 @@ When a hub misbehaves at runtime — audio/TTS not delivered, the agent goes sil
 wayai alerts [--hub <uuid|name>]   # active connection/credential alerts for the hub
 ```
 
-A rejected key shows as `connection_auth` (e.g. `OpenAI TTS · 401`); a rate/quota limit as `connection_quota`; an expired channel token as `channel_token`. **Run this FIRST** — before reading source or filing `wayai report create`. The fix is to re-enter the credential (`wayai set-connection-credential`, or the UI), which auto-resolves the alert.
+A rejected key (HTTP 401/403) shows as `connection_auth` (e.g. `OpenAI TTS · 401`); a rate/quota limit (402/429) as `connection_quota`; an expired channel token as `channel_token`. A **request/config rejection** (HTTP 400 — e.g. an unsupported `response_format` on the model) shows as `connection_config`: the credential is fine, so re-entering it won't help — fix the connection's model or settings instead (the alert carries a `detail` like `invalid_request_error · response_format`). **Run this FIRST** — before reading source or filing `wayai report create`. For the credential categories the fix is to re-enter the credential (`wayai set-connection-credential`, or the UI), which auto-resolves the alert.
 
 ---
 
