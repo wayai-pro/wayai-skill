@@ -203,6 +203,21 @@ Two optional `settings` keys control how a conversation's **historical** files a
 
 Background observer roles (`conversation_evaluator`, `message_evaluator`, `monitor`) ignore these settings and always receive full file content.
 
+### Pre-tool preamble delivery (all LLM connectors)
+
+Models often write a short user-facing message *before* calling tools ("Let me check that, one moment…"). `deliver_preamble` controls what happens to it:
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| `deliver_preamble` | boolean | `true` | Deliver the pre-tool text immediately as its own message — the user sees/hears it during the tool-execution wait, then the final reply arrives as a separate message. `false` = only the final reply is delivered; the pre-tool text is discarded (from the user AND from the model's context, so the final answer is always self-contained). |
+
+Notes:
+- Applies to **every** tool-loop round — a multi-step turn can deliver several progress messages before the final answer.
+- **Email is exempt**: each preamble would be a separate email, so the setting is ignored on email channels (pre-tool text is discarded there).
+- **Voice conversations**: each delivered preamble is synthesized as its own TTS audio clip — the "preamble technique" that avoids dead air while tools run.
+- Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns).
+- Set `deliver_preamble: false` for agents that shouldn't narrate progress or whose channel UX wants exactly one message per turn (only pilot-track agents deliver to users; copilot/background roles never deliver preambles regardless).
+
 When the agent's connection changes, existing `settings` are sanitized against the new connector's schema — unknown keys are dropped. To see the exact schema for a specific connector at any time, run `wayai pull` and inspect a freshly pulled agent's `settings` block.
 
 ---
