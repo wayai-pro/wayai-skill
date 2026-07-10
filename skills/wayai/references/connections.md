@@ -97,7 +97,7 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 ---
 
 **Supported connectors (non-OAuth):**
-- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter)
+- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI)
 - Channel connectors with API Key auth (Resend, Telegram)
 - Tool / custom variant (REST API)
 - Tool / mcp variant (MCP Server — Bearer Token auth)
@@ -253,7 +253,7 @@ A rejected key (HTTP 401/403) shows as `connection_auth` (e.g. `OpenAI TTS · 40
 
 | Type | Description |
 |------|-------------|
-| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter) |
+| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, Google Calendar, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
@@ -273,6 +273,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 | Anthropic | `b3c4d5e6-f7a8-9012-bcde-f12345678902` | API Key | LLM provider for Anthropic Claude models. |
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | API Key | LLM provider for Google Gemini models. |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | API Key | Multi-provider LLM gateway with access to OpenAI, Anthropic, Google, xAI, DeepSeek, MiniMax, Kimi, GLM, Qwen, and Xiaomi models. |
+| xAI | `59b0864f-55ec-4284-9af3-62ebd82e33ce` | API Key | LLM provider for xAI Grok models. |
 
 ### OpenAI
 
@@ -321,6 +322,20 @@ LLM providers for AI functionality. **At least one Agent connection required bef
    - **Connection Name** (required): A name to identify this connection
    - **API Key** (required): Your OpenRouter API key
 4. Click Save
+
+### xAI
+
+**Prerequisites:** xAI API key from [console.x.ai](https://console.x.ai)
+
+**Setup:**
+1. Settings → Organizations → Hub → Connections
+2. In the **Agent** group, click the **xAI** card
+3. Fill the form:
+   - **Connection Name** (required): A name to identify this connection
+   - **API Key** (required): Your xAI API key
+4. Click Save
+
+Direct access to Grok models (grok-4.5 default). Reaches xAI's API without the OpenRouter hop; Grok is also available via the OpenRouter connector (`x-ai/grok-*`).
 
 ---
 
@@ -727,6 +742,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Anthropic | `b3c4d5e6-f7a8-9012-bcde-f12345678902` | Agent | API Key |
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | Agent | API Key |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | Agent | API Key |
+| xAI | `59b0864f-55ec-4284-9af3-62ebd82e33ce` | Agent | API Key |
 | WhatsApp | `5fb214cb-aaa8-4b3d-8c65-c9370b3e7c85` | Channel | OAuth |
 | Instagram | `f9e8d7c6-5b4a-3210-9876-543210fedcba` | Channel | OAuth |
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | Channel | API Key |

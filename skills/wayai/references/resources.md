@@ -164,7 +164,7 @@ Configured per agent-resource link via `use_native_integration`:
 | Scenario | Mode |
 |----------|------|
 | General agent capability | Tool-based (default) |
-| Skill must work across non-skill-capable providers (Google, OpenRouter) | Tool-based |
+| Skill must work across non-skill-capable providers (Google, OpenRouter, xAI) | Tool-based |
 | Sandboxed code execution required | Native integration |
 | Hub uses Anthropic and/or OpenAI agents and wants native skill features | Native integration |
 

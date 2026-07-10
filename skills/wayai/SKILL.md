@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.29.0
+version: 6.30.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -154,7 +154,7 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 
 | Category | Examples |
 |----------|----------|
-| **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter (required for AI) |
+| **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI (required for AI) |
 | **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend (email), Telegram (API Key — auto-created) |
 | **Tool — Native** | Wayai (auto-created), Google Calendar (OAuth), External Resources (API Key) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
@@ -587,7 +587,7 @@ settings:
   model: claude-sonnet-5
   max_tokens: 4096
   # temperature (only sampling knob): Sonnet 5 / Opus 4.7+ / Fable strip a non-default value — set it only on Opus 4.6 / Sonnet 4.6 & older
-  # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
+  # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter/xAI reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
   # file_handling_mode: always_attach  # or metadata_only (historical files sent as metadata; agent fetches via read_file). max_attachment_size_mb caps always_attach size (see roles-and-settings.md#file-handling-all-llm-connectors)
   # deliver_preamble: true           # default; pre-tool "let me check…" text is delivered as its own message (voice: own TTS clip; ignored on email). false = only the final reply (see roles-and-settings.md#pre-tool-preamble-delivery-all-llm-connectors)
 tools:

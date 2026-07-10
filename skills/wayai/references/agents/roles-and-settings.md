@@ -173,6 +173,15 @@ settings:
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
 ```
 
+**xAI** (service: Xai):
+```yaml
+settings:
+  model: grok-4.5
+  temperature: 0.7
+  max_tokens: 4096
+  reasoning_effort: none        # low|medium|high|none (none omits the param; direct Grok, not via OpenRouter)
+```
+
 ### Reasoning / thinking by provider
 
 Each provider exposes one or more reasoning controls, named to match its schema. The key name must be exact — a mismatched key (e.g. a nested `thinking:` object on Anthropic, or `max_output_tokens` on Gemini) is **silently stripped on `wayai push`**.
@@ -184,6 +193,7 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 | OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+; older reasoning models clamp it to `high`. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort`. `none` disables the override. OpenRouter maps the level to the nearest one each model supports. |
+| xAI | `reasoning_effort` | `low` / `medium` / `high` / `none` | Top-level `reasoning_effort` (OpenAI-standard chat-completions form). `none` omits the param. Models without reasoning control ignore/reject a non-none value. |
 
 **Temperature on newer Anthropic models.** `temperature` is the only sampling knob the Anthropic connector exposes (no `top_p`/`top_k`). Sonnet 5, Opus 4.7+, and Fable 5 **strip a non-default `temperature`** before the call (silently ignored, not an error) — set it only on Opus 4.6 / Sonnet 4.6 / Sonnet 4.5 / Opus 4.5 / Haiku 4.5. It's also ignored on any model whenever `thinking_enabled` is on.
 
