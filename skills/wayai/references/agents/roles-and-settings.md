@@ -214,8 +214,8 @@ Models often write a short user-facing message *before* calling tools ("Let me c
 Notes:
 - Applies to **every** tool-loop round — a multi-step turn can deliver several progress messages before the final answer.
 - **Email is exempt**: each preamble would be a separate email, so the setting is ignored on email channels (pre-tool text is discarded there).
-- **Voice conversations**: each delivered preamble is synthesized as its own TTS audio clip — the "preamble technique" that avoids dead air while tools run.
-- Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns).
+- **Voice conversations**: each delivered preamble is synthesized as its own TTS audio clip — the "preamble technique" that avoids dead air while tools run — **when spoken replies are enabled** (the TTS connector's `voice_reply_enabled`, on by default; see Connections › TTS). With it off, preambles deliver as text only.
+- Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns when spoken replies are enabled).
 - Set `deliver_preamble: false` for agents that shouldn't narrate progress or whose channel UX wants exactly one message per turn (only pilot-track agents deliver to users; copilot/background roles never deliver preambles regardless).
 
 When the agent's connection changes, existing `settings` are sanitized against the new connector's schema — unknown keys are dropped. To see the exact schema for a specific connector at any time, run `wayai pull` and inspect a freshly pulled agent's `settings` block.

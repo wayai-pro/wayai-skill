@@ -657,6 +657,8 @@ Speech-to-text services for transcribing voice messages.
 
 Text-to-speech services for generating voice responses.
 
+**Spoken replies (all TTS connectors):** `voice_reply_enabled` (toggle, default **on**) controls whether the agent replies with synthesized audio when a user sends a **voice message**. On by default; turn it off to always reply in text — no audio is generated and no TTS operation is billed. Audio is only ever delivered on channels that support it (WhatsApp, Instagram, Telegram, the app); replies to text messages are always text. Rides `settings:` in `hub.yaml` like the other connector settings.
+
 ### Available Connectors
 
 | Connector | connector_id | Auth | Description |
@@ -711,7 +713,7 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
    - **API Key** (required): Your ElevenLabs API key
 4. Click Save
 
-**Settings** (`settings:` in `hub.yaml`, or the connection form): `voiceId`, `modelId` (`eleven_v3` / `eleven_flash_v2_5` / `eleven_turbo_v2_5` / `eleven_multilingual_v2`), `stability`, `similarityBoost`, `style`, `useSpeakerBoost`, `speed`, `languageCode`.
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `voice_reply_enabled` (see the TTS-group note above), `voiceId`, `modelId` (`eleven_v3` / `eleven_flash_v2_5` / `eleven_turbo_v2_5` / `eleven_multilingual_v2`), `stability`, `similarityBoost`, `style`, `useSpeakerBoost`, `speed`, `languageCode`.
 
 **Usage:** High-quality voice synthesis with custom voices.
 
