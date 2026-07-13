@@ -152,7 +152,7 @@ settings:
   model: gpt-5.6-sol
   max_tokens: 4096
   # temperature omitted — gpt-5.6 Sol is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
-  reasoning_effort: medium      # reasoning models: minimal|low|medium|high|xhigh|none (xhigh needs gpt-5.2+)
+  reasoning_effort: medium      # reasoning models: low|medium|high|xhigh|max|none (xhigh needs gpt-5.2+, max needs gpt-5.6+; minimal is legacy gpt-5/5.1 only)
 ```
 
 **Google AI Studio** (service: Google AI Studio):
@@ -190,7 +190,7 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 |---|---|---|---|
 | Anthropic | `thinking_enabled` (boolean, default `false`) | `true` / `false` | WayAI's on/off toggle for the Anthropic `thinking` param. `true` → adaptive thinking (Claude 4.6+) or a fixed budget (Sonnet 4.5 / Haiku 4.5 / Opus 4.5). `false` → thinking off — sent as an explicit disable on models that reason by default (Sonnet 5), so "off" always means off. Temperature/top_p are ignored when on. **Fable 5 always thinks** — the toggle is hidden there and can't turn thinking off (depth is still shaped by `effort`). |
 | Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable 5). `xhigh` = Opus 4.7+/Sonnet 5/Fable 5; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
-| OpenAI | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+; older reasoning models clamp it to `high`. |
+| OpenAI | `reasoning_effort` | `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+ (clamped to `high` below); `max` needs gpt-5.6+ (clamped to `xhigh` below). `minimal` is a legacy level only gpt-5 / gpt-5.1 accept — kept as a deprecated value but clamped to `low` on gpt-5.2 and newer. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort`. `none` disables the override. OpenRouter maps the level to the nearest one each model supports. |
 | xAI | `reasoning_effort` | `low` / `medium` / `high` / `none` | Top-level `reasoning_effort` (OpenAI-standard chat-completions form). `none` omits the param. Models without reasoning control ignore/reject a non-none value. |
