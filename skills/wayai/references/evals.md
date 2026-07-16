@@ -58,7 +58,7 @@ history:                             # message_history (omitted when empty)
     content: "I can see order #12345."
 
 input:                               # message_text — required
-  role: user
+  role: user                         # `user` or `system` only — declare it (see below)
   content: "Cancel it please"
 
 expected:                            # message_expected_response — required
@@ -73,6 +73,8 @@ evaluator_instructions: |
 ```
 
 **Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions` is optional.
+
+**`input.role` is `user` or `system` only** — push rejects anything else. `input` is the turn *trigger*: it is what the responder answers. An `assistant` role would ask the agent to answer its own utterance, and a `tool` result arrives stripped of the `tool_call` it was answering — neither gives the agent anything to respond to. **Always declare `role`** — a role-less `input` is still accepted, but the turn kind it fires as is then the producer's default rather than something your file states. `history` is deliberately unconstrained — a `tool` result there answers a preceding assistant `tool_calls`, which is what history is for.
 
 ### Per-run variables (`{{var()}}`) — parallelize mutating evals
 
