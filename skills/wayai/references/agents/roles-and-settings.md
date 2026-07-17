@@ -253,6 +253,20 @@ response_format:
     required: [order_id]
 ```
 
+JSON Schema property order is also the model's structured-output emission order. For evaluator or rubric schemas, declare rationale fields before conclusion fields so the model reasons before committing to its verdict:
+
+```yaml
+response_format:
+  schema_name: response_evaluation
+  schema_json:
+    type: object
+    properties:
+      notes: { type: string }
+      response_match: { type: boolean }
+    required: [notes, response_match]
+    additionalProperties: false
+```
+
 Both `schema_name` and `schema_json` are required when `response_format` is set. The `wayai pull` includes `type: json_schema` for informational consistency — the platform sets it automatically.
 
 Agents with `response_format` set behave like API endpoints — the response is the JSON object, not a chat reply. Useful for evaluators, structured intent classification, and data-extraction agents called via `consult_agent`.
