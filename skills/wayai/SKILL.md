@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.31.0
+version: 6.32.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -484,6 +484,7 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
         │   └── <set>/<name>.yaml
         ├── journeys/                    # Eval journeys (synced; flat folder, one file per journey)
         │   └── <slug>.yaml
+        ├── attachments/                 # Eval/journey turn attachment files (synced; hub-root, shared by evals + journeys)
         ├── resources/                   # Knowledge & skill resource files (synced)
         ├── AGENTS.md                    # Hub-specific memory — scaffold seeded on pull/push (NOT synced; fill it in)
         ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (seeded if absent, NOT synced)

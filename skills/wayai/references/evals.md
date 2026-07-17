@@ -76,6 +76,25 @@ evaluator_instructions: |
 
 **`input.role` is `user` or `system` only** — push rejects anything else. `input` is the turn *trigger*: it is what the responder answers. An `assistant` role would ask the agent to answer its own utterance, and a `tool` result arrives stripped of the `tool_call` it was answering — neither gives the agent anything to respond to. **Always declare `role`** — a role-less `input` is still accepted, but the turn kind it fires as is then the producer's default rather than something your file states. `history` is deliberately unconstrained — a `tool` result there answers a preceding assistant `tool_calls`, which is what history is for.
 
+### Attachments (images/files on a user turn)
+
+Give the responder a file — a photo of an insurance card, a receipt, a screenshot — so vision/document behaviour is testable, not just discoverable against real traffic:
+
+```yaml
+input:
+  role: user
+  content: "is this plan accepted?"      # optional — a photo with no caption is fine
+  attachments:
+    - attachments/insurance-card.jpg      # hub-relative path
+```
+
+- **`attachments:` is a list of hub-relative file paths.** Put the files under `attachments/` at the hub root (shared by evals and journeys); `wayai push` reads each, uploads it once (content-addressed by SHA-256 — the same file across many scenarios uploads once), and rewrites the turn to a reference. `wayai pull` writes the bytes back under `attachments/` and restores the paths, so the round-trip is stable.
+- **User turns only.** Valid on `input` and on `user` turns in `history` (and on journey transcript `user` turns). Push rejects attachments on any other role.
+- **Caps:** ≤20 files per turn, ≤10 MB each, ≤1,000 distinct attachment files per push, and a bounded total attachment payload per push. A push carries every referenced file's bytes, so it can't be split to get under the total — reduce the attachment set (fewer/smaller files, or drop attachments from some scenarios) if a push exceeds it.
+- **Delivery:** the trigger turn's files reach the responder as a signed URL exactly as a live channel delivers them (images as a URL, never inline base64). Historical turns replay as a `[Attachment: <name>]` placeholder — the responder learns a file was present, not its contents. The **evaluator** sees presence markers, not the image, so assert on the agent's *response* (did it read the plan name correctly?), not on the evaluator inspecting the file.
+- **Lifecycle:** bytes are stored per hub and deleted with the hub; deleting a scenario does not delete shared bytes. Templates omit attachments (a text-only slice can't carry the binaries).
+- **No symlinks.** `attachments/` and every path component leading to it must be a real directory. `wayai pull` skips attachment sync (with a warning) if `attachments/` — or an ancestor — is a symlink, even one pointing back inside the hub, so a pre-planted link can't redirect writes.
+
 ### Per-run variables (`{{var()}}`) — parallelize mutating evals
 
 **Good practice: declare `variables:` whenever you raise `runs` on a scenario that varies by input or writes data** — it buys reliability sampling and safe parallelism in one move. `variables:` is a map of author-provided arrays. Run *i* of `runs: N` resolves `{{var(NAME)}}` / `{{var(NAME).field}}` against `variables.NAME[i-1]` in `input`, `history`, `expected`, and `evaluator_instructions`. Resolution happens **once per run**, so the prompt and the assertion always see the same value — and each run leases a **disjoint** fixture, so a data-mutating scenario can run all its `runs` in parallel without colliding with itself. Values may be objects, so one index yields a coherent bundle (a patient's name + id + slot move together).
@@ -254,7 +273,7 @@ variables:                     # optional per-run variables (gh #3007) — propa
     - { name: "Bruno", order_id: "124" }
 ```
 
-Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
+Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), `attachments` (a list of hub-relative file paths, on `user` turns only — see [Attachments](#attachments-imagesfiles-on-a-user-turn)), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
 
 **Per-run variables on a journey.** A journey-level `variables:` map (same shape and `{{var()}}` semantics as [scenario variables](#per-run-variables-var--parallelize-mutating-evals)) **propagates to every derived step eval**, so run *i* of the whole journey — every step — resolves against the same `variables.NAME[i-1]` row. That makes a multi-turn **mutating** journey runnable at `runs: N` in parallel with each run on its own disjoint fixture. Give each step the same `runs` (or a `step_config` that never exceeds the array length) so the per-step indices stay aligned; a step whose `runs` exceeds a variable array is rejected with `insufficient_variables` at run-launch, same as a scenario.
 

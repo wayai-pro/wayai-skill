@@ -45,6 +45,8 @@ wayai-ws/hubs/<hub>/resources/
 
 Folder name = slugified resource name. Subfolders inside a resource are preserved (relative paths kept on push).
 
+A resource directory and every path component leading to it must be a **real directory, not a symlink** — `wayai pull` skips writing/pruning a resource (with a warning) if its folder, an ancestor, or a subfolder is a symlink, even one pointing elsewhere inside the workspace, so a pre-planted link can't redirect writes outside the resource folder.
+
 ---
 
 ## `resources` Block in `hub.yaml`
