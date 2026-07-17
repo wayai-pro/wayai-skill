@@ -22,6 +22,8 @@ States are JSON-schema-defined data slots that agents read and write during conv
 
 Each state has exactly one scope, fixed at creation.
 
+Because `user`-scope state outlives every conversation, `wayai delete-history --conversation-id` (a single conversation) never clears it, and `reset_state` clears only the one slug you name. To rehearse a **cold-open first contact** — zeroing a user's **entire** `user`-scope footprint for the hub in one shot — run `wayai delete-history` on their whole history (no `--conversation-id`); that clears every `user`-scope slug for that user alongside their conversations.
+
 ---
 
 ## State Definition (`hub.yaml`)
