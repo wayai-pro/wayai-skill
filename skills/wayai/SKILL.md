@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.34.0
+version: 6.35.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -228,6 +228,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Journey** (`journeys/<slug>.yaml`, flat folder) — a stored happy-path transcript that materializes one derived eval per agent turn. The default way to build broad regression coverage: `wayai eval journey capture <conversation_id>`, then `wayai pull` (syncs server-minted step ids)
 - **Per-run `variables`** + `runs: N` — reliability is a distribution, not a 1/1 sample; each run resolves `{{var(name)}}` against its own disjoint row
 - **Seed `fixture:`** — for any eval that *writes*: names a Rekor fixture that `run-eval` resets before the session and clears after, so runs start from a known baseline instead of the last run's residue
+- **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
 
 Good practice for tool-dependent evals: compose **journey + `fixture:` + `variables`** for repeatable, parallel runs. Full YAML shapes, seed-connection setup, run pacing, and authoring/interpreting principles: [`references/evals.md`](references/evals.md).

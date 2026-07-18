@@ -72,7 +72,7 @@ evaluator_instructions: |
   The agent MUST call cancel_order with the correct order_id.
 ```
 
-**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions` is optional.
+**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions`, `variables`, `fixture`/`target_base`, and `initial_state` are optional.
 
 **`input.role` is `user` or `system` only** — push rejects anything else. `input` is the turn *trigger*: it is what the responder answers. An `assistant` role would ask the agent to answer its own utterance, and a `tool` result arrives stripped of the `tool_call` it was answering — neither gives the agent anything to respond to. **Always declare `role`** — a role-less `input` is still accepted, but the turn kind it fires as is then the producer's default rather than something your file states. `history` is deliberately unconstrained — a `tool` result there answers a preceding assistant `tool_calls`, which is what history is for.
 
@@ -164,6 +164,34 @@ connections:
 hub:
   seed_connection: Rekor Seeds
 ```
+
+### Seed user-scope state (`initial_state`) — test memory of prior conversations
+
+**When an agent's behavior depends on WayAI user-scope [state](states.md) it remembers across conversations — a recurring-customer shortcut, a saved profile, a "confirmed" flag — declare `initial_state:`** to pre-populate that state before the scenario's `input` runs. Without it, every eval starts from a cold user with empty state, so memory-dependent behavior (and its regressions) can't be trapped. `initial_state` is the WayAI-state counterpart to the Rekor `fixture:` above: seeded before the run, isolated per run, and torn down when the session ends.
+
+```yaml
+# evals/returning-patient/known-plan.yaml
+initial_state:
+  - slug: known_patients          # an EXISTING user-scope state definition on the hub
+    scope: user                   # only `user` scope is supported (the default; may be omitted)
+    value:                        # written verbatim for this run's user
+      patients:
+        "258.147.036-44": { name: "Mariana Alves Pereira", plan_id: amil, plan_name: "AMIL 400 NACIONAL QC" }
+input:
+  role: user
+  content: "oi, tenho a Amil"     # the responder should now recognize the returning patient
+expected:
+  role: assistant
+  content: "..."                  # e.g. a CLOSED confirmation of identity, not an assumed one
+```
+
+Rules:
+- **`slug` must name an existing `user`-scope state definition on the hub** — `initial_state` seeds a *value*, it does not create the definition. A slug the hub doesn't define, or a `value` its `json_schema` rejects, is **skipped with a warning** (the responder just won't see that seed) rather than failing the run — the same graceful degradation a live agent write hits.
+- **User scope only.** `scope` defaults to `user` and only `user` is accepted; conversation-scope state is already fresh per run (each run is a new conversation), so there's nothing to seed.
+- **Isolated + reverted per run.** Each run seeds a synthetic, state-only user, so runs (and scenarios) never clobber each other; the session's terminal path tears the seeded users down (like the fixture's clear-after). The eval conversation stays userless, so seeding never bills against the org.
+- **What it enables:** the returning-patient shortcut, the family gate (more than one patient in state), "I changed plans", and the anti-bias rule (the agent must NOT write `confirmed` before the user says yes — visible to the evaluator as the agent's `update_state` tool call). The agent reads the seed via `<user_state>` and can write it back during the run exactly as in production.
+
+Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per run, so each run can seed a distinct patient.
 
 **The recommended pattern for tool-dependent evals** — anywhere the agent's correctness hinges on values its tools read or write — is **[journey](#journeys-hub-as-code) + `fixture:` + per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals)** together, and its whole point is **repeatable and parallel session runs**. The **journey** captures the multi-turn tool flow (one graded eval per turn); the **`fixture:`** makes each session **repeatable** (reset-before / clear-after → a known baseline every run, not last run's residue); disjoint **`variables`** make the runs **parallel** (each run mutates its own leased row) — collision-free as long as each run's write footprint fits its row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handles the baseline automatically. For a stateless text/tone eval that touches no tools, none of the three is needed — the pattern earns its place precisely when tool values are in play.
 
