@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.35.0
+version: 6.36.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -194,8 +194,9 @@ Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schem
 **Kanban statuses** are workflow stages for conversations (visible in support/task views), defined per hub in `hub.yaml`:
 
 - Identity: immutable lowercase `slug` (stored in conversations, analytics, tool params; **never renameable**) + freely editable display `name`. Tools accept only slugs (display names ride along as labels) — instructions must reference statuses by slug
-- Behavioral flags: `isInitialStatus` (exactly one per hub), `triggersAgentResponse` (transition fires an agent turn), `allowsAgentUpdate`, `isTerminalStatus` (**entering it closes the conversation**), `isSchedulingStatus` (+ `eventName`). Several combinations are mutually exclusive — validated server-side on every write
+- Behavioral flags: `isInitialStatus` (exactly one per hub), `triggersAgentResponse` (transition fires an agent turn), `allowsAgentUpdate`, `isTerminalStatus` (**entering it closes the conversation**; **at most one per hub**), `isSchedulingStatus` (+ `eventName`). Several combinations are mutually exclusive — validated server-side on every write
 - `allowed_next_statuses` — optional transition allowlist, enforced at runtime on every surface. Omit = unrestricted; `[]` rejected (use `isTerminalStatus`)
+- **Outcomes** — the terminal status only may declare `outcomes: [{slug, name, color?}]` (closing dispositions, e.g. resolved/canceled). When set, closing **requires** choosing one; the chosen slug is stored on the conversation and ingested to analytics as `data.meta.outcome`
 - **Followups** — per-status timed messages: `inactivity` (after silence) or `before_event` (requires `isSchedulingStatus`), with threshold/timeUnit, quiet hours, holiday exclusion
 - **Additional context on transition** — a `triggersAgentResponse` status may declare `additional_context_schema` (JSON-Schema form the team fills on transition) + `additional_instructions` (prose template with `{{path.to.field}}` / `{{additional_data}}` placeholders injected into the triggered turn)
 - **Lanes** — optional presentational board grouping; no behavioral effect
@@ -541,7 +542,11 @@ hub:
       name: Resolved
       order: 3
       color: "#ef4444"
-      isTerminalStatus: true
+      isTerminalStatus: true         # at most one terminal status per hub
+      outcomes:                      # terminal-only; when set, closing requires one → data.meta.outcome
+        - { slug: resolved, name: Resolved, color: "#22c55e" }
+        - { slug: canceled, name: Canceled, color: "#ef4444" }
+        - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 
 states:
   - id: "state-uuid-789"          # set by pull

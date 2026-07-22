@@ -32,7 +32,7 @@ Tool wire values are slug-only — the `update_kanban_status` enum accepts slugs
 | `isInitialStatus` | Conversations start here. Exactly one status must have it |
 | `triggersAgentResponse` | Transitioning a conversation into this status fires an agent turn |
 | `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status` |
-| `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change |
+| `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change. **At most one per hub** |
 | `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables `before_event` followups |
 
 All flags default `false` (omitted in YAML when false).
@@ -46,6 +46,25 @@ All flags default `false` (omitted in YAML when false).
 - Omit (= `undefined`) for unrestricted (any next status — the legacy "any → any" behavior)
 - Empty array `[]` is rejected; use `isTerminalStatus: true` for "no outbound"
 - Every entry must reference a sibling slug in the same hub
+
+---
+
+## Outcomes
+
+Closing dispositions offered when a conversation enters the terminal status (e.g. `resolved` / `canceled` / `abandoned`). Declared **only on the terminal status** as an `outcomes` array of `{ slug, name, color? }`.
+
+```yaml
+- slug: resolved
+  name: Resolved
+  isTerminalStatus: true
+  outcomes:
+    - { slug: resolved, name: Resolved, color: "#22c55e" }
+    - { slug: canceled, name: Canceled, color: "#ef4444" }
+```
+
+- When `outcomes` is set, closing the conversation **requires** choosing one — enforced server-side on every surface (agent `update_kanban_status` tool, team drag-drop / dropdown, REST, MCP). Omit `outcomes` entirely to close with no recorded reason.
+- The chosen `slug` is stored on the conversation and ingested to analytics as `data.meta.outcome` (empty when unset). It is the stable, queryable identifier — pick meaningful slugs.
+- Closes that don't go through the terminal transition (team Close button, inactivity auto-close, `close_conversation` tool) leave the outcome unset.
 
 ---
 
@@ -98,7 +117,9 @@ Constraints (server-side, all write paths):
 Enforced on every write — REST, CLI `wayai push`, MCP:
 
 - Exactly one status must have `isInitialStatus: true`
+- **At most one** status may have `isTerminalStatus: true` (zero is allowed — a hub may close only via the team Close button / inactivity auto-close)
 - Slugs must be unique within a hub and match `^[a-z][a-z0-9_]{0,49}$`
+- `outcomes` are valid **only** on the terminal status; outcome slugs must be unique and match the slug regex
 - Every entry in `allowed_next_statuses` must reference a sibling slug; `[]` is rejected
 - Mutually exclusive flags (cannot both be `true` on the same status):
   - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
@@ -183,4 +204,8 @@ hub:
       order: 3
       color: "#ef4444"
       isTerminalStatus: true
+      outcomes:
+        - { slug: resolved, name: Resolved, color: "#22c55e" }
+        - { slug: canceled, name: Canceled, color: "#ef4444" }
+        - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 ```

@@ -37,7 +37,14 @@ hub:
       name: Resolved
       order: 3
       color: "#10b981"
-      isTerminalStatus: true
+      isTerminalStatus: true          # at most one terminal status per hub
+      # Closing outcomes (terminal only). When set, closing REQUIRES one — the
+      # chosen slug lands in analytics as data.meta.outcome. Omit to close with
+      # no recorded reason.
+      outcomes:
+        - { slug: resolved, name: Resolved, color: "#22c55e" }
+        - { slug: canceled, name: Canceled, color: "#ef4444" }
+        - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 
   # Lanes — optional presentational grouping for the kanban board filter.
   # Each non-initial status may set `lane_slug` to one of these. Only the initial
