@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.36.1
+version: 6.36.2
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -131,8 +131,9 @@ Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom s
 | `monitor` | Background | 1 | Observes silently |
 | `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing. Their `evaluation_variables` feed Analytics; the `message_evaluator` also scores eval runs |
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
+| `consultant` | Track-independent (on-demand) | Multiple | Consulted by people (and agents) in visible consult threads. Never a pilot/copilot responder, never auto-fired, and never a transfer/advisor target. *An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.* Consult turns bill as normal foreground operations. Configurable today; consult dispatch (tagging a consultant from the support composer) ships in a follow-up |
 
-`transfer_to_agent` targets **any same-track agent** — a `*_specialist` *or* the entry `pilot`/`copilot`, so the pilot can act as a **hub-and-spoke router** (specialists transfer cross-domain requests back to it for re-dispatch). Cross-track and advisor/background roles are never transfer targets.
+`transfer_to_agent` targets **any same-track agent** — a `*_specialist` *or* the entry `pilot`/`copilot`, so the pilot can act as a **hub-and-spoke router** (specialists transfer cross-domain requests back to it for re-dispatch). Cross-track, advisor, consultant, and background roles are never transfer targets.
 
 For role flow, delegation, and settings depth, see [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md).
 

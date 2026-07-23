@@ -24,9 +24,10 @@ WayAI agents operate on three tracks. The conversation's `current_responder_type
 |-------|-------------|-------|
 | **Pilot** | AI talks to the end user | `pilot`, `pilot_specialist`, `pilot_advisor` |
 | **Copilot** | AI suggests responses to the team | `copilot`, `copilot_specialist`, `copilot_advisor` |
-| **Background** | Always (no message routing) | `monitor`, `conversation_evaluator`, `message_evaluator` |
+| **Background** | Always (no message routing) | `monitor`, `conversation_evaluator`, `message_evaluator`, `summarizer` |
+| **On-demand** | Only when explicitly consulted | `consultant` |
 
-The Pilot agent's response is delivered through the channel; the Copilot agent's response surfaces in the team UI as a suggestion (no channel delivery).
+The Pilot agent's response is delivered through the channel; the Copilot agent's response surfaces in the team UI as a suggestion (no channel delivery). The `consultant` role is track-independent but foreground: it runs only when people (or agents) consult it in visible threads, and its turns bill as normal operations.
 
 ---
 
@@ -43,8 +44,10 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `monitor` | 1 | No (silent observer) | n/a | Excluded from message routing |
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
+| `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
+| `consultant` | Multiple | No (consulted on demand) | n/a | Track-independent; consulted by people (and agents) in visible consult threads. **An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.** Never a track responder and never a `transfer_to_agent`/`consult_agent` target. Configurable today; consult dispatch ships in a follow-up |
 
-Background roles (`monitor`, evaluators) are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
+Background roles (`monitor`, evaluators, `summarizer`) and `consultant` are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
 
 **`transfer_to_agent` targets any agent on the same track** — the entry `pilot`/`copilot` *or* a `*_specialist` (status `agent` → pilot track; status `team` → copilot track). Targeting the entry pilot enables the **hub-and-spoke router** pattern: the pilot dispatches to specialists, and a specialist can transfer back to the pilot to re-dispatch a request that belongs to a different domain. Cross-track agents and advisor/background roles are never transfer targets. (Within one turn an agent can't be delegated back to an agent already in the chain — the reinvoke cycle guard bounds ping-pong; across turns, re-routing is unrestricted.)
 
@@ -62,6 +65,7 @@ Background roles (`monitor`, evaluators) are excluded from delegation flows — 
 | A dispatcher that routes to domain specialists and re-dispatches | `pilot` as the entry router + `pilot_specialist`s; a specialist transfers back to the `pilot` to re-route a cross-domain request |
 | Conversation quality scoring | `conversation_evaluator` and/or `message_evaluator` |
 | Silent monitoring/logging | `monitor` |
+| A domain expert your support team (or agents) consult in visible threads | Add a `consultant` (configurable now; consult dispatch ships in a follow-up) |
 
 ---
 
