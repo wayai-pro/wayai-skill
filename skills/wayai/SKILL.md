@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.36.0
+version: 6.36.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -46,7 +46,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
 | Diagnose why a hub misbehaves (audio/TTS not delivered, agent silent, a tool failing) — check connection/credential health FIRST | CLI (`wayai alerts`) — surfaces active Status & Notices alerts (e.g. an invalid provider key shows as `connection_auth` 401). Run this before reading code or filing a report |
-| Inspect what an agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) |
+| Diagnose an inexplicable agent reply (wrong date, ignored rule, hallucinated value) — don't reason from the transcript; read what the agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) — run this before editing instructions |
 | Record a post-hoc business outcome on an ended conversation (e.g. customer purchased) as an analytics dimension | CLI (`wayai conversations <id> annotate --set key=value [--type ...]`) |
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
