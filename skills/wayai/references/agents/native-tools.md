@@ -69,6 +69,39 @@ Consult another agent for advice without transferring; the advice returns to the
 | `agent_name` | string | Yes | Name of the AI agent to consult |
 | `consult_question` | string | Yes | The specific question to ask |
 
+### delegate_to_hub
+
+Delegate a self-contained request to **another hub**, which handles it as a task conversation. **Asynchronous:** the tool returns as soon as the request is handed over, and the target hub's answer is posted into the consult thread later — the calling agent must end its turn, never wait for the result.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `request` | string | Yes | The task to delegate, phrased so the target hub can act on it without seeing this conversation |
+
+The target hub and the context boundary are **admin configuration on the tool**, not model choices. In YAML:
+
+```yaml
+- type: hub
+  tool: delegate_to_hub
+  target: Billing Hub        # a PRODUCTION (published) hub in the same organization
+  context_boundary: summary  # instruction | summary | transcript
+```
+
+- **`target`** must be a published (**production**) **`hub_type: task`** hub in the **same organization**. Production matches branching semantics; *task* is a data-isolation requirement — a task hub gives each delegated request its own conversation, whereas a `chat` hub keeps one active conversation per user, so every delegation would land in a single thread and mix customers. A cross-org, deleted, unpublished, or chat-type target fails the push and refuses at runtime rather than spawning.
+- **The target hub must be able to CLOSE the spawned conversation** — its close is the completion signal that delivers the answer back. The request text asks it to; a target whose agents cannot close (no `close_conversation`, no terminal kanban status) leaves the asker waiting, with no timeout until H1.7.
+- Assign it to a **`consultant`**-role agent: it runs only on a consult turn.
+- **`context_boundary`** is the data-crossing control — the only thing that decides what leaves this hub:
+
+| Value | Crosses into the target hub |
+|-------|-----------------------------|
+| `instruction` | The `request` argument alone — nothing from the conversation |
+| `summary` (default when omitted) | The request + the rolling conversation summary |
+| `transcript` | The request + the full customer transcript |
+
+  Internal consult traffic is excluded at every setting, and an unrecognized value falls back to `summary` rather than widening.
+
+- Usable **only inside a consult thread** — the thread is where the answer is delivered. Delivery is idempotent (a redelivered result is posted once), and a result arriving after the conversation closed is dropped, with the thread recorded as `cancelled_at_close`.
+- **v1 is config-as-code**: the Platform UI's tool "Add" grid omits this tool (it cannot yet collect a target hub or a `context_boundary`); assign it with `wayai push`. An already-assigned instance still shows and toggles in the UI.
+
 ### close_conversation
 
 Close the current conversation and mark it resolved. **No parameters.** The conversation is archived and leaves the active list. (Transitioning into an `isTerminalStatus: true` kanban status also closes the conversation — see [kanban.md](../kanban.md); use whichever matches the workflow.)
@@ -380,7 +413,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 
 | Module | Tools |
 |--------|-------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Resource & File | `list_resource_folders`, `list_resource_files`, `read_file`, `send_files`, `download_file`, `upload_file` |
 | Skill | `read_skill`, `read_skill_file` |

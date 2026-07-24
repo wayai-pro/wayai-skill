@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.36.3
+version: 6.37.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -186,9 +186,34 @@ Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with
 | Native | Platform built-ins (e.g., `update_kanban_status`, `get_state`, `send_files`, `close_conversation`, `read_file`) | Listed by name under `tools.native` |
 | Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
 | MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
-| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`) or agent-to-team (`transfer_to_team`) | Declared under `tools.delegation` with `target` (agent display name or team name) |
+| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name) |
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. Full native catalog + params: [`references/agents/native-tools.md`](references/agents/native-tools.md); custom tool schema: [`references/agents/custom-tools.md`](references/agents/custom-tools.md); designing *which* tools/params to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md).
+
+### Hub delegation (`delegate_to_hub`)
+
+Treats **another hub as a consultant**. The tool spawns a task conversation in the target hub, and that hub's answer comes back **asynchronously** as a message in the consult thread the request came from — so the tagging agent's turn ends immediately and must not wait for a result.
+
+```yaml
+- type: hub
+  tool: delegate_to_hub
+  target: Billing Hub        # a PRODUCTION (published) hub in the same organization
+  context_boundary: summary  # instruction | summary | transcript
+```
+
+- **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call).
+- **The target hub must CLOSE the spawned conversation** — its close is the completion signal. The request text instructs it to, but a target whose agents can never close (no `close_conversation` tool, no terminal kanban status) will leave the asker waiting: there is no timeout until H1.7. Give the target hub a way to finish.
+- **`context_boundary` is a data-sensitivity decision, not a tuning knob.** Hubs can differ in team membership and what they may see, so choose deliberately — there is no safe default that fits every pair of hubs:
+
+| Value | What crosses into the target hub |
+|---|---|
+| `instruction` | Only the agent's own request. Nothing from the conversation. |
+| `summary` (default) | The request + the rolling conversation summary. |
+| `transcript` | The request + the full customer transcript. |
+
+  Internal consult traffic never crosses at any setting, and the model can neither choose the target nor widen the boundary — both are admin config.
+- **Only available inside a consult thread**, which is where the result is delivered — so assign it to a `consultant`-role agent. A result arriving after the conversation is closed is dropped (the thread is recorded as `cancelled_at_close`).
+- **Configured via CI/YAML only in v1** — the Platform UI's tool "Add" grid omits it until the hub picker and boundary control ship, because attaching it needs both choices above.
 
 ## Kanban & States
 
@@ -612,6 +637,13 @@ tools:
     - type: team
       tool: transfer_to_team
       target: Tier 2 Support
+    # Hub-as-agent: hand a self-contained request to ANOTHER hub in this org.
+    # `target` is a PRODUCTION (published) hub name. context_boundary is required
+    # reading — see "Hub delegation" below.
+    - type: hub
+      tool: delegate_to_hub
+      target: Billing Hub
+      context_boundary: summary   # instruction | summary | transcript
   custom:
     - name: check_order_status
       description: Check order status by email
