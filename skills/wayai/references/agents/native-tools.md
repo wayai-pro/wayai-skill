@@ -318,6 +318,8 @@ Full transcript of one past conversation (find IDs via `get_conversations_summar
 | `conversation_id` | string | Yes | Conversation to retrieve |
 | `max_characters` | integer | No | Output cap (default 30000, max 60000) |
 
+Also returns `previous_conversation_id` / `next_conversation_id` when they exist — the user's conversations closed nearest in time either side of this one, so the agent can keep walking history without another `get_conversations_summary` call. Neighbours by closing time, not a fixed chain; either may be absent.
+
 ### expand_summary
 
 Retrieve the original messages behind a section of the rolling `<conversation_summary>` block (see the summarizer role in SKILL.md → Agent Roles). An unknown `section_id` returns `available_section_ids` for retry.
