@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.37.1
+version: 6.38.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -186,7 +186,7 @@ Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with
 | Native | Platform built-ins (e.g., `update_kanban_status`, `get_state`, `send_files`, `close_conversation`, `read_file`) | Listed by name under `tools.native` |
 | Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
 | MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
-| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name) |
+| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`, `start_consult_thread`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`, `start_consult_thread`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name) |
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. Full native catalog + params: [`references/agents/native-tools.md`](references/agents/native-tools.md); custom tool schema: [`references/agents/custom-tools.md`](references/agents/custom-tools.md); designing *which* tools/params to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md).
 
@@ -202,7 +202,7 @@ Treats **another hub as a consultant**. The tool spawns a task conversation in t
 ```
 
 - **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call).
-- **The target hub must CLOSE the spawned conversation** — its close is the completion signal. The request text instructs it to, but a target whose agents can never close (no `close_conversation` tool, no terminal kanban status) will leave the asker waiting: there is no timeout until H1.7. Give the target hub a way to finish.
+- **The target hub must CLOSE the spawned conversation** — its close is the completion signal. The request text instructs it to, but a target whose agents can never close (no `close_conversation` tool, no terminal kanban status) will leave the asker waiting. (An **agent-started** consult carries an expiry — see `start_consult_thread`; a team-started hub delegation does not, so give the target hub a way to finish.)
 - **`context_boundary` is a data-sensitivity decision, not a tuning knob.** Hubs can differ in team membership and what they may see, so choose deliberately — there is no safe default that fits every pair of hubs:
 
 | Value | What crosses into the target hub |
@@ -214,6 +214,25 @@ Treats **another hub as a consultant**. The tool spawns a task conversation in t
   Internal consult traffic never crosses at any setting, and the model can neither choose the target nor widen the boundary — both are admin config.
 - **Only available inside a consult thread**, which is where the result is delivered — so assign it to a `consultant`-role agent. A result arriving after the conversation is closed is dropped (the thread is recorded as `cancelled_at_close`).
 - **Configured via CI/YAML only in v1** — the Platform UI's tool "Add" grid omits it until the hub picker and boundary control ship, because attaching it needs both choices above.
+
+### Agent-initiated consults (`start_consult_thread`)
+
+Lets a **non-background agent** put a question to a configured consultant (or partner hub) in a consult thread the support team can see — the third initiator of the one consult substrate, alongside a human tagging a consultant and an agent delegating to a hub.
+
+```yaml
+- type: agent
+  tool: start_consult_thread
+  target: Billing Expert     # a `consultant`-role agent on this hub
+```
+
+- **The mode follows the target.** A same-hub, non-harness consultant answers inside the tool call; a partner hub or a harness-backed consultant answers **asynchronously** — the asking agent ends its turn ("I'll check and get back to you") and is brought back automatically when the answer lands. A slow sync consult converts to async by itself, so agent instructions must handle "the answer will follow" for any target.
+- **Consultant→consultant chains are off by default, and sync-only when enabled** — set `allow_consultant_chain: true` on the tool to permit them, against a same-hub, non-harness consultant. `monitor`, the evaluators, and `summarizer` can never initiate.
+- **Budgets are enforced**: consult chain depth, plus cycle refusal in both directions (agent A → B → A inside a hub, hub A → B → A across hubs), a cap per LLM call, and a durable cap per conversation. Every consult turn bills a foreground operation, so these caps are what stop an agent multiplying cost unattended.
+- **Nothing stays pending forever**: an unanswered consult expires and brings the asker back with a timeout notice; a consult outstanding when the conversation closes is recorded `cancelled_at_close`.
+- **A team member posting in an agent-started thread takes it over permanently** — the AI is no longer brought back for that thread, and further consults into it return a fixed "taken over by the team" notice.
+- **Configured via CI/YAML only in v1**, like `delegate_to_hub`.
+
+Full parameters and YAML shapes: [`references/agents/native-tools.md`](references/agents/native-tools.md#start_consult_thread).
 
 ## Kanban & States
 

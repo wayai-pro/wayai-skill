@@ -102,6 +102,44 @@ The target hub and the context boundary are **admin configuration on the tool**,
 - Usable **only inside a consult thread** — the thread is where the answer is delivered. Delivery is idempotent (a redelivered result is posted once), and a result arriving after the conversation closed is dropped, with the thread recorded as `cancelled_at_close`.
 - **v1 is config-as-code**: the Platform UI's tool "Add" grid omits this tool (it cannot yet collect a target hub or a `context_boundary`); assign it with `wayai push`. An already-assigned instance still shows and toggles in the UI.
 
+### start_consult_thread
+
+Ask the **consultant configured on the tool** a question, in a consult thread the support team can see. The target is admin configuration — the model supplies only the question.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `question` | string | Yes | What you need from the consultant, phrased so it can be answered without further back-and-forth |
+| `title` | string | Yes | Short label for the thread, so the team can tell parallel consults apart |
+
+```yaml
+# same-hub consultant
+- type: agent
+  tool: start_consult_thread
+  target: Billing Expert          # must be a `consultant`-role agent on this hub
+
+# partner hub as the consultant
+- type: hub
+  tool: start_consult_thread
+  target: Billing Hub             # a PRODUCTION `hub_type: task` hub, same org
+  context_boundary: summary       # same meaning and defaults as delegate_to_hub
+```
+
+- **Two modes, and the target decides which.** A same-hub, non-harness consultant answers **inside the tool call**. A partner hub — or a **harness-backed** consultant, whose sandbox turn can run minutes — answers **asynchronously**: the calling agent must end its turn (tell the customer you are checking) and is **brought back automatically** when the answer arrives. A sync consult that overruns its turn-time budget converts to async on its own, so an agent must handle "the answer will follow" on any target.
+- **Assignable to any non-background agent** (pilot, copilot, specialists). `monitor`, the evaluators, and `summarizer` can never start a consult.
+- **Consultant→consultant chains are OFF by default, and SYNC-ONLY when enabled.** A `consultant`-role agent may start a consult only with the explicit opt-in below, and only against a same-hub, non-harness consultant — a chained consult must answer inside the call, because a consultant has no responder track to be brought back on:
+
+```yaml
+- type: agent
+  tool: start_consult_thread
+  target: Tax Specialist
+  allow_consultant_chain: true
+```
+
+- **Budgets are enforced, not advisory** — every consult turn bills a foreground operation, and an agent can multiply them without a human asking. A consult chain is capped in **depth**, and a **cycle is refused outright** in either direction: agent A → agent B → agent A inside one hub, and hub A → hub B → hub A across hubs. There is also a cap per LLM call and a (durable) cap per conversation. A refusal comes back as a tool error the agent can act on ("answer with what you have").
+- **An unanswered consult always resolves.** A pending thread carries an expiry; when it fires the asker is brought back with a timeout notice rather than waiting forever. If the conversation closed in the meantime, nothing is delivered and the thread is recorded as `cancelled_at_close`.
+- **The support team can take a thread over at any time.** The moment a team member posts in an agent-started thread, the thread becomes theirs: the AI is no longer brought back for it, and a follow-up consult into that thread returns a fixed "taken over by the team" notice instead of an answer. This is one-way and permanent for that thread.
+- **Configured via CI/YAML only in v1** (like `delegate_to_hub`) — the UI "Add" grid omits it until the target picker ships.
+
 ### close_conversation
 
 Close the current conversation and mark it resolved. **No parameters.** The conversation is archived and leaves the active list. (Transitioning into an `isTerminalStatus: true` kanban status also closes the conversation — see [kanban.md](../kanban.md); use whichever matches the workflow.)
@@ -413,7 +451,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 
 | Module | Tools |
 |--------|-------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Resource & File | `list_resource_folders`, `list_resource_files`, `read_file`, `send_files`, `download_file`, `upload_file` |
 | Skill | `read_skill`, `read_skill_file` |
