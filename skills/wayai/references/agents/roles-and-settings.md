@@ -232,6 +232,19 @@ Notes:
 - Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns when spoken replies are enabled).
 - Set `deliver_preamble: false` for agents that shouldn't narrate progress or whose channel UX wants exactly one message per turn (only pilot-track agents deliver to users; copilot/background roles never deliver preambles regardless).
 
+### Copilot suggestion trigger (all LLM + harness connectors)
+
+Controls *when* a Copilot-track agent drafts its suggestion. Consulted **only** for an agent running on the Copilot track (status `team` under `copilot` / `pilot+copilot`); ignored for Pilot and background agents.
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| `copilot_trigger` | `every_message` / `on_demand` | `every_message` | `every_message` drafts a suggestion automatically on every inbound message (today's behavior). `on_demand` suppresses the automatic suggestion — the support team pulls one explicitly with the "Suggest reply" button in `/support`. |
+
+Notes:
+- A **cost + noise lever**: a Copilot bills a foreground operation per drafted suggestion, so `on_demand` avoids paying for suggestions on messages the team can already handle.
+- `on_demand` changes only *when* the suggestion fires — the suggestion itself is the same internal, team-facing draft (never delivered to the customer).
+- No effect on Pilot agents; a Pilot always responds to the end user regardless of this setting.
+
 When the agent's connection changes, existing `settings` are sanitized against the new connector's schema — unknown keys are dropped. To see the exact schema for a specific connector at any time, run `wayai pull` and inspect a freshly pulled agent's `settings` block.
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.36.2
+version: 6.36.3
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -599,6 +599,7 @@ settings:
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter/xAI reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
   # file_handling_mode: always_attach  # or metadata_only (historical files sent as metadata; agent fetches via read_file). max_attachment_size_mb caps always_attach size (see roles-and-settings.md#file-handling-all-llm-connectors)
   # deliver_preamble: true           # default; pre-tool "let me check…" text is delivered as its own message (voice: own TTS clip; ignored on email). false = only the final reply (see roles-and-settings.md#pre-tool-preamble-delivery-all-llm-connectors)
+  # copilot_trigger: every_message   # copilot-track only; on_demand suppresses the automatic per-message suggestion — the team pulls one via the "Suggest reply" button (cost/noise lever; see roles-and-settings.md)
 tools:
   native:
     - update_kanban_status
