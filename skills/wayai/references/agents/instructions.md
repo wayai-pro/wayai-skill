@@ -44,9 +44,10 @@ Placeholders are processed in:
 {{state(conversation, cart).total}}
 ```
 
-**Array access** — navigates into arrays:
+**Array access** — navigates into arrays. The path always starts with a dot, so
+indexing a function that itself returns an array reads `.[0]`:
 ```
-{{previous_conversations(1).conversations[0].message_text}}
+{{previous_conversations(1).[0].summary}}
 ```
 
 **Rules:**
@@ -220,17 +221,30 @@ For a skill, returns its `SKILL.md`. For a knowledge base, returns its files con
 
 ### `{{previous_conversations()}}`
 
-Previous ended conversations for the same user in this hub.
+Previous ended conversations for the same user in this hub, newest first.
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `conversation_limit` | `5` | Max conversations to return |
+| `conversation_limit` | *(required)* | Max conversations to return (capped at 20) |
 
-Returns JSON with conversations array, each containing messages (sender_type, message_text, created_at).
+Renders a JSON array of `{ conversation_id, summary, ended_at }`. It is an index,
+not a transcript: give the agent the `get_conversation` tool and it can pull the
+full text of any `conversation_id` listed here.
+
+`summary` is the **Conversation Evaluator**'s summary output, written after the
+conversation ends. It is therefore absent when:
+
+- the hub's evaluator agent is disabled or produced no summary;
+- the conversation ended **before this feature shipped** — there is no backfill, so
+  existing hubs see summaries only on conversations closed from that point on;
+- the conversation was reaped past the hub's `ended_index_retention_days`, which
+  bounds how far back this placeholder reaches.
+
+Long summaries are truncated. `conversation_id` and `ended_at` are always present,
+so an agent can still reach for `get_conversation` when the summary is missing.
 
 ```
 {{previous_conversations(3)}}
-Last message from user: {{previous_conversations(1).conversations[0].message_text}}
 ```
 
 ---
