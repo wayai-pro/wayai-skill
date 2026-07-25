@@ -73,18 +73,19 @@ signal, so no acknowledgement step exists (or is needed). Closing the conversati
 
 ## Outcomes
 
-Closing dispositions offered when a conversation enters the terminal status (e.g. `resolved` / `canceled` / `abandoned`). Declared **only on the terminal status** as an `outcomes` array of `{ slug, name, color? }`.
+Closing dispositions offered when a conversation enters the terminal status (e.g. `resolved` / `canceled` / `abandoned`). Declared **only on the terminal status** as an `outcomes` array of `{ slug, name, color?, from_statuses? }`.
 
 ```yaml
 - slug: resolved
   name: Resolved
   isTerminalStatus: true
   outcomes:
-    - { slug: resolved, name: Resolved, color: "#22c55e" }
+    - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [qualified] }
     - { slug: canceled, name: Canceled, color: "#ef4444" }
 ```
 
-- When `outcomes` is set, closing the conversation **requires** choosing one — enforced server-side on every surface (agent `update_kanban_status` tool, team drag-drop / dropdown, REST, MCP). Omit `outcomes` entirely to close with no recorded reason.
+- `from_statuses` is an optional, non-empty allowlist of sibling source status slugs. Omit it to make that outcome eligible from any source. Unknown or missing stored source statuses keep all outcomes eligible for compatibility.
+- When `outcomes` is set, a genuine terminal Kanban transition **requires** choosing an eligible one — enforced server-side for agent/harness `update_kanban_status`, team drag-drop / dropdown, REST, and MCP. `allowed_next_statuses` remains an independent gate and is checked first. Omit `outcomes` entirely to make the terminal transition close with no recorded reason.
 - The chosen `slug` is stored on the conversation and ingested to analytics as `data.meta.outcome` (empty when unset). It is the stable, queryable identifier — pick meaningful slugs.
 - Closes that don't go through the terminal transition (team Close button, inactivity auto-close, `close_conversation` tool) leave the outcome unset.
 
@@ -142,6 +143,7 @@ Enforced on every write — REST, CLI `wayai push`, MCP:
 - **At most one** status may have `isTerminalStatus: true` (zero is allowed — a hub may close only via the team Close button / inactivity auto-close)
 - Slugs must be unique within a hub and match `^[a-z][a-z0-9_]{0,49}$`
 - `outcomes` are valid **only** on the terminal status; outcome slugs must be unique and match the slug regex
+- `outcomes[].from_statuses`, when present, must be non-empty, reference sibling statuses, and cannot contain the terminal status itself
 - Every entry in `allowed_next_statuses` must reference a sibling slug; `[]` is rejected
 - Mutually exclusive flags (cannot both be `true` on the same status):
   - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
@@ -162,12 +164,15 @@ Returned alongside successful saves:
 - `unreachable` — a non-initial status that no other status lists in its `allowed_next_statuses`
 - `placeholder_unresolved` — a `{{path.to.field}}` placeholder in `additional_instructions` does not resolve against `additional_context_schema`. At runtime that placeholder renders as empty string
 - `unused_lane` — a declared lane no status is assigned to
+- `no_eligible_outcome` — a source can transition directly to the terminal status, but no configured outcome accepts it
 
 ---
 
 ## Runtime Transition Gate
 
-When a conversation transitions kanban status (drag-drop, native tool, REST, MCP), the configured `allowed_next_statuses` is enforced. Disallowed transitions return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy "any → any" behavior. Transitions out of an `isTerminalStatus: true` status are rejected.
+When a conversation transitions kanban status (drag-drop, native or harness tool, REST, MCP), the target must be a configured status and the source's `allowed_next_statuses` is enforced. Unknown targets and disallowed edges return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy behavior of allowing a non-terminal source to move to any **configured** target. Transitions out of an `isTerminalStatus: true` status are rejected.
+
+For a genuine transition into the terminal status, `outcomes[].from_statuses` is evaluated against the conversation's stored current status. Ineligible selections return `invalid_kanban_outcome` with only the eligible slugs. A hub-config lookup failure blocks the mutation with retryable `kanban_config_unavailable`; a successful lookup with no Kanban config remains distinct. Same-status updates and unknown/missing stored source slugs retain compatibility behavior. This is direct source eligibility, not a general condition engine, and it does not change bare lifecycle close routes.
 
 ---
 
@@ -229,7 +234,7 @@ hub:
       color: "#ef4444"
       isTerminalStatus: true
       outcomes:
-        - { slug: resolved, name: Resolved, color: "#22c55e" }
+        - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [qualified, waiting_for_customer] }
         - { slug: canceled, name: Canceled, color: "#ef4444" }
         - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 ```

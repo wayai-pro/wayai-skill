@@ -38,11 +38,11 @@ hub:
       order: 3
       color: "#10b981"
       isTerminalStatus: true          # at most one terminal status per hub
-      # Closing outcomes (terminal only). When set, closing REQUIRES one — the
-      # chosen slug lands in analytics as data.meta.outcome. Omit to close with
-      # no recorded reason.
+      # Closing outcomes (terminal transitions only). `from_statuses` restricts
+      # the eligible source slugs; omit it to accept any source. The chosen slug
+      # lands in analytics as data.meta.outcome. Bare close paths remain unchanged.
       outcomes:
-        - { slug: resolved, name: Resolved, color: "#22c55e" }
+        - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [in_progress, waiting_for_customer] }
         - { slug: canceled, name: Canceled, color: "#ef4444" }
         - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 

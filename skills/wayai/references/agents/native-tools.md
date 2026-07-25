@@ -146,11 +146,14 @@ Close the current conversation and mark it resolved. **No parameters.** The conv
 
 ### update_kanban_status
 
-Update conversation's kanban board status. The enum is constrained to the hub's agent-updateable status **slugs**; the tool description renders `slug (Display Name)` pairs so the LLM can reason about the choice. Transitions are rejected when the source status is `isTerminalStatus: true` (any outbound transition fails) or defines an `allowed_next_statuses` list that excludes the target. Both rejections return an error message beginning with `invalid_kanban_transition:` — terminal-status rejections name the source and target slug; `allowed_next_statuses` rejections additionally append `Allowed targets: <slugs>`. Transitioning **into** a terminal status closes the conversation.
+Update conversation's kanban board status. The enum is constrained to the hub's agent-updateable status **slugs**; the tool description renders `slug (Display Name)` pairs so the LLM can reason about the choice. Transitions are rejected when the target slug is not configured, the source status is `isTerminalStatus: true` (any outbound transition fails), or the source defines an `allowed_next_statuses` list that excludes the target. These rejections return an error message beginning with `invalid_kanban_transition:`. Unknown-target and `allowed_next_statuses` rejections list the allowed target slugs; a terminal-source rejection names the source and target.
+
+When the target is terminal and declares `outcomes`, `outcome` is required. An outcome with `from_statuses` is eligible only when the conversation's **stored current status** appears in that list; omission means any source. A missing, unknown, or same-as-target stored source allows all configured outcomes for compatibility. A missing or ineligible selection returns `invalid_kanban_outcome:` with only the eligible slugs (possibly none), without changing or closing the conversation. If the hub workflow configuration cannot be loaded, the operation fails with `kanban_config_unavailable` and should be retried later. Transitioning **into** a terminal status with a valid outcome closes the conversation. These gates apply to `update_kanban_status`; the separate `close_conversation` tool retains the behavior documented above.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `new_kanban_status` | string | Yes | Target status **slug** (immutable identifier from `hub.kanban_statuses[].slug`; display names appear only as labels in the description) |
+| `outcome` | string | When required | Outcome **slug**. Required when the target terminal status declares outcomes; must be eligible from the conversation's stored current status |
 | `scheduled_event_date` | string | No | For `isSchedulingStatus` statuses: event datetime, RFC3339 with timezone |
 | `event_description` | string | No | Description of the scheduled event |
 | `event_sid` | string | No | External event ID for integration purposes |

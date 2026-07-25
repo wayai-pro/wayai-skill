@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.39.0
+version: 6.40.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -241,7 +241,7 @@ Full parameters and YAML shapes: [`references/agents/native-tools.md`](reference
 - Identity: immutable lowercase `slug` (stored in conversations, analytics, tool params; **never renameable**) + freely editable display `name`. Tools accept only slugs (display names ride along as labels) — instructions must reference statuses by slug
 - Behavioral flags: `isInitialStatus` (exactly one per hub), `triggersAgentResponse` (transition fires an agent turn), `allowsAgentUpdate`, `isTerminalStatus` (**entering it closes the conversation**; **at most one per hub**), `isSchedulingStatus` (+ `eventName`). Several combinations are mutually exclusive — validated server-side on every write
 - `allowed_next_statuses` — optional transition allowlist, enforced at runtime on every surface. Omit = unrestricted; `[]` rejected (use `isTerminalStatus`)
-- **Outcomes** — the terminal status only may declare `outcomes: [{slug, name, color?}]` (closing dispositions, e.g. resolved/canceled). When set, closing **requires** choosing one; the chosen slug is stored on the conversation and ingested to analytics as `data.meta.outcome`
+- **Outcomes** — the terminal status only may declare `outcomes: [{slug, name, color?, from_statuses?}]` (closing dispositions, e.g. resolved/canceled). `from_statuses` is a non-empty source-slug allowlist; omit it to accept the outcome from any source. A genuine terminal Kanban transition requires an eligible outcome and stores its slug for analytics as `data.meta.outcome`. Bare lifecycle closes (`close_conversation`, Close button, inactivity) remain unchanged and may leave outcome unset
 - **Followups** — per-status timed messages: `inactivity` (after silence) or `before_event` (requires `isSchedulingStatus`), with threshold/timeUnit, quiet hours, holiday exclusion
 - **Additional context on transition** — a `triggersAgentResponse` status may declare `additional_context_schema` (JSON-Schema form the team fills on transition) + `additional_instructions` (prose template with `{{path.to.field}}` / `{{additional_data}}` placeholders injected into the triggered turn)
 - **Lanes** — optional presentational board grouping; no behavioral effect
@@ -589,8 +589,8 @@ hub:
       order: 3
       color: "#ef4444"
       isTerminalStatus: true         # at most one terminal status per hub
-      outcomes:                      # terminal-only; when set, closing requires one → data.meta.outcome
-        - { slug: resolved, name: Resolved, color: "#22c55e" }
+      outcomes:                      # terminal-transition policy; selected slug → data.meta.outcome
+        - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [in_progress, waiting_for_customer] }
         - { slug: canceled, name: Canceled, color: "#ef4444" }
         - { slug: abandoned, name: Abandoned, color: "#a0aec0" }
 
