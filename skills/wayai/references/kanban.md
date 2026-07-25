@@ -33,9 +33,31 @@ Tool wire values are slug-only — the `update_kanban_status` enum accepts slugs
 | `triggersAgentResponse` | Transitioning a conversation into this status fires an agent turn |
 | `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status` |
 | `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change. **At most one per hub** |
-| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables `before_event` followups |
+| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables `before_event` followups and `event_due_delay_minutes` |
 
 All flags default `false` (omitted in YAML when false).
+
+### `event_due_delay_minutes` — post-event team signal
+
+`event_due_delay_minutes: <int ≥ 0>` on a scheduling status arms a one-shot signal at
+`scheduled_event_date + <minutes>`. When it fires, the conversation is flagged `event_due`:
+it surfaces in the support team's queue (and its nav badge) so a human moves the card, and a
+team-only note is posted to the conversation.
+
+Declaring the field IS the opt-in — omit it and no signal is armed. Use `0` to fire at the
+event's start instant; use the event's expected duration to fire when it should be over.
+
+```yaml
+- slug: visit
+  name: Technical Visit
+  isSchedulingStatus: true
+  eventName: Technical visit
+  event_due_delay_minutes: 120   # flag the team 2h after the visit starts
+```
+
+It does **not** change `conversation_status` — the AI keeps answering the customer while the
+card waits on a human. Moving the card to any status clears the flag and cancels a pending
+signal, so no acknowledgement step exists (or is needed). Closing the conversation clears it too.
 
 ---
 
@@ -126,6 +148,8 @@ Enforced on every write — REST, CLI `wayai push`, MCP:
   - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
 - `isSchedulingStatus: true` requires non-empty `eventName`
 - `before_event` followups require the parent status to have `isSchedulingStatus: true`
+- `event_due_delay_minutes` requires the status to have `isSchedulingStatus: true`; it must be a non-negative integer
+- `scheduled_event_date` (supplied per transition, not config) must be an ISO-8601 date-time: either zoned (`2026-06-02T15:00:00Z`, `…-03:00`) or a zone-less wall clock (`2026-06-02T15:00`) resolved in the hub timezone. Anything else is rejected; the stored value is always canonical UTC
 - Followups with `delivery_mode: direct` require non-empty `direct_text`
 - `additional_context_schema` must be a well-formed JSON Schema; the schema's `properties` must not declare a top-level `additional_data` key (reserved placeholder name); JSON-serialized size ≤ 16 KB
 
