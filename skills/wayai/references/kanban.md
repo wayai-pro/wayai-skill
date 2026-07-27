@@ -31,7 +31,7 @@ Tool wire values are slug-only — the `update_kanban_status` enum accepts slugs
 |------|--------|
 | `isInitialStatus` | Conversations start here. Exactly one status must have it |
 | `triggersAgentResponse` | Transitioning a conversation into this status fires an agent turn |
-| `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status` |
+| `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status`. Governs **board moves only** — it does NOT gate closing, so an agent with `close_conversation` can write a terminal status that leaves this flag off |
 | `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change. **At most one per hub** |
 | `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables `before_event` followups and `event_due_delay_minutes` |
 
@@ -87,7 +87,8 @@ Closing dispositions offered when a conversation enters the terminal status (e.g
 - `from_statuses` is an optional, non-empty allowlist of sibling source status slugs. Omit it to make that outcome eligible from any source. Unknown or missing stored source statuses keep all outcomes eligible for compatibility.
 - When `outcomes` is set, a genuine terminal Kanban transition **requires** choosing an eligible one — enforced server-side for agent/harness `update_kanban_status`, team drag-drop / dropdown, REST, and MCP. `allowed_next_statuses` remains an independent gate and is checked first. Omit `outcomes` entirely to make the terminal transition close with no recorded reason.
 - The chosen `slug` is stored on the conversation and ingested to analytics as `data.meta.outcome` (empty when unset). It is the stable, queryable identifier — pick meaningful slugs.
-- Closes that don't go through the terminal transition (team Close button, inactivity auto-close, `close_conversation` tool) leave the outcome unset.
+- Agent-initiated closes are routed through the terminal transition whenever the hub declares a terminal status — outcomes or not: `close_conversation` and the harness `end_conversation` intent both take an optional `outcome` and record it when the status declares any. They are gated exactly like `update_kanban_status` — `allowed_next_statuses` and `from_statuses` both apply — so an agent that cannot reach the terminal status cannot close either. A hub with no terminal status at all sees no change.
+- Still outcome-free by design: the team Close button, inactivity auto-close, cleanup, and `POST /:id/close` for programmatic callers.
 
 ---
 
@@ -170,9 +171,14 @@ Returned alongside successful saves:
 
 ## Runtime Transition Gate
 
-When a conversation transitions kanban status (drag-drop, native or harness tool, REST, MCP), the target must be a configured status and the source's `allowed_next_statuses` is enforced. Unknown targets and disallowed edges return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy behavior of allowing a non-terminal source to move to any **configured** target. Transitions out of an `isTerminalStatus: true` status are rejected.
+When a conversation transitions kanban status (drag-drop, native or harness tool, REST, MCP), the target must be a configured status and the source's `allowed_next_statuses` is enforced. Unknown targets and disallowed edges return `invalid_kanban_transition` with the allowed targets. `undefined` `allowed_next_statuses` keeps the legacy behavior of allowing a non-terminal source to move to any **configured** target.
 
-For a genuine transition into the terminal status, `outcomes[].from_statuses` is evaluated against the conversation's stored current status. Ineligible selections return `invalid_kanban_outcome` with only the eligible slugs. A hub-config lookup failure blocks the mutation with retryable `kanban_config_unavailable`; a successful lookup with no Kanban config remains distinct. Same-status updates and unknown/missing stored source slugs retain compatibility behavior. This is direct source eligibility, not a general condition engine, and it does not change bare lifecycle close routes.
+Two exemptions from `allowed_next_statuses`, with different scopes:
+
+- **A non-agent caller reaching the terminal status** is exempt, so a mid-board status cannot trap someone trying to close. Bounded by both conditions — an agent gets no exemption, and the same caller moving between two non-terminal statuses is still gated. "Non-agent" means the REST surface, which covers the board **and** any programmatic `conversation:write` caller — the exemption is keyed on the call site, not on a human being present.
+- **A re-close** — re-selecting the terminal status a still-open conversation already sits in. It is a retry of a close, not a new edge, and arises when an admin promotes a populated status to terminal or when the auto-close fails after the status write. It reaches the same validation and close path a first transition does; the terminal-source rejection does not apply. A **non-agent REST caller** always qualifies — the same call-site scope as the exemption above, so a programmatic `conversation:write` client is included, not only a board user. An **agent** qualifies only when the value it would record cannot have been laundered: reusing an outcome already stored on the row, a terminal status declaring no outcomes, or selecting an outcome with no `from_statuses`. An agent selecting a *restricted* outcome from a promoted status is refused — that source never entered its `from_statuses`. Genuine transitions **out of** a terminal status are still rejected.
+
+For a genuine transition into the terminal status, `outcomes[].from_statuses` is evaluated against the conversation's stored current status. Ineligible selections return `invalid_kanban_outcome` with only the eligible slugs. On a re-close the source equals the target, so every configured outcome stays eligible **to a non-agent REST caller**; an agent is held to the qualification above. If an outcome is already recorded it is reused when omitted, and a **differing** submission returns `outcome_already_recorded` rather than silently overwriting it. A hub-config lookup failure blocks the mutation with retryable `kanban_config_unavailable`; a successful lookup with no Kanban config remains distinct. Unknown/missing stored source slugs retain compatibility behavior. This is direct source eligibility, not a general condition engine.
 
 ---
 

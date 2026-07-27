@@ -128,6 +128,8 @@ Any custom tool can declare `composed_tools` — an array of native tools to exe
 
 **Whitelist of native tools usable as side effects:** `update_kanban_status`, `update_state`, `set_state_path`, `schedule_followup`, `close_conversation`.
 
+`close_conversation` takes an `outcome` when the hub's terminal kanban status declares `outcomes` — map it (`outcome: params.<field>`, or a literal such as `outcome: resolved`). Without one the composed close is refused with `invalid_kanban_outcome`, because an agent close executes as the terminal kanban transition — unless the conversation is a re-close that already has an outcome recorded, in which case the stored value is reused and the omission is accepted. A mapped `outcome` is **omitted from the injected schema entirely** when the hub configures no outcomes — there is nothing for the model to choose, so the parameter would be noise. A mapped `new_kanban_status` is always injected; only its enum drops when no status is `allowsAgentUpdate`. In that configuration the parameter is still **required** but carries no allowed values, so use the object mapping form and give it a `description` naming the slugs — with the bare `params.X` string form the model has nothing to go on and the transition gate rejects whatever it guesses.
+
 **Entry fields:**
 
 | Field | Type | Required | Description |

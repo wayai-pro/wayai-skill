@@ -40,7 +40,9 @@ hub:
       isTerminalStatus: true          # at most one terminal status per hub
       # Closing outcomes (terminal transitions only). `from_statuses` restricts
       # the eligible source slugs; omit it to accept any source. The chosen slug
-      # lands in analytics as data.meta.outcome. Bare close paths remain unchanged.
+      # lands in analytics as data.meta.outcome. An agent close (close_conversation,
+      # harness end_conversation) is routed through this transition and gated the
+      # same way; the team Close button and inactivity auto-close are not.
       outcomes:
         - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [in_progress, waiting_for_customer] }
         - { slug: canceled, name: Canceled, color: "#ef4444" }
