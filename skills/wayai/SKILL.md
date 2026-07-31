@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.41.0
+version: 6.42.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -9,8 +9,9 @@ description: |
   progress/readiness report (progress.html); reviewing or editing workspace YAML
   (hub.yaml, agents/*.yaml) or agent instruction Markdown; installing a ready-made hub template
   (`wayai template list`/`pull`); using the wayai CLI (push, pull, publish, send-message,
-  conversations, sync-skills, create-credential, update-credential, analytics, run-eval,
-  eval capture, evals sql, org, template, init); or interpreting WayAI platform
+  conversations, sync-skills, create-credential, update-credential, analytics, analytics sql,
+  run-eval, eval capture, evals sql, org, template, init); analyzing LLM token/cost spend per
+  message, model, agent, or credential; or interpreting WayAI platform
   terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles, journeys).
 ---
 
@@ -49,6 +50,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Diagnose an inexplicable agent reply (wrong date, ignored rule, hallucinated value) — don't reason from the transcript; read what the agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) — run this before editing instructions |
 | Record a post-hoc business outcome on an ended conversation (e.g. customer purchased) as an analytics dimension | CLI (`wayai conversations <id> annotate --set key=value [--type ...]`) |
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
+| Cost / token spend analysis (per message, model, agent, role, or credential) | CLI (`wayai analytics sql` over the `message` table) — see [`references/analytics.md`](references/analytics.md#raw-sql--cost-analysis) — `data.*` paths need an explicit cast to run at all, plus the rules that make sums correct |
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
 | List eval scenarios / raw SQL over eval results | CLI (`wayai evals`, `wayai evals sql`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
@@ -301,7 +303,9 @@ Every conversation lands in the analytics store with variables from five origins
 | Post-hoc annotations | `data.annotations.*` | `wayai conversations <id> annotate --set key=value` — real business outcomes (purchased, churned) recorded after the conversation ends; correlate predictions vs reality |
 | Eval scores | `data.eval_scores.*` | Eval runs only (`is_eval = true` rows — excluded from production analytics) |
 
-Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--filter`, `--period`), `wayai analytics query` (structured: multi-variable, group_by, correlations), or `wayai evals sql` (raw SQL over eval rows). Defining *good* variables happens on the evaluator agents ([roles-and-settings.md → Evaluation Variables](references/agents/roles-and-settings.md#evaluation-variables)); filters, aggregations, and workflows: [`references/analytics.md`](references/analytics.md).
+Conversation rows are one grain; a second table, `message`, decomposes each conversation's spend per message (tokens, USD cost, operations) for per-model, per-agent, and per-credential cost analysis.
+
+Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--filter`, `--period`), `wayai analytics query` (structured: multi-variable, group_by, correlations), `wayai analytics sql` (raw SQL over `conversation` and `message` — the surface for cost analysis), or `wayai evals sql` (same SQL over eval rows). Defining *good* variables happens on the evaluator agents ([roles-and-settings.md → Evaluation Variables](references/agents/roles-and-settings.md#evaluation-variables)); filters, aggregations, cost queries, and workflows: [`references/analytics.md`](references/analytics.md).
 
 ## Teams, Users & Access
 
@@ -474,6 +478,7 @@ wayai sync-skills       # Sync skills to provider connections; --connection-id <
 wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale schemas); --connection <name|uuid>; --check reports drift read-only (CI, exit 1 on drift)
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
+wayai analytics sql     # Raw single-SELECT SQL over `conversation` (one row per conversation) and `message` (per-message tokens/cost/operations — the surface for cost analysis); --schema prints both catalogs + the message-grain rules (`data.*` paths need `toFloat64OrNull(toString(...))` for numerics, `toString(...)` for grouping); --limit, --json
 wayai evals             # List eval scenarios for the hub (--enabled / --disabled)
 wayai evals sql         # Raw single-SELECT SQL over the hub's eval result rows ("SELECT …"; --schema prints the column + eval-score-path catalog; --limit, --json)
 wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs; --pacing conservative|balanced|fast|<ms> to throttle run dispatch)

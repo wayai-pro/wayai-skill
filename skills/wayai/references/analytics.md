@@ -1,6 +1,6 @@
 # Analytics Operations
 
-Reference for WayAI analytics via the CLI: `wayai analytics` (summary) and `wayai analytics query` (structured). Both hit `/api/analytics/*` with the same auth and grants as the platform UI. See [CLI Access](#cli-access).
+Reference for WayAI analytics via the CLI: `wayai analytics` (summary), `wayai analytics query` (structured), and `wayai analytics sql` (raw SQL, including per-message cost). All hit `/api/analytics/*` with the same auth and grants as the platform UI. See [CLI Access](#cli-access).
 
 ## Table of Contents
 - [Overview](#overview)
@@ -10,6 +10,7 @@ Reference for WayAI analytics via the CLI: `wayai analytics` (summary) and `waya
 - [Time Analysis](#time-analysis)
 - [Analytics Tools](#analytics-tools)
 - [CLI Access](#cli-access)
+- [Raw SQL & Cost Analysis](#raw-sql--cost-analysis)
 - [Common Workflows](#common-workflows)
 
 ## Overview
@@ -348,6 +349,91 @@ pin_analytics_variable(
 ## CLI Access
 
 CLI command reference and flags live in the skill's **Common CLI Commands** section (SKILL.md → Common CLI Commands); this file stays focused on the conceptual model.
+
+## Raw SQL & Cost Analysis
+
+`wayai analytics sql "<SELECT>"` runs a single read-only SELECT. Two tables are readable:
+
+| Table | Grain | Carries |
+|-------|-------|---------|
+| `conversation` | one row per conversation | everything in [Variable Categories](#variable-categories) — `data.system.*`, `data.variables.*`, `data.meta.*`, `data.annotations.*` |
+| `message` | one row per stored message | `data.system.*` usage facts only: tokens, USD cost, speech/container usage, operations |
+
+**Write bare table names and no scope clause.** The server rewrites a bare `conversation` or `message` into a subquery already filtered to your hub (`WHERE hub_id = … AND is_eval = false`, with `FINAL`), so adding `hub_id`, `is_eval`, or `FINAL` yourself is redundant. Statements are also restricted to a single SELECT, no DDL/DML, no `UNION`, and a 10,000-row cap; `conversation` and `message` are reserved CTE names.
+
+Treat that as *how to write a query that works*, not as a boundary to probe. Two separate mechanisms keep tenants apart: the endpoint authorizes the hub you asked for, and the injected predicate scopes the rows you get back. Neither is optional, and neither is something your SQL should try to reach around.
+
+Run `wayai analytics sql --schema` for both tables' columns and variable paths.
+
+### What lives at which grain
+
+Message rows carry the **additive** variables — anything you can sum across a conversation's messages: `tokens_total`, `tokens_input`, `tokens_output`, the cache-token variants, `cost_usd_*` (input, output, cache_read, cache_write, stt, tts, container, total), `stt_*` / `tts_*`, `code_execution_requests_total`, `container_sessions_total`, `billable_operations_total`, and `extra_latency_ops` (operations charged for residency beyond the base, not a latency measurement).
+
+`wayai analytics sql --schema` prints the authoritative list with descriptions; the sentence above is a summary of it, not a second source of truth.
+
+Everything non-additive stays conversation-only: counts, durations, response times, outcomes, sentiment, kanban status. A duration has no meaning on a single message.
+
+### Six rules that decide whether your query runs, and whether its numbers are right
+
+1. **Cast every `data.*` path — uncast, the query does not run.** JSON sub-paths resolve to ClickHouse's `Dynamic` type, which aggregates reject (`Illegal type Dynamic of argument for aggregate function sum`) and which `GROUP BY` refuses (`Data types Variant/Dynamic are not allowed in GROUP BY keys`). Two casts, by use:
+   - **numeric** (`sum`, `avg`, `min`, `max`, and any arithmetic): `toFloat64OrNull(toString(data.system.cost_usd_total))`
+   - **grouping / text**: `toString(data.meta.kanban_status)`
+
+   Top-level columns (`agent_model`, `agent_role`, `connection_id`, `created_at`, …) are typed and need no cast — this applies to `data.*` only.
+
+   Mind which table owns the namespace: `message` carries `data.system.*` **only**. A missing JSON sub-path returns NULL instead of erroring, so selecting `data.meta.*` from `message` does not fail — it silently collapses to one empty group. Reach conversation-owned paths by joining `conversation`, as the last example does.
+2. **Rows appear at conversation CLOSE, best-effort.** An open conversation contributes nothing. Emission is less durable than the conversation row, so `message` is analysis-grade — the `conversation` figure remains the customer-visible, billing-reconcilable one.
+3. **An unfiltered sum EXCEEDS the conversation figure, by design.** Message rows include background agents (`conversation_evaluator`, `message_evaluator`, `monitor`) that every conversation aggregate excludes; their spend is real and reaches no other queryable store. To reproduce the conversation figure, filter **NULL-safely** — a bare `NOT IN` on a nullable column silently drops every user/team/system row. **Keep the outer parentheses:** `AND` binds tighter than `OR`, so an unparenthesized copy combined with any other condition silently re-parses as `agent_role IS NULL OR (… AND …)` and readmits every NULL-role row from all history:
+   ```sql
+   WHERE (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor'))
+   ```
+4. **`connection_id` names the LLM connection only.** TTS/STT/container spend rides the same row, so attributing cost to a credential means netting the media terms out of `cost_usd_total`.
+5. **Bucket dates in the hub's timezone,** not raw UTC: `toTimeZone(created_at, 'America/Sao_Paulo')` before `toDate`/`toStartOfWeek`. Raw UTC bucketing misassigns everything near midnight.
+6. **Bound `message.created_at`** — and only that one. `message` retains five years at per-message volume, so an unbounded scan is the expensive way to ask every question; every example below carries a window. In a join, do **not** add the matching bound on `conversation`: `conversation.created_at` is when the conversation *opened*, not when the spend happened, and the join is inner — so a chat conversation opened 60 days ago and closed yesterday would have all of its in-window spend dropped from the result, silently. Bounding the message side alone is what "spend in the last 30 days" means, and it is the table whose volume matters.
+
+### Example queries
+
+Every example casts (rule 1) and bounds time (rule 6). Replace the 30-day window and the timezone with the hub's.
+
+Spend by model — where the money actually goes:
+```bash
+wayai analytics sql "SELECT agent_model, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd, sum(toFloat64OrNull(toString(data.system.tokens_total))) AS tokens, count() AS messages FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY agent_model ORDER BY usd DESC"
+```
+
+Spend by agent role, reconciled to the customer-visible figure (rule 3 — note the parentheses):
+```bash
+wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor')) GROUP BY agent_role ORDER BY usd DESC"
+```
+
+What background evaluation costs you — the spend conversation analytics hides:
+```bash
+wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND agent_role IN ('conversation_evaluator','message_evaluator','monitor') GROUP BY agent_role ORDER BY usd DESC"
+```
+
+Cost per credential, media netted out (rule 4 — each term casts separately):
+```bash
+wayai analytics sql "SELECT connection_id, sum(toFloat64OrNull(toString(data.system.cost_usd_total)) - toFloat64OrNull(toString(data.system.cost_usd_tts)) - toFloat64OrNull(toString(data.system.cost_usd_stt)) - toFloat64OrNull(toString(data.system.cost_usd_container))) AS llm_usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY connection_id ORDER BY llm_usd DESC"
+```
+
+Daily trend in hub time (rule 5):
+```bash
+wayai analytics sql "SELECT toDate(toTimeZone(created_at, 'America/Sao_Paulo')) AS day, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY day ORDER BY day"
+```
+
+Cache effectiveness — cache reads are billed at a discount, writes at a premium:
+```bash
+wayai analytics sql "SELECT agent_model, sum(toFloat64OrNull(toString(data.system.cache_read_input_tokens))) AS cache_reads, sum(toFloat64OrNull(toString(data.system.tokens_input))) AS fresh_input, sum(toFloat64OrNull(toString(data.system.cost_usd_cache_write))) AS write_usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY agent_model ORDER BY write_usd DESC"
+```
+
+The most expensive individual conversations:
+```bash
+wayai analytics sql "SELECT conversation_id, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY conversation_id ORDER BY usd DESC LIMIT 20"
+```
+
+Spend by workflow stage — both tables in one query, grouping on a `conversation` path (rule 1's text cast):
+```bash
+wayai analytics sql "SELECT toString(c.data.meta.kanban_status) AS status, sum(toFloat64OrNull(toString(m.data.system.cost_usd_total))) AS usd FROM message m JOIN conversation c ON m.conversation_id = c.conversation_id WHERE m.created_at >= now() - INTERVAL 30 DAY GROUP BY status ORDER BY usd DESC"
+```
 
 ## Common Workflows
 
