@@ -106,6 +106,8 @@ Fields per followup:
 - `threshold` + `timeUnit` — delay (`seconds`/`minutes`/`hours`/`days`)
 - `instructions` — what to send (supports `{{...}}` placeholders — see [agents/instructions.md](agents/instructions.md))
 - `delivery_mode: direct` + `direct_text` — send fixed text instead of triggering the agent (`direct_text` required and non-empty)
+- `template_whatsapp_id` — approved Meta template used instead of `direct_text` when a direct WhatsApp followup is outside the 24-hour window
+- `outside_window_policy` — when a direct followup is outside a channel window and no WhatsApp template can be sent: `route_to_team` (default) or `skip`
 - Optional quiet hours: `excludedTimeStart` / `excludedTimeEnd`
 - `excludeHolidays` — default `true`
 
