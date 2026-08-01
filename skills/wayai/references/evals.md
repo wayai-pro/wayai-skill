@@ -17,6 +17,7 @@ Evals are test scenarios that verify agent behavior. Each scenario is a YAML fil
 - [Capturing a Production Conversation](#capturing-a-production-conversation)
 - [Running Evals](#running-evals)
 - [Inspecting Results](#inspecting-results)
+- [Runtime-relative dates](#runtime-relative-dates-now)
 - [Debug: what did the agent actually see?](#debug-what-did-the-agent-actually-see)
 - [Principles — authoring & interpreting](#principles--authoring--interpreting)
 - [Entity Matching](#entity-matching)
@@ -121,6 +122,26 @@ expected:
 ```
 
 Rules: every declared array MUST have at least `runs` entries — a session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. `variables` is the templating + per-run indexing primitive that makes the runs disjoint; the fixture reset/clear around them is the [seed hooks](#seed-fixtures-fixture--repeatable-mutating-evals) below.
+
+### Runtime-relative dates (`{{now()}}`)
+
+Use the same `{{now()}}` surface available to agent prompts when an eval's input or expectation must name the date at runtime instead of freezing a calendar date in YAML:
+
+```yaml
+input:
+  role: user
+  content: "Book an appointment for {{now().date}}."
+expected:
+  role: assistant
+  tool_calls:
+    - function:
+        name: book_appointment
+        arguments: '{"date":"{{now().date}}","requested_in_utc":"{{now(UTC).date}}"}'
+```
+
+The session captures one immutable base time before materializing its runs. Every `{{now()}}` in `input` and `expected` resolves from that same instant, so parallel runs cannot cross a minute or midnight boundary and disagree. A bare `now()` uses the hub timezone and language; `now(TIMEZONE)` overrides the timezone for that expression. The existing fields are available: `.iso`, `.date`, `.weekday`, `.time`, and `.time_of_day`.
+
+Resolution happens only in the frozen run snapshot. `wayai pull` and `wayai push` keep the authored `{{now()}}` expression unchanged, while the session records its base time, timezone, and locale so a result remains explainable and reproducible. Other runtime placeholders — and `{{now()}}` outside `input`/`expected` — keep their normal turn-time behavior.
 
 ### Seed fixtures (`fixture:`) — repeatable mutating evals
 
