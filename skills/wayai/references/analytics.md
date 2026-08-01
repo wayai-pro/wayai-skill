@@ -359,7 +359,9 @@ CLI command reference and flags live in the skill's **Common CLI Commands** sect
 | `conversation` | one row per conversation | everything in [Variable Categories](#variable-categories) — `data.system.*`, `data.variables.*`, `data.meta.*`, `data.annotations.*` |
 | `message` | one row per stored message | `data.system.*` usage facts only: tokens, USD cost, speech/container usage, operations |
 
-**Write bare table names and no scope clause.** The server rewrites a bare `conversation` or `message` into a subquery already filtered to your hub (`WHERE hub_id = … AND is_eval = false`, with `FINAL`), so adding `hub_id`, `is_eval`, or `FINAL` yourself is redundant. Statements are also restricted to a single SELECT, no DDL/DML, no `UNION`, and a 10,000-row cap; `conversation` and `message` are reserved CTE names.
+**Write bare table names and no scope clause.** The server rewrites a bare `conversation` or `message` into a subquery already filtered to your hub (`WHERE hub_id = … AND is_eval = false`, with `FINAL`), so adding `hub_id`, `is_eval`, or `FINAL` yourself is redundant. Statements are also restricted to a single SELECT, no DDL/DML, no `UNION`, and a 10,000-row cap. `conversation` and `message` cannot be rebound in the statement's leading `WITH` list, in either the `name AS (…)` or the `<expr> AS name` form.
+
+Database-qualified names (`wayai.message`) are rejected in `FROM`/`JOIN`, and whitespace or a comment between the segments does not change that.
 
 Treat that as *how to write a query that works*, not as a boundary to probe. Two separate mechanisms keep tenants apart: the endpoint authorizes the hub you asked for, and the injected predicate scopes the rows you get back. Neither is optional, and neither is something your SQL should try to reach around.
 
