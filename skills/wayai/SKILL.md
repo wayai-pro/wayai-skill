@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.42.1
+version: 6.43.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -55,6 +55,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | List eval scenarios / raw SQL over eval results | CLI (`wayai evals`, `wayai evals sql`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
 | Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
+| Stop a running eval session | CLI (`wayai eval session stop <session_id>`) |
 | Delete eval session(s) / run history | CLI (`wayai eval session delete <session_id>`, or `--all` for every session on the hub) |
 | Bug reporting | CLI (`wayai report create`) |
 | Build progress & readiness report — shareable `progress.html` (code-harness only) | Agent-generated file per [`references/progress-report.md`](references/progress-report.md) |
@@ -485,6 +486,7 @@ wayai run-eval          # Run a scenario set's enabled evals (sole set by defaul
 wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
+wayai eval session stop     # Cancel a running eval session (<session_id>) — recovery when a run-eval died without cancelling its own session
 wayai eval session delete   # Delete an eval session + its run history (<session_id>, or --all for every session on the hub; -y to skip confirm)
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs

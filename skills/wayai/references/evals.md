@@ -359,6 +359,16 @@ Pacing is a per-run choice, not stored in the scenario YAML — set it each `run
 
 A session is capped at **1000 total runs** across all enabled scenarios in the set (Σ `runs`). A session that would exceed it is rejected with `too_many_runs` — reduce the enabled scenarios or their `runs`.
 
+**Interrupting a run.** The session runs on the platform, not in your terminal, so `run-eval` cancels it for you: the first Ctrl-C waits for the backend to accept the cancellation, then exits. Press Ctrl-C again to leave immediately — the command then prints the exact `wayai eval session stop` line to finish the job. This matters for fixtured evals: a session abandoned mid-run keeps mutating the shared base, so a replacement run started alongside it collides with the first.
+
+**Cancellation is requested, not instant.** A turn the platform already started keeps running to its end — it can no longer be called back, and **no status check or fixed wait currently proves it has finished**. A stop marks the session `cancelled` immediately, so neither the session status nor `eval-results` reflects the in-flight turn; and the run deadline is an inactivity lease renewed on every tool call, not a cap on turn duration, so a long multi-step turn can legitimately outlive it. After an interrupt, wait before starting another run against the same fixture, knowing the wait is a judgment call rather than a guarantee — starting one immediately is the collision this whole section is about. Cancelling at `fast` pacing strands the most work, since far more runs are already in flight when the interrupt lands.
+
+```bash
+wayai eval session stop <session_id>     # cancel a session left running
+```
+
+Safe to run at any time: a session that already finished keeps its status and completion time, and the command says so instead of reporting a cancel — so a session you stop "just in case" is never mislabelled, and a finished one points you at its results rather than a re-run. Use it whenever a `run-eval` process died without cancelling (a killed terminal, a CI job cancellation, a lost connection); `run-eval` prints the session id you need on every exit path.
+
 If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals), the session first resets it against Rekor; a failed pre-session seed aborts the run with `fixture_seed_failed` (nothing is scored), and enabled scenarios declaring different fixtures are rejected with `fixture_mismatch`.
 
 ---
