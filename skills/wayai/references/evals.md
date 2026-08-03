@@ -121,7 +121,7 @@ expected:
         arguments: '{"data": {"patient_id": "{{var(case).patient_id}}", "starts_at": "{{var(case).starts_at}}", "slot_id": "{{var(case).slot_id}}"}}'
 ```
 
-Rules: every declared array MUST have at least `runs` entries — a session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. `variables` is the templating + per-run indexing primitive that makes the runs disjoint; the fixture reset/clear around them is the [seed hooks](#seed-fixtures-fixture--repeatable-mutating-evals) below.
+Rules: every declared array MUST cover the highest run the session materializes — `runs` entries for a normal launch, or just the highest number you [selected](#running-part-of-a-set) with `--runs`. A session whose arrays are too short is rejected with `insufficient_variables` before any run starts (short arrays are an authoring error, not silently wrapped). Unknown `{{var(NAME)}}` stays literal (typo signal); a missing subfield of a *present* variable resolves to empty string. Each run's resolved row is recorded in its run snapshot (`resolved_variables`) so a flaky run shows exactly which fixture it used. `variables` is the templating + per-run indexing primitive that makes the runs disjoint; the fixture reset/clear around them is the [seed hooks](#seed-fixtures-fixture--repeatable-mutating-evals) below.
 
 ### Runtime-relative dates (`{{now()}}`)
 
@@ -340,14 +340,28 @@ Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_cal
 ```bash
 wayai run-eval                           # run the hub's sole enabled scenario set
 wayai run-eval --set <name>              # run a specific scenario set
-wayai run-eval --eval <name>             # run the set the named eval belongs to
+wayai run-eval --eval <name>             # run ONLY that scenario (repeatable)
+wayai run-eval --eval a --eval b         # run just these two scenarios
+wayai run-eval --eval a --runs 2,6       # run only repetitions 2 and 6 of one scenario
 wayai run-eval --pacing conservative     # slower run pacing (see below)
 wayai run-eval --pacing 1500             # custom interval: 1500ms between runs
 ```
 
-A run session targets **exactly one scenario set**. With no flag the hub's sole enabled set runs; on a multi-set hub the run fails with `ambiguous_scenario_set` — pick one with `--set`/`--eval` (mutually exclusive). `--eval <name>` runs the *whole set* that eval belongs to, not just that one eval.
+A run session targets **exactly one scenario set**. With no flag the hub's sole enabled set runs; on a multi-set hub the run fails with `ambiguous_scenario_set` — pick one with `--set`.
 
 Each run executes the scenario `runs` times (default 1, configurable per scenario, capped at 100), passes the result to the hub's `message_evaluator` agent, and records the score.
+
+### Running part of a set
+
+`--eval <name>` **selects** the scenario rather than running its whole parent set. Repeat it to select several; add `--runs 2,6` to run only named repetitions of a single selected scenario. This is the cheap loop for regression work: validating a change that touches three scenarios of a 40-run set costs three scenarios of LLM spend and wall-clock, not forty.
+
+- The selection is stored on the session (`session_config.scenario_selection`), so a later reader can see exactly which scenarios and repetitions that session scored. `eval-results` reports the runs it produced, and re-running it means re-issuing the same `--eval` / `--runs` flags.
+- **Run numbers are the scenario's own** — `--runs 2,6` runs *those* runs, so with [per-run variables](#per-run-variables-var--parallelize-mutating-evals) they hit the same fixtures runs 2 and 6 always do. They are never renumbered to 1,2. Only the runs you select need variable rows: `--runs 2,6` on a `runs: 40` scenario requires 6 entries, not 40.
+- All selected scenarios must be **enabled** and live in **one set**. `--set` may accompany `--eval` to disambiguate an eval name reused across sets; an ambiguous name without it is refused rather than guessed.
+- The [seed fixture](#seed-fixtures-fixture--repeatable-mutating-evals) is unchanged by a selection: it belongs to the set's base, so a narrowed session still resets it and still holds the base's lease for the whole run — a set whose scenarios disagree is refused whether you narrow it or not.
+- A selected scenario that is disabled, deleted, or in another set is refused (`scenario_selection_invalid`), never silently skipped: a green session that never ran what you asked for is worse than a failed launch.
+
+`--set` alone still runs the whole set, which remains the default.
 
 **Run pacing (`--pacing`).** Controls how fast runs are dispatched, so a big eval set doesn't exhaust the LLM provider's rate-limit budget (which is org-scoped — the same key serving production shares it). Accepts a named preset or a millisecond interval; omit it to take the platform default (`balanced`).
 
@@ -360,7 +374,7 @@ Each run executes the scenario `runs` times (default 1, configurable per scenari
 
 Pacing is a per-run choice, not stored in the scenario YAML — set it each `run-eval` (the UI and MCP `create_eval_session` expose the same presets).
 
-A session is capped at **1000 total runs** across all enabled scenarios in the set (Σ `runs`). A session that would exceed it is rejected with `too_many_runs` — reduce the enabled scenarios or their `runs`.
+A session is capped at **1000 total runs** across the scenarios it runs — every enabled scenario in the set (Σ `runs`), or just the selected ones. A session that would exceed it is rejected with `too_many_runs` — reduce the enabled scenarios or their `runs`, or select fewer.
 
 **Interrupting a run.** The session runs on the platform, not in your terminal, so `run-eval` cancels it for you: the first Ctrl-C waits for the backend to accept the cancellation, then exits. Press Ctrl-C again to leave immediately — the command then prints the exact `wayai eval session stop` line to finish the job. This matters for fixtured evals: a session abandoned mid-run keeps mutating the shared base, and holds its lease while it does — so a replacement run is refused (or queued) rather than allowed to collide, and the fixture stays blocked until that session is stopped or finishes.
 
