@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.43.0
+version: 6.45.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -276,7 +276,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Scenario set** — first-level subfolder (one level only). `wayai run-eval` runs exactly one set per session
 - **Journey** (`journeys/<slug>.yaml`, flat folder) — a stored happy-path transcript that materializes one derived eval per agent turn. The default way to build broad regression coverage: `wayai eval journey capture <conversation_id>`, then `wayai pull` (syncs server-minted step ids)
 - **Per-run `variables`** + `runs: N` — reliability is a distribution, not a 1/1 sample; each run resolves `{{var(name)}}` against its own disjoint row
-- **Seed `fixture:`** — for any eval that *writes*: names a Rekor fixture that `run-eval` resets before the session and clears after, so runs start from a known baseline instead of the last run's residue
+- **Seed `fixture:`** — for any eval that *writes*: names a Rekor fixture the platform LEASES for the session — resetting it on acquire, clearing it on release — so runs start from a known baseline instead of the last run's residue. One preview base admits **one eval session at a time**: a second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first, and `run-eval` waits it out by default
 - **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
 
@@ -482,7 +482,7 @@ wayai analytics query   # Structured ClickHouse query (multi-variable, group_by,
 wayai analytics sql     # Raw single-SELECT SQL over `conversation` (one row per conversation) and `message` (per-message tokens/cost/operations — the surface for cost analysis); --schema prints both catalogs + the message-grain rules (`data.*` paths need `toFloat64OrNull(toString(...))` for numerics, `toString(...)` for grouping); --limit, --json
 wayai evals             # List eval scenarios for the hub (--enabled / --disabled)
 wayai evals sql         # Raw single-SELECT SQL over the hub's eval result rows ("SELECT …"; --schema prints the column + eval-score-path catalog; --limit, --json)
-wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs; --pacing conservative|balanced|fast|<ms> to throttle run dispatch)
+wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set/--eval to pick on multi-set hubs; --pacing conservative|balanced|fast|<ms> to throttle run dispatch; waits out a fixture held by another session inside --timeout — --no-queue fails fast and --no-wait implies it; exits 1 if --timeout expires with the session still running)
 wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
