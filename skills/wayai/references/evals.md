@@ -351,6 +351,8 @@ A run session targets **exactly one scenario set**. With no flag the hub's sole 
 
 Each run executes the scenario `runs` times (default 1, configurable per scenario, capped at 100), passes the result to the hub's `message_evaluator` agent, and records the score.
 
+A launch fixes the list of scenarios and repetitions it will run when you start it. If one of them stops being runnable while the session is starting — disabled, deleted, or its `runs` lowered below a repetition already planned — the launch is **refused** (`scenario_selection_invalid`, naming what changed), and the session stays in `draft` with its seed fixture released. Start a new session; a session that scored less than you asked for would report coverage it never had. A scenario you enable after the launch started is not added to it — the launch runs the list it fixed.
+
 ### Running part of a set
 
 `--eval <name>` **selects** the scenario rather than running its whole parent set. Repeat it to select several; add `--runs 2,6` to run only named repetitions of a single selected scenario. This is the cheap loop for regression work: validating a change that touches three scenarios of a 40-run set costs three scenarios of LLM spend and wall-clock, not forty.
