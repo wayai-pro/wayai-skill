@@ -280,7 +280,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
 
-Good practice for tool-dependent evals: compose **journey + `fixture:` + `variables`** for repeatable, parallel runs. Full YAML shapes, seed-connection setup, run pacing, and authoring/interpreting principles: [`references/evals.md`](references/evals.md).
+Good practice for tool-dependent evals: compose **journey + `fixture:` + `variables`** for repeatable, parallel runs, and phrase `evaluator_instructions` as **functional outcomes, not raw call counts** ("one successful booking", not "exactly one `book_appointment` call") — tools fail transiently, and a correct agent retries. Full YAML shapes, seed-connection setup, run pacing, and authoring/interpreting principles: [`references/evals.md`](references/evals.md).
 
 ## Outbound
 
