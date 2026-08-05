@@ -390,6 +390,18 @@ The block is prepended to the conversation's **first user message** as `<previou
 
 **Summaries come from the Conversation Evaluator.** `summary` is that agent's post-close output. A hub without an enabled `conversation_evaluator` — or a conversation that ended before one existed — yields an entry with an ID and `ended_at` but no summary. The IDs remain useful: an agent with the `get_conversation` tool assigned can read the full transcript of any of them.
 
+Nothing fails when that chain is broken — the block simply arrives without summaries — so the agent's settings page checks the hub and says which link is missing. The conditions, in the order it reports them:
+
+| Reported | Meaning |
+|---|---|
+| `no_conversation_evaluator` | The hub has none. Auto-provisioning fires on **pilot** creation, so a copilot-only hub never gets one. |
+| `evaluator_disabled` | It exists but is switched off. |
+| `evaluator_no_connection` | It has no connection, so it throws at every conversation close — provisioned, but no more useful than absent. |
+| `evaluator_summary_not_emitted` | The evaluator no longer emits the summary field — free-text output, a cleared schema, or a schema whose properties dropped that name. The close path reads that key out of the evaluator's structured output, so it finds nothing. The settings UI shows an agent's response format read-only, so this one is fixed through `wayai push`. |
+| `no_system_channel` | The evaluator turn is dispatched on the hub's system channel; without one it never runs. |
+
+The setting is **not** blocked on any of these — a hub that wants ids plus `get_conversation` is a legitimate configuration.
+
 Ignored on background roles (`monitor`, `conversation_evaluator`, `message_evaluator`, `summarizer`), which never address the end user.
 
 Rows age out with the hub's retention settings — a conversation past the hub's retention cutoff is dropped from the frozen block and erased from the stored snapshot, so the context does not outlive the window the operator configured. Pruning is best-effort per turn: if the platform retention config can't be read on a given turn it is skipped rather than guessed at (guessing short would erase rows that are still live, which nothing can undo) and retried on the next turn.
