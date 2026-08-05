@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.47.0
+version: 6.48.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -644,6 +644,7 @@ connection: anthropic              # connection display name
 # response_format:                 # {schema_name, schema_json} — force structured JSON output instead of free text (see references/agents/roles-and-settings.md#response-format-structured-output)
 # enabled: true                    # default; omitted
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
+# previous_conversations_count: 3  # off by default (max 20); this user's N most recent ended conversations, prepended to the FIRST user message and frozen at the first agent turn that uses it. Foreground roles only; `0` clears it (omitting the key on update leaves it as-is); summaries come from the conversation_evaluator (see references/agents/roles-and-settings.md#previous-conversations-context)
 settings:
   model: claude-sonnet-5
   max_tokens: 4096

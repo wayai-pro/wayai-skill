@@ -221,6 +221,10 @@ For a skill, returns its `SKILL.md`. For a knowledge base, returns its files con
 
 ### `{{previous_conversations()}}`
 
+> **Prefer the `previous_conversations_count` agent setting** for the common case of "give this agent the user's recent history". It resolves the same rows but injects them into the conversation's first user message and freezes them there, which keeps the hub-wide cached prefix intact and stops the block being re-paid every turn. See [roles-and-settings.md](roles-and-settings.md#previous-conversations-context). Reach for this placeholder only when you need the rows at a specific point in a template.
+>
+> Putting this placeholder in `instructions` is the costly case: the cached system prefix covers the instructions AND every tool schema and is shared across the whole hub, so per-user content there makes each conversation pay to WRITE that prefix instead of reading a shared one.
+
 Previous ended conversations for the same user in this hub, newest first.
 
 | Argument | Default | Description |
@@ -383,7 +387,7 @@ Agents have a separate `additional_context_template` field — same `{{...}}` sy
 > For the full **lifetime model** (timeless → `instructions`, cross-turn → `state`, this-turn → here) and why churning **tool schemas** also busts the cache, see "Context placement" in [`prompt-principles.md`](prompt-principles.md).
 
 **When to use which:**
-- `instructions` — stable agent identity, tone, rules. Static placeholders are fine here (`{{user_info()}}`, `{{previous_conversations(N)}}`).
+- `instructions` — stable agent identity, tone, rules. Static placeholders are fine here (`{{user_info()}}`). **Not `{{previous_conversations(N)}}`** — it is static per turn but PER USER, which forks the hub-wide cached prefix; see below.
 - `additional_context_template` — anything that changes per turn or per minute. `{{now()}}` always belongs here; `{{state(...)}}` belongs here unless the agent's reasoning hard-depends on reading state from inline prose.
 
 **Two ways to give temporal context — pick by granularity (both are cache-safe and both replay in evals):**

@@ -370,6 +370,36 @@ New hubs seed the default onto the summarizer agent automatically. Omit the key 
 
 ---
 
+## Previous Conversations Context
+
+`previous_conversations_count` gives an agent the user's most recent **ended** conversations as context, without any prompt engineering. `0` disables it; the maximum is 20.
+
+Push semantics match every other optional agent key: **absent on create** means off, **absent on update leaves the stored value alone**, and `0` is what clears one. So removing the key from an agent's YAML does not turn the feature off — set it to `0`.
+
+```yaml
+# agents/support-pilot.yaml
+name: Support Pilot
+role: pilot
+connection: anthropic
+previous_conversations_count: 3   # this user's 3 most recent ended conversations
+```
+
+The block is prepended to the conversation's **first user message** as `<previous_conversations>`, carrying `conversation_id`, `ended_at`, and `summary` for each. That placement is deliberate: putting the same content in `instructions` would make the cached system prefix — which covers the instructions AND every tool schema, shared across the whole hub — different for every user, so each conversation pays to write that prefix to cache instead of reading a shared one. On the first user message it sits inside the reusable history prefix instead.
+
+**It is resolved once and frozen.** The set is read at the first agent turn that actually needs it — the first turn whose agent has the setting on — and replayed unchanged afterwards. For a conversation that starts with the feature already enabled, that is its first turn, so the context is "as of when this conversation started", and a conversation ending later does not appear until the *next* one begins. Enabling the setting on a hub whose conversations are already open is the exception: those conversations have no snapshot yet, so each freezes on its next turn and can include a conversation that ended after it started. Once frozen, it stays frozen either way. This is what keeps the injected bytes stable; re-resolving mid-conversation would rewrite the first message and invalidate the whole cached history. Raising the setting takes effect on conversations already open; lowering it applies immediately.
+
+**Summaries come from the Conversation Evaluator.** `summary` is that agent's post-close output. A hub without an enabled `conversation_evaluator` — or a conversation that ended before one existed — yields an entry with an ID and `ended_at` but no summary. The IDs remain useful: an agent with the `get_conversation` tool assigned can read the full transcript of any of them.
+
+Ignored on background roles (`monitor`, `conversation_evaluator`, `message_evaluator`, `summarizer`), which never address the end user.
+
+Rows age out with the hub's retention settings — a conversation past the hub's retention cutoff is dropped from the frozen block and erased from the stored snapshot, so the context does not outlive the window the operator configured. Pruning is best-effort per turn: if the platform retention config can't be read on a given turn it is skipped rather than guessed at (guessing short would erase rows that are still live, which nothing can undo) and retried on the next turn.
+
+Configurable from the UI in the agent's detail view (Agents tab), via the MCP `create_agent` / `update_agent` tools, and through `wayai pull` / `wayai push`.
+
+**Not the same as `{{previous_conversations(N)}}`.** That placeholder resolves the same rows but renders wherever you put it, re-resolving every turn. Prefer this setting; see [instructions.md](instructions.md) for the placeholder.
+
+---
+
 ## Monitor Configuration (`monitor` only)
 
 `monitor_config` is a setting on the **`monitor` agent** — it controls when the background monitor re-evaluates an active conversation and which conditions flag it. `delay_seconds` is the user-inactivity wait (in seconds, minimum 10) before the monitor runs; `flag_conditions` use OR semantics (any match flags the conversation). Unlike the evaluator/summarizer, the monitor is **not** auto-provisioned — create it explicitly. Round-trips via `wayai pull` / `wayai push` as a top-level key on the monitor agent:
