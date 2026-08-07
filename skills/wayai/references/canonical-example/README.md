@@ -23,7 +23,7 @@ canonical-example/
 ## Cross-references (this is the part you can't get from per-domain refs)
 
 ### 1. Agent → Connection
-`agents/support-pilot.yaml` field `connection: openai-main` matches the entry in `hub.yaml` `connections:` with `name: openai-main`. On `wayai push`, that connection auto-creates from the first org credential matching `type: Agent` + `service: OpenAI` (auth type: API Key). OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) must already exist in the UI; the agent file references them by name only — see `references/connections.md`.
+`agents/support-pilot.yaml` field `connection: openai-main` matches the entry in `hub.yaml` `connections:` with `name: openai-main`. On `wayai push`, that connection auto-creates from the first org credential matching `type: Agent` + `service: OpenAI` (auth type: API Key). OAuth connections (WhatsApp, Instagram, MCP OAuth) must already exist in the UI; the agent file references them by name only — see `references/connections.md`.
 
 ### 2. Agent → State (two paths)
 **Tool path:** `agents/support-pilot.yaml` `tools.native` lists `get_state`, `update_state`, `set_state_path`. At runtime the agent calls these with `state_slug` matching a slug in `hub.yaml` `states[]` (e.g., `ticket_intake`, `customer_profile`). Scope is derived from the state definition — the agent passes only the slug.
@@ -54,7 +54,7 @@ Allowed transitions: `hub.yaml` declares `allowed_next_statuses` per status. The
 ## What is intentionally NOT in this example
 - **`hub_id`, `hub_environment`, per-entity `id`** — set by `wayai pull`. Never author them. New hubs ship without these fields; they appear on the first pull after `push`.
 - **Channels other than `app`** — the `app` channel auto-creates with the hub. WhatsApp / Instagram / Email / Telegram require channel connections set up via the UI (OAuth) or by adding a Channel-type entry to `connections:` (API-key channels). See `references/connections.md`.
-- **Custom tools, `composed_tools`, `response_format`, MCP / Google Calendar tools, skills, outbound, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
+- **Custom tools, `composed_tools`, `response_format`, MCP tools, skills, outbound, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
 - **Multiple agents (specialist, advisor, copilot, evaluators).** This example has one pilot. Multi-agent patterns are covered in `references/agents/roles-and-settings.md` (`Delegation Flow`, `Role Reference`).
 
 ## When to consult this file

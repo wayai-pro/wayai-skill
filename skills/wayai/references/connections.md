@@ -107,10 +107,9 @@ The rule is **symmetric**: an untagged hub only sees untagged credentials; a tag
 
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
-- Tool / native variant (Google Calendar)
 - Tool / mcp variant (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
 
-OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `google-calendar`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
+OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
 
 ---
 
@@ -225,7 +224,7 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
 - The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (tag overlap + environment)
-- OAuth connections (WhatsApp, Instagram, Google Calendar, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
+- OAuth connections (WhatsApp, Instagram, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
 
 ### Example: Full Hub Setup via CLI
 
@@ -255,7 +254,7 @@ A rejected key (HTTP 401/403) shows as `connection_auth` (e.g. `OpenAI TTS · 40
 |------|-------------|
 | `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
-| `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, Google Calendar, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
+| `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
 
@@ -492,7 +491,6 @@ See [agents/native-tools.md](agents/native-tools.md) for available tools and the
 | Connector | connector_id | Auth | Status | Description |
 |-----------|--------------|------|--------|-------------|
 | **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | None | **Auto-enabled** | Native tools for conversation management, file handling, skills, and tool orchestration. |
-| Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | OAuth | Enabled | Manage Google Calendar events and check availability. |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | API Key | Enabled | Connect to external file storage services. |
 
 #### Wayai (Auto-enabled)
@@ -508,19 +506,6 @@ This is the core native toolset providing:
 - **Skills:** Read skill, read skill file
 
 **Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `read_file`, `send_files`, `list_resource_folders`, `list_resource_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
-
-#### Google Calendar
-
-**Prerequisites:** Google account with Calendar access
-
-**Setup:**
-1. Settings → Organizations → Hub → Connections
-2. In the **Tool** group, click the **Google Calendar** card
-3. Click "Connect with Google"
-4. Authorize calendar access
-5. Connection created automatically
-
-**Agent tools:** `list_events`, `create_event`, `update_event`, `delete_event`, `check_availability`
 
 #### External Resources
 
@@ -748,7 +733,6 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | Channel | API Key |
 | Telegram | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000002` | Channel | API Key |
 | **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | Tool | None (auto-created) |
-| Google Calendar | `189c2e74-2275-43b6-8dac-0fb3b782e9de` | Tool | OAuth |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool | API Key |
 | REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool | API Key, Basic Auth, Bearer Token |
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool | Bearer Token, OAuth |

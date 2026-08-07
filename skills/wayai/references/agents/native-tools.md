@@ -2,7 +2,7 @@
 
 Tools provided by native connectors. Added to agents by listing them under `tools.native` in `agents/<slug>.yaml` and running `wayai push`. This file mirrors the platform catalog (`packages/core/src/catalog/native-tools.ts` + `native-tool-schemas.ts`) — every tool below exists with exactly this name; a name not listed here does not exist.
 
-All tools except the Google Calendar group belong to the **Wayai** connector (auto-created and enabled with every hub — no setup). Google Calendar tools require a **Google Calendar** connection (OAuth, UI setup — see [connections.md](../connections.md)).
+All tools belong to the **Wayai** connector (auto-created and enabled with every hub — no setup).
 
 ## YAML form
 
@@ -33,7 +33,6 @@ Other native fields (schema, instructions, operation) come from the platform cat
 - [Resource & File Tools](#resource--file-tools)
 - [Skill Tools](#skill-tools)
 - [History & Summary Tools](#history--summary-tools)
-- [Google Calendar Tools](#google-calendar-tools)
 - [Meta Tools](#meta-tools)
 - [MCP Tools](#mcp-tools)
 - [Quick Reference](#quick-reference)
@@ -335,60 +334,6 @@ Retrieve the original messages behind a section of the rolling `<conversation_su
 
 ---
 
-## Google Calendar Tools
-
-**Connector:** Google Calendar (OAuth — see [connections.md](../connections.md)). Six tools: `google_calendar_list_calendars`, `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_update_event`, `google_calendar_delete_event`, `google_calendar_check_availability`.
-
-These schemas run in **strict mode**: every listed field must be present in the call (fields documented "Optional:" still get passed, possibly empty). Times are RFC3339 with timezone; `timeZone` is an IANA name (e.g. `America/Sao_Paulo`); `calendarId` accepts `"primary"`.
-
-### google_calendar_list_calendars
-
-List the calendars available to the authenticated user. *No parameters.*
-
-### google_calendar_list_events
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `calendarId` | string | Calendar to fetch from |
-| `timeMin` / `timeMax` | string | Range bounds, RFC3339 with timezone |
-| `timeZone` | string | IANA timezone for display |
-| `maxResults` | integer | Max events to return |
-
-### google_calendar_create_event
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `calendarId` | string | Target calendar |
-| `event` | object | `summary`, `description`, `start`, `end` (RFC3339), `timeZone`, `location`, `attendees[] ({email})` — strict mode: all present |
-
-### google_calendar_update_event
-
-Same `event` object as create, plus:
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `calendarId` | string | Calendar containing the event |
-| `eventId` | string | Event to update (from a previous list/create) |
-
-### google_calendar_delete_event
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `calendarId` | string | Calendar containing the event |
-| `eventId` | string | Event to delete (irreversible) |
-
-### google_calendar_check_availability
-
-Free/busy status for a time range — check before creating events.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `timeMin` / `timeMax` | string | Range bounds, RFC3339 with timezone |
-| `timeZone` | string | IANA timezone |
-| `calendarId` | string | Calendar to check |
-
----
-
 ## Meta Tools
 
 Tools for meta-level tool management and execution (part of the Wayai connector).
@@ -463,6 +408,5 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 | Resource & File | `list_resource_folders`, `list_resource_files`, `read_file`, `send_files`, `download_file`, `upload_file` |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
-| Google Calendar | `google_calendar_list_calendars`, `google_calendar_list_events`, `google_calendar_create_event`, `google_calendar_update_event`, `google_calendar_delete_event`, `google_calendar_check_availability` |
 | Meta | `get_tool_schema`, `execute_tool` |
 | MCP | per-agent tools assigned via `tools.mcp` (YAML) or the Platform UI |
