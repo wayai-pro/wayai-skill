@@ -1,16 +1,15 @@
 ---
 name: wayai
-version: 6.49.0
+version: 6.50.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
   connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns;
   running analytics or evals; annotating conversation outcomes; generating a shareable hub
   progress/readiness report (progress.html); reviewing or editing workspace YAML
-  (hub.yaml, agents/*.yaml) or agent instruction Markdown; installing a ready-made hub template
-  (`wayai template list`/`pull`); using the wayai CLI (push, pull, publish, send-message,
-  conversations, sync-skills, create-credential, update-credential, analytics, analytics sql,
-  run-eval, eval capture, evals sql, org, template, init); analyzing LLM token/cost spend per
+  (hub.yaml, agents/*.yaml) or agent instruction Markdown; using the wayai CLI (push, pull, publish,
+  send-message, conversations, sync-skills, create-credential, update-credential, analytics,
+  analytics sql, run-eval, eval capture, evals sql, org, init); analyzing LLM token/cost spend per
   message, model, agent, or credential; or interpreting WayAI platform
   terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles, journeys).
 ---
@@ -465,8 +464,6 @@ wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub t
 wayai publish           # Promote the preview to production (alias: wayai sync). Auto-detects first-publish (clones preview → new production) vs sync (pushes changes to the linked production); shows the preview→production diff and confirms (-y skips). Paid plans only. `wayai push` first — promotes the pushed preview state
 wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
 wayai unbind            # Clear the worktree hub binding
-wayai template list     # List ready-made hub templates (gym, clinic, …) — browse what's available
-wayai template pull <slug> [--lang <locale>] [--force] [--dry-run]  # Write a template's config into wayai-ws/hubs/<slug>/, then `wayai push`. --lang picks a localized variant (en|pt|es); omitted = the template's default, an untranslated language falls back with a note. Refuses to overwrite existing files in the target dir (lists them) — pass --force to overwrite; --dry-run previews the file map without writing
 wayai send-message      # Test message to a hub (preview or production). -c <id> continues a conversation
                         # `-f, --file <path>` attaches a file (repeatable, max 20, ~7 MB/request) delivered exactly as a real channel does — this is how image/document behaviour gets exercised in the dev loop. Message text is optional when a file is attached (an attachment-only send mirrors a photo with no caption). Images reach the model as a signed URL, not base64
 wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` 401 here instead of forcing a guess from code. --hub <uuid|name>, --json
