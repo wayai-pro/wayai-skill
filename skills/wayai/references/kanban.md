@@ -33,7 +33,7 @@ Tool wire values are slug-only — the `update_kanban_status` enum accepts slugs
 | `triggersAgentResponse` | Transitioning a conversation into this status fires an agent turn |
 | `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status`. Governs **board moves only** — it does NOT gate closing, so an agent with `close_conversation` can write a terminal status that leaves this flag off |
 | `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change. **At most one per hub** |
-| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables the event-relative followups (`before_event`, `inactivity_after_event`) and `event_due_delay_minutes` |
+| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables the event-relative followups (`before_event`, `inactivity_after_event`, `inactivity_after_before_event`) and `event_due_delay_minutes` |
 
 All flags default `false` (omitted in YAML when false).
 
@@ -102,10 +102,19 @@ Per-status timed messages, listed under `followups:`.
 | `inactivity` | After a period of silence in the conversation |
 | `before_event` | Before a scheduled event |
 | `inactivity_after_event` | The post-visit chase: the first step counts silence from the event instant, each later step from the previous nudge |
+| `inactivity_after_before_event` | The linked-reminder chase: the first step counts silence from the moment a **specific** `before_event` in the same status was sent, named by `after_followup_id` |
 
-`before_event` and `inactivity_after_event` are event-relative: both require the parent status to have `isSchedulingStatus: true`, and neither arms unless the conversation has a `scheduled_event_date`.
+All three of `before_event`, `inactivity_after_event` and `inactivity_after_before_event` are event-relative: each requires the parent status to have `isSchedulingStatus: true`, and none arms unless the conversation has a `scheduled_event_date`.
 
-The two silence types differ only in where their first step starts, and behave the same way otherwise: one pending step at a time, chained on fire, cancelled by a contact reply. `before_event` is the outlier — all of its entries arm at once, none chain, and they fire regardless of replies.
+The three silence types differ in where their first step starts and in what a contact reply does to them; otherwise they behave the same: one pending step at a time, chained on fire.
+
+| Type | A contact reply |
+|------|-----------------|
+| `inactivity` | cancels the pending step and re-arms the chain at step one, counting from the reply |
+| `inactivity_after_event` | **ends the chase permanently** — see the qualification below |
+| `inactivity_after_before_event` | cancels the pending step and restarts the chase at step one, counting from the reply. A chase that has already run to its last step stays finished — a reply does not start it over |
+
+`before_event` is the outlier — all of its entries arm at once, none chain, and they fire regardless of replies.
 
 **Only the first step is measured from the event; every later one is measured from the nudge before it.** A `2h` then `4h` ladder on a 10:00 event sends at 12:00 and then 16:00 — 4h after the first nudge — not at 14:00. Thresholds are relative offsets down the chain, not an absolute ladder off the event, so a later step with a smaller threshold does not fire out of order.
 
@@ -113,7 +122,38 @@ The two silence types differ only in where their first step starts, and behave t
 
 A contact message cancels the chase — permanently, it is not rescheduled — only when it is newer than **both** the event and the moment the card entered the status. A message before the event does not, because the silence window has not opened yet; and on a card dragged on *after* the visit, neither does one sent before the drag, because that reply is not an answer to a chase that had not started. Anything later ends the chain.
 
+### Linking a chase to one reminder (`inactivity_after_before_event`)
+
+`after_followup_id` names the `id` of a `before_event` followup **in the same status**. That reminder's fire is what starts the chase, so nothing arms until it goes out.
+
+- The target must declare an explicit `id`, and it must resolve to exactly one `before_event` in the status. All of dangling, wrong-type, and ambiguous references are rejected on save.
+- `after_followup_id` is required on this type and rejected on every other one.
+- At most 5 distinct reminders per status may be linked — each linked chase is rebuilt on every inbound message.
+- A contact reply **restarts** this chase from its first step, anchored at the reply (unlike `inactivity_after_event`, which ends). Only a chase with a step still pending restarts; one that already delivered its last step stays finished.
+- Moving the card cancels it, and so does rescheduling the event: a reminder armed for the old date never starts a chase against the new one.
+- **The chase only starts if the reminder actually reached the contact.** On a windowed channel (WhatsApp, Instagram) outside its 24-hour window, with no approved template to fall back on, the reminder is not delivered — under the default `outside_window_policy: route_to_team` it hands the conversation to your team instead, and the chase does not arm. Chasing there would nudge someone about a message they never received.
+- The one exception is `outside_window_policy: skip`, which also delivers nothing but hands over to nobody: the chase still arms, because it is then the only follow-up that will happen at all.
+- Who owns the conversation makes no difference. A card a team member has taken over — or every conversation on a `copilot` hub — still starts the chase, as long as the reminder went out.
+
+```yaml
+followups:
+  - id: day_before          # a link target must be authored explicitly
+    type: before_event
+    order: 1
+    threshold: 1
+    timeUnit: days
+    instructions: Remind them the visit is tomorrow.
+  - type: inactivity_after_before_event
+    after_followup_id: day_before
+    order: 2
+    threshold: 4
+    timeUnit: hours
+    instructions: They have not replied to the reminder — ask them to confirm.
+```
+
 Fields per followup:
+- `id` — optional identifier. Unlike every other per-entity `id`, this one is never assigned server-side: the web editor mints one for followups it creates, and `wayai pull` only echoes back an `id` that already exists. **Author it by hand on any `before_event` you intend to link a chase to** — `after_followup_id` has nothing else to name. Must be unique within the status
+- `after_followup_id` — `inactivity_after_before_event` only; the `id` of the same-status `before_event` whose fire anchors this chase
 - `order` — position within the status. Orders are a single space shared by every type in the status, so a status with a `before_event` at 1 and an `inactivity_after_event` at 2 has that post-event chain start at 2
 - `threshold` + `timeUnit` — delay (`seconds`/`minutes`/`hours`/`days`)
 - `instructions` — what to send (supports `{{...}}` placeholders — see [agents/instructions.md](agents/instructions.md))
@@ -164,7 +204,9 @@ Enforced on every write — REST, CLI `wayai push`, MCP:
   - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
   - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
 - `isSchedulingStatus: true` requires non-empty `eventName`
-- Event-relative followups (`before_event`, `inactivity_after_event`) require the parent status to have `isSchedulingStatus: true`
+- Event-relative followups (`before_event`, `inactivity_after_event`, `inactivity_after_before_event`) require the parent status to have `isSchedulingStatus: true`
+- `after_followup_id` is required on `inactivity_after_before_event` and rejected on every other followup type; it must name the explicit `id` of exactly one `before_event` in the same status, and at most 5 distinct reminders per status may be linked
+- Followup `id`, when present, must be non-empty
 - `event_due_delay_minutes` requires the status to have `isSchedulingStatus: true`; it must be a non-negative integer
 - `scheduled_event_date` (supplied per transition, not config) must be an ISO-8601 date-time: either zoned (`2026-06-02T15:00:00Z`, `…-03:00`) or a zone-less wall clock (`2026-06-02T15:00`) resolved in the hub timezone. Anything else is rejected; the stored value is always canonical UTC
 - Followups with `delivery_mode: direct` require non-empty `direct_text`
@@ -179,6 +221,7 @@ Returned alongside successful saves:
 - `unreachable` — a non-initial status that no other status lists in its `allowed_next_statuses`
 - `placeholder_unresolved` — a `{{path.to.field}}` placeholder in `additional_instructions` does not resolve against `additional_context_schema`. At runtime that placeholder renders as empty string
 - `unused_lane` — a declared lane no status is assigned to
+- `duplicate_followup_id` — two followups in one status share an `id`. Harmless until one is used as a link target, at which point the save is rejected outright
 - `no_eligible_outcome` — a source can transition directly to the terminal status, but no configured outcome accepts it
 - `terminal_outcomes_all_restricted` — no terminal outcome accepts this status, **and** its own `allowed_next_statuses` bars it from reaching the terminal status. `no_eligible_outcome` skips exactly these (the transition gate already refuses the edge), but the team Close button is exempt from that gate, so closing from here records **no outcome**. Complementary to `no_eligible_outcome` — never both for one status
 
