@@ -88,7 +88,8 @@ Closing dispositions offered when a conversation enters the terminal status (e.g
 - When `outcomes` is set, a genuine terminal Kanban transition **requires** choosing an eligible one — enforced server-side for agent/harness `update_kanban_status`, team drag-drop / dropdown, REST, and MCP. `allowed_next_statuses` remains an independent gate and is checked first. Omit `outcomes` entirely to make the terminal transition close with no recorded reason.
 - The chosen `slug` is stored on the conversation and ingested to analytics as `data.meta.outcome` (empty when unset). It is the stable, queryable identifier — pick meaningful slugs.
 - Agent-initiated closes are routed through the terminal transition whenever the hub declares a terminal status — outcomes or not: `close_conversation` and the harness `end_conversation` intent both take an optional `outcome` and record it when the status declares any. They are gated exactly like `update_kanban_status` — `allowed_next_statuses` and `from_statuses` both apply — so an agent that cannot reach the terminal status cannot close either. A hub with no terminal status at all sees no change.
-- Still outcome-free by design: the team Close button, inactivity auto-close, cleanup, and `POST /:id/close` for programmatic callers.
+- The team Close button (web chat header and mobile support bar) is routed through the terminal transition too, but only when the terminal status **declares outcomes** and at least one is eligible from the conversation's current status — the surface then asks for one before closing. On a **re-close** (the conversation already sits in the terminal status while still open) it additionally offers "keep the outcome already recorded", which dispatches with no outcome so the server reuses the stored value; that option is what still closes a conversation whose stored outcome has since been deleted from the config, where every offered pick would be refused as `outcome_already_recorded`. Four configurations keep the bare close unchanged: no terminal status; a terminal status declaring no outcomes; a terminal status also carrying a required `additional_context_schema` (these surfaces collect no such payload — only the board's transition dialog does); and a conversation whose current status no outcome accepts. The last closes with no outcome recorded rather than stranding it, which is what `terminal_outcomes_all_restricted` warns about.
+- Still outcome-free by design: inactivity auto-close, cleanup, and `POST /:id/close` for programmatic callers.
 
 ---
 
@@ -179,6 +180,7 @@ Returned alongside successful saves:
 - `placeholder_unresolved` — a `{{path.to.field}}` placeholder in `additional_instructions` does not resolve against `additional_context_schema`. At runtime that placeholder renders as empty string
 - `unused_lane` — a declared lane no status is assigned to
 - `no_eligible_outcome` — a source can transition directly to the terminal status, but no configured outcome accepts it
+- `terminal_outcomes_all_restricted` — no terminal outcome accepts this status, **and** its own `allowed_next_statuses` bars it from reaching the terminal status. `no_eligible_outcome` skips exactly these (the transition gate already refuses the edge), but the team Close button is exempt from that gate, so closing from here records **no outcome**. Complementary to `no_eligible_outcome` — never both for one status
 
 ---
 

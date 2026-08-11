@@ -42,7 +42,9 @@ hub:
       # the eligible source slugs; omit it to accept any source. The chosen slug
       # lands in analytics as data.meta.outcome. An agent close (close_conversation,
       # harness end_conversation) is routed through this transition and gated the
-      # same way; the team Close button and inactivity auto-close are not.
+      # same way. The team Close button is routed through it as well and asks for
+      # an outcome — falling back to a bare close only when none is eligible from
+      # the conversation's status. Inactivity auto-close is never routed.
       outcomes:
         - { slug: resolved, name: Resolved, color: "#22c55e", from_statuses: [in_progress, waiting_for_customer] }
         - { slug: canceled, name: Canceled, color: "#ef4444" }
