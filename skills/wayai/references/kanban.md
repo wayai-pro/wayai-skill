@@ -33,7 +33,7 @@ Tool wire values are slug-only — the `update_kanban_status` enum accepts slugs
 | `triggersAgentResponse` | Transitioning a conversation into this status fires an agent turn |
 | `allowsAgentUpdate` | The agent may move conversations into this status via `update_kanban_status`. Governs **board moves only** — it does NOT gate closing, so an agent with `close_conversation` can write a terminal status that leaves this flag off |
 | `isTerminalStatus` | No outbound transitions — and **entering this status closes the conversation** (ends + archives it, from any surface: agent tool, team drag-drop, REST, MCP). Moving a card to "Resolved" is a close action, not just a column change. **At most one per hub** |
-| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables `before_event` followups and `event_due_delay_minutes` |
+| `isSchedulingStatus` | Status represents a scheduled event; requires non-empty `eventName`. Enables the event-relative followups (`before_event`, `inactivity_after_event`) and `event_due_delay_minutes` |
 
 All flags default `false` (omitted in YAML when false).
 
@@ -99,10 +99,21 @@ Per-status timed messages, listed under `followups:`.
 | Type | Fires |
 |------|-------|
 | `inactivity` | After a period of silence in the conversation |
-| `before_event` | Before a scheduled event — requires the parent status to have `isSchedulingStatus: true` |
+| `before_event` | Before a scheduled event |
+| `inactivity_after_event` | The post-visit chase: the first step counts silence from the event instant, each later step from the previous nudge |
+
+`before_event` and `inactivity_after_event` are event-relative: both require the parent status to have `isSchedulingStatus: true`, and neither arms unless the conversation has a `scheduled_event_date`.
+
+The two silence types differ only in where their first step starts, and behave the same way otherwise: one pending step at a time, chained on fire, cancelled by a contact reply. `before_event` is the outlier — all of its entries arm at once, none chain, and they fire regardless of replies.
+
+**Only the first step is measured from the event; every later one is measured from the nudge before it.** A `2h` then `4h` ladder on a 10:00 event sends at 12:00 and then 16:00 — 4h after the first nudge — not at 14:00. Thresholds are relative offsets down the chain, not an absolute ladder off the event, so a later step with a smaller threshold does not fire out of order.
+
+`inactivity_after_event` arms when the card enters the status, even if the event has already passed. Only that first arming consults the event: the steps whose delay has already elapsed relative to the event are skipped, and the first one still in the future becomes step one of the chase.
+
+A contact message cancels the chase — permanently, it is not rescheduled — only when it is newer than **both** the event and the moment the card entered the status. A message before the event does not, because the silence window has not opened yet; and on a card dragged on *after* the visit, neither does one sent before the drag, because that reply is not an answer to a chase that had not started. Anything later ends the chain.
 
 Fields per followup:
-- `order` — position within the status
+- `order` — position within the status. Orders are a single space shared by every type in the status, so a status with a `before_event` at 1 and an `inactivity_after_event` at 2 has that post-event chain start at 2
 - `threshold` + `timeUnit` — delay (`seconds`/`minutes`/`hours`/`days`)
 - `instructions` — what to send (supports `{{...}}` placeholders — see [agents/instructions.md](agents/instructions.md))
 - `delivery_mode: direct` + `direct_text` — send fixed text instead of triggering the agent (`direct_text` required and non-empty)
@@ -152,7 +163,7 @@ Enforced on every write — REST, CLI `wayai push`, MCP:
   - `isInitialStatus` ↔ `triggersAgentResponse` / `allowsAgentUpdate` / `isTerminalStatus` / `isSchedulingStatus`
   - `triggersAgentResponse` ↔ `allowsAgentUpdate` / `isTerminalStatus`
 - `isSchedulingStatus: true` requires non-empty `eventName`
-- `before_event` followups require the parent status to have `isSchedulingStatus: true`
+- Event-relative followups (`before_event`, `inactivity_after_event`) require the parent status to have `isSchedulingStatus: true`
 - `event_due_delay_minutes` requires the status to have `isSchedulingStatus: true`; it must be a non-negative integer
 - `scheduled_event_date` (supplied per transition, not config) must be an ISO-8601 date-time: either zoned (`2026-06-02T15:00:00Z`, `…-03:00`) or a zone-less wall clock (`2026-06-02T15:00`) resolved in the hub timezone. Anything else is rejected; the stored value is always canonical UTC
 - Followups with `delivery_mode: direct` require non-empty `direct_text`

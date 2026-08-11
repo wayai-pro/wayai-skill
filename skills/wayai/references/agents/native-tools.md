@@ -155,7 +155,7 @@ When the target is terminal and declares `outcomes`, `outcome` is required. An o
 |-----------|------|----------|-------------|
 | `new_kanban_status` | string | Yes | Target status **slug** (immutable identifier from `hub.kanban_statuses[].slug`; display names appear only as labels in the description) |
 | `outcome` | string | When required | Outcome **slug**. Required when the target terminal status declares outcomes; must be eligible from the conversation's stored current status |
-| `scheduled_event_date` | string | No | For `isSchedulingStatus` statuses: event datetime, RFC3339 with timezone |
+| `scheduled_event_date` | string | Conditional | Event datetime, RFC3339 with timezone. **Required** when the target is an `isSchedulingStatus` status configuring any event-relative followup (`before_event`, `inactivity_after_event`) — the transition is rejected without it, since those followups have nothing to count from. Optional on any other status |
 | `event_description` | string | No | Description of the scheduled event |
 | `event_sid` | string | No | External event ID for integration purposes |
 
