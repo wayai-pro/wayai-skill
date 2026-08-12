@@ -385,10 +385,14 @@ Everything non-additive stays conversation-only: counts, durations, response tim
 
    Mind which table owns the namespace: `message` carries `data.system.*` **only**. A missing JSON sub-path returns NULL instead of erroring, so selecting `data.meta.*` from `message` does not fail — it silently collapses to one empty group. Reach conversation-owned paths by joining `conversation`, as the last example does.
 2. **Rows appear at conversation CLOSE, best-effort.** An open conversation contributes nothing. Emission is less durable than the conversation row, so `message` is analysis-grade — the `conversation` figure remains the customer-visible, billing-reconcilable one.
-3. **An unfiltered sum EXCEEDS the conversation figure, by design.** Message rows include background agents (`conversation_evaluator`, `message_evaluator`, `monitor`) that every conversation aggregate excludes; their spend is real and reaches no other queryable store. To reproduce the conversation figure, filter **NULL-safely** — a bare `NOT IN` on a nullable column silently drops every user/team/system row. **Keep the outer parentheses:** `AND` binds tighter than `OR`, so an unparenthesized copy combined with any other condition silently re-parses as `agent_role IS NULL OR (… AND …)` and readmits every NULL-role row from all history:
+3. **An unfiltered sum EQUALS the conversation figure** (for conversations closed after the boundaries in 3b). Both count every agent role, background included, so `message` *decomposes* the conversation rollup rather than exceeding it. Use the filter below only to **isolate** the spend a hub's own agents did, splitting it from platform background work (`conversation_evaluator`, `message_evaluator`, `monitor`, `summarizer`). It lands at or below the conversation total — `filtered <= total`, strict only when an excluded row actually contributed to the metric you selected; a conversation that ran no background agent has nothing to exclude, so equality there is correct rather than a fault. Filter **NULL-safely**: a bare `NOT IN` on a nullable column silently drops every user/team/system row. **Keep the outer parentheses:** `AND` binds tighter than `OR`, so an unparenthesized copy combined with any other condition silently re-parses as `agent_role IS NULL OR (… AND …)` and readmits every NULL-role row from all history:
    ```sql
-   WHERE (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor'))
+   WHERE (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor','summarizer'))
    ```
+   Operations are *unchanged* by this filter — background rows carry zero — so only the cost and token sums move.
+   **Historical boundaries — there are two,** both forward-only with no backfill, so a conversation's aggregate reflects whichever rules were live when it **closed**:
+   - `summarizer` spend entered **both** tables when the provider-usage carrier shipped. Before that it was recorded nowhere at all, so no query recovers the earlier figures.
+   - `conversation_evaluator`/`message_evaluator`/`monitor` spend entered the **`conversation`** aggregate later, when the role exclusion narrowed to shape only. `message` carried those rows all along, so for a window spanning only that second change, summing `message` is the continuous answer.
 4. **`connection_id` names the LLM connection only.** TTS/STT/container spend rides the same row, so attributing cost to a credential means netting the media terms out of `cost_usd_total`.
 5. **Bucket dates in the hub's timezone,** not raw UTC: `toTimeZone(created_at, 'America/Sao_Paulo')` before `toDate`/`toStartOfWeek`. Raw UTC bucketing misassigns everything near midnight.
 6. **Bound `message.created_at`** — and only that one. `message` retains five years at per-message volume, so an unbounded scan is the expensive way to ask every question; every example below carries a window. In a join, do **not** add the matching bound on `conversation`: `conversation.created_at` is when the conversation *opened*, not when the spend happened, and the join is inner — so a chat conversation opened 60 days ago and closed yesterday would have all of its in-window spend dropped from the result, silently. Bounding the message side alone is what "spend in the last 30 days" means, and it is the table whose volume matters.
@@ -402,14 +406,14 @@ Spend by model — where the money actually goes:
 wayai analytics sql "SELECT agent_model, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd, sum(toFloat64OrNull(toString(data.system.tokens_total))) AS tokens, count() AS messages FROM message WHERE created_at >= now() - INTERVAL 30 DAY GROUP BY agent_model ORDER BY usd DESC"
 ```
 
-Spend by agent role, reconciled to the customer-visible figure (rule 3 — note the parentheses):
+Spend by agent role, limited to the hub's own agents (rule 3 — note the parentheses):
 ```bash
-wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor')) GROUP BY agent_role ORDER BY usd DESC"
+wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND (agent_role IS NULL OR agent_role NOT IN ('conversation_evaluator','message_evaluator','monitor','summarizer')) GROUP BY agent_role ORDER BY usd DESC"
 ```
 
-What background evaluation costs you — the spend conversation analytics hides:
+What background work costs — the share of the conversation figure that is evaluation, monitoring and summarization rather than customer-facing replies:
 ```bash
-wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND agent_role IN ('conversation_evaluator','message_evaluator','monitor') GROUP BY agent_role ORDER BY usd DESC"
+wayai analytics sql "SELECT agent_role, sum(toFloat64OrNull(toString(data.system.cost_usd_total))) AS usd FROM message WHERE created_at >= now() - INTERVAL 30 DAY AND agent_role IN ('conversation_evaluator','message_evaluator','monitor','summarizer') GROUP BY agent_role ORDER BY usd DESC"
 ```
 
 Cost per credential, media netted out (rule 4 — each term casts separately):
