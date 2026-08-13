@@ -580,7 +580,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
    - **Connection Name** (required): A friendly name for this MCP connection
    - **MCP Server URL** (required): The Streamable HTTP endpoint (e.g., `https://mcp.example.com/mcp`)
    - For **Bearer Token**: **Bearer Token** (optional), **Custom Headers** (optional)
-   - For **OAuth**: **OAuth Client ID** (optional), **OAuth Client Secret** (optional)
+   - For **OAuth**: **OAuth Client ID** (optional), **OAuth Client Secret** (optional) — leave empty unless the server cannot register a client for us. A client you registered yourself must carry the hub-specific redirect URI `https://api.wayai.pro/oauth/callback/mcp/<hub id>` (the hub id is in the settings URL); there is no longer one shared platform callback URI
 5. Click Save → Tools auto-discovered (OAuth connections complete authorization flow first)
 
 **After setup:** Use the Sync button to refresh available tools when the MCP server is updated.
