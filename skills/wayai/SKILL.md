@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.56.0
+version: 6.57.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -349,6 +349,7 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 | `auto_close_inactive_days` | `1`–`180` | `7` | Days of inactivity (no user/team message) before a conversation is force-closed. Every hub has one |
 | `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` before cleanup (archival still happens at close) |
 | `ended_index_retention_days` | `1`–`730` | `365` | Days an ended conversation stays listed in the hub index. Bounds the Ended tab and how far back `{{previous_conversations(N)}}` reaches |
+| `eval_retention_days` | `0`–`3650`, or `null` | platform default (90) | Days a finished eval session (its runs, results and eval conversations) is kept before retirement. `0` keeps sessions forever. **Omitting the field leaves the current value unchanged** — write `eval_retention_days: null` to clear an override and go back to the platform default. Retirement deletes transcripts permanently — eval scores in Analytics survive |
 | `mcp_access` | `disabled`, `read_only`, `read_write` | `read_only` | Whether external MCP clients can reach this hub's tools. **UI only** (Hub → Users tab) — not settable via `hub.yaml`; `read_write` downgrades to `read_only` when published to production |
 
 ## First-time setup (cold start)

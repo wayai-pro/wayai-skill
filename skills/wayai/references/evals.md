@@ -455,7 +455,7 @@ wayai conversations <conversation_id> observability --message-id <message_id> --
 
 ## Deleting Sessions
 
-Each `run-eval` creates a **session** — its runs, results, and the eval conversations they spawned. Sessions accumulate; delete the noise once you've read what you need.
+Each `run-eval` creates a **session** — its runs, results, and the eval conversations they spawned. Delete the noise once you've read what you need.
 
 ```bash
 wayai eval session delete <session_id>   # delete one session
@@ -466,6 +466,16 @@ wayai eval session delete --all -y       # skip the confirmation prompt
 Destructive and irreversible. The cascade removes the session row, its runs + results, and the eval conversations everywhere they live (ConversationDO storage, ClickHouse rows, R2 archives). Scenarios, scenario sets, and journeys are **not** touched — only the run history. Both forms prompt for confirmation unless `-y`/`--yes` is passed.
 
 A session that was just stopped can refuse deletion with `session_not_quiescent` (exit 1) while a turn that started before the stop is still finishing — deleting it then would destroy the record of the fixture lease it still holds. `--all` is all-or-nothing: one such session refuses the whole sweep and nothing is deleted. Retry once the drain completes.
+
+### Sessions also expire on their own
+
+Sessions are **not** kept indefinitely. A weekly job retires finished sessions (`completed`, `failed`, `awaiting_review`, `cancelled`) older than the hub's `eval_retention_days` — or, when the hub sets none, the platform default of 90 days. Set `eval_retention_days: 0` in `hub.yaml` to keep a hub's sessions forever, or a longer window to widen it.
+
+The window that applies is the one on **the hub that ran the evals** — your preview, since that is where sessions live (creating one on a production hub is refused, and publishing never clones session rows). So `wayai push` is all it takes for the setting to take effect; publish/sync additionally carries the value to the production clone, so it is already right if that hub ever holds sessions.
+
+Deleting the line does **not** undo an override — omission means "leave it as it is", so the old window keeps applying. Write `eval_retention_days: null` to clear it and return the hub to the platform default.
+
+Retirement runs the same cascade as `wayai eval session delete`, with two deliberate differences: it **keeps** the ClickHouse eval rows (so scores stay queryable in Analytics and `eval-results` long after the transcripts are gone), and it never plain-clears a fixture that carries no lease. Plan accordingly: if a session is a baseline you intend to compare against months later, export what you need or raise the window — its transcripts, runs, and results are unrecoverable once retired.
 
 ---
 
