@@ -221,6 +221,12 @@ Discover and read knowledge-resource content, exchange files with the user, and 
 
 A file the AGENT sent with `send_files` is addressable by the same path but is **not** announced in history, so an agent cannot tell from the transcript alone whether it already sent a document — instruct it from its own tool results instead.
 
+**Files from an earlier conversation with the same user** are addressed as `conversations/<conversation_id>/<file-name>` — plural mount, and the id is the one `get_conversations_summary` lists. The archived transcript announces them itself: each message that carried attachments is followed by an indented `[files: conversations/<id>/receipt.pdf]` line, and anything attached to a message the transcript does not show (a tool step, or one older than the 50-message cap) is listed under a trailing `Other files in this conversation:` section. Both lists are capped, with the remainder counted (`… and 12 more files`) rather than dropped. `read_file` and `send_files` take those paths directly, in full — this mount accepts no shortened form.
+
+Only the current end user's own conversations resolve. Any other id — another user's, or one that never existed — reads as "not in this user's history"; the two are deliberately indistinguishable, so the namespace cannot be used to test whether a conversation id is real. A conversation of the user's own whose files have aged out says so separately. **Internal consult attachments are not addressable**: the transcript does not announce them and the tools do not resolve or list them, so an advisor's private file cannot be read back or forwarded to the customer.
+
+`get_conversations_summary` marks a conversation holding files as `[3 files]` — counted on the same basis, so the number matches what the transcript announces. Transcripts are written once, at close, so conversations archived before this shipped announce nothing — their files remain reachable by path if the agent knows the name.
+
 **Keep resource names — and file names within a resource — unique if you hard-wire paths.** Duplicates are allowed, and they get `-2`/`-3` suffixes (`support`, `support-2`), but a suffix is a *rank within the duplicate set*, not an identity: renaming or deleting the first "Support" promotes the second one to `support`, and publishing re-derives the ranks from scratch. There is nothing stable to key on — two resources with the same name are indistinguishable after a clone — so a hard-wired `…-2` path can silently come to mean a different file. Unique names have no suffix and no such exposure.
 
 **How a path resolves.** With the `resources/` mount, the first segment is the *resource selector*: `resources/product-docs/references/menu.md` is looked up inside `product-docs` and nowhere else, so another resource that happens to contain a `product-docs/` folder can never answer for it. A mounted path must be complete — you named the resource *and* the path, so it matches exactly (case-insensitively), and a shortened one reports not-found rather than guessing at a nested file you did not name.
@@ -259,7 +265,7 @@ Retrieve a file and inject it into the conversation context for analysis. Text f
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | No\* | Canonical path — `resources/product-docs/references/menu.md` for a knowledge or skill file, `conversation/report.pdf` for something attached to this conversation — or any unambiguous shortening of it (`references/menu.md`, `menu.md`) |
+| `path` | string | No\* | Canonical path — `resources/product-docs/references/menu.md` for a knowledge or skill file, `conversation/report.pdf` for something attached to this conversation, or any unambiguous shortening of either (`references/menu.md`, `menu.md`). `conversations/<conversation_id>/receipt.pdf` addresses an earlier conversation's file and takes **no** shortening — mount, id and name in full |
 | `file_id` | string | No\* | From conversation messages or `list_resource_files`. Prefer `path`: ids are regenerated at publish |
 | `resource_id` | string | No | Restricts a path to one resource — use when the same file name exists in several and the reference comes back ambiguous |
 
@@ -271,7 +277,7 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `file_ids` | array | No | Files to send, each named by path (`conversation/report.pdf`, `resources/product-docs/price-list.pdf`) or by file ID |
+| `file_ids` | array | No | Files to send, each named by path (`conversation/report.pdf`, `conversations/<conversation_id>/receipt.pdf`, `resources/product-docs/price-list.pdf`) or by file ID |
 | `folder_ids` | array | No | Resource folder IDs — sends all files in them (alternative to `file_ids`) |
 | `message_text` | string | No | Accompanying text (WhatsApp caption / email body) |
 
@@ -331,6 +337,8 @@ Timeline of the current user's past conversations (summaries + conversation IDs)
 | `max_conversations` | integer | No | Max past conversations (default 10) |
 | `max_characters` | integer | No | Output cap (default 20000, max 40000; truncates oldest first) |
 
+A conversation that holds files is marked `[3 files]` beside its dates. Absent means unknown, not zero — entries written before the count existed carry no marker.
+
 ### get_conversation
 
 Full transcript of one past conversation (find IDs via `get_conversations_summary`).
@@ -341,6 +349,8 @@ Full transcript of one past conversation (find IDs via `get_conversations_summar
 | `max_characters` | integer | No | Output cap (default 30000, max 60000) |
 
 Also returns `previous_conversation_id` / `next_conversation_id` when they exist — the user's conversations closed nearest in time either side of this one, so the agent can keep walking history without another `get_conversations_summary` call. Neighbours by closing time, not a fixed chain; either may be absent.
+
+The transcript announces that conversation's files by path (`  [files: conversations/<id>/receipt.pdf]` under the message that carried them, plus a trailing `Other files in this conversation:` section for the rest), so `read_file` / `send_files` can open one without any listing call. Internal consult traffic is hidden from the transcript, and so are its attachments.
 
 ### expand_summary
 
