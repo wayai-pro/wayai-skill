@@ -208,14 +208,14 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 
 ### File handling (all LLM connectors)
 
-Two optional `settings` keys control how a conversation's **historical** files are sent to this agent's LLM (the current message's own attachments are always sent in full):
+A conversation's **earlier** files are announced to every agent as a text annotation naming each file by path — `[Attached files: conversation/report.pdf (Type: application/pdf, Size: 2048 bytes)]` — and never re-sent as content, in any mode. Re-attaching them cost a download and a block of context per file on every turn, for content the agent can ask for by path in one call. The current message's own attachments are unaffected: they are always sent in full.
 
-| Setting | Values | Default | Effect |
-|---|---|---|---|
-| `file_handling_mode` | `always_attach` / `metadata_only` | `always_attach` | `always_attach` includes file content; `metadata_only` sends only an `[Attached files: …]` annotation and the agent fetches content on demand via the `read_file` tool (auto-enabled for the agent in this mode). |
-| `max_attachment_size_mb` | integer (MB) | — (no cap) | In `always_attach`, any historical file larger than this is downgraded to metadata-only. |
+| Setting | What it still does |
+|---|---|
+| `file_handling_mode` | No longer changes what the model receives. `metadata_only` still auto-enables `read_file` for the agent — the one way, besides assigning the tool, to let it open a path it was told about. |
+| `max_attachment_size_mb` | Nothing. There is no attachment to cap. |
 
-Background observer roles (`conversation_evaluator`, `message_evaluator`, `monitor`) ignore these settings and always receive full file content.
+Which agents see the annotations: the pilot/copilot track, `monitor`, and `conversation_evaluator` — the roles whose context is assembled from turn history. Three roles are not, so instructions that key on `[Attached files: …]` never match for them: `message_evaluator` (dispatched with a single synthesized instruction message), `summarizer` (reads its own synthesized message list), and `consultant` (its customer transcript is rendered by hand, text-only, into a `<customer_conversation>` frame). Any of them can still hold `read_file`: the auto-append gate is the per-agent `metadata_only` setting and carries no role check, so an evaluator configured that way gets the tool even though nothing in its context names a path.
 
 ### Pre-tool preamble delivery (all LLM connectors)
 

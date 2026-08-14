@@ -217,11 +217,17 @@ Discover and read knowledge-resource content, exchange files with the user, and 
 
 **Files are addressed by path.** Every resource file has a canonical path, `resources/<resource-slug>/<folders…>/<file-name>`, where the slug is the kebab-cased resource name (skill name for skills). `read_file` takes that path, `list_resource_files` returns it on every row, and `{{resources()}}` lists it under each resource when the link has `include_structure_in_prompt` enabled. Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
 
+**Files attached to the conversation are addressed the same way**, under `conversation/<file-name>` — the address the transcript itself announces. Every message a USER or a TEAM member sent with attachments is annotated with `[Attached files: conversation/report.pdf (Type: application/pdf, Size: 2048 bytes)]`, so the agent learns what arrived without a listing call, and passes the path straight to `read_file` or `send_files`. Earlier files are announced, never re-sent as content (see *File handling* in `roles-and-settings.md`); `read_file` returns the content, and for an image or a PDF, the file itself. Duplicate names take the same `-2`/`-3` ordinals as resources, and are just as much a rank rather than an identity.
+
+A file the AGENT sent with `send_files` is addressable by the same path but is **not** announced in history, so an agent cannot tell from the transcript alone whether it already sent a document — instruct it from its own tool results instead.
+
 **Keep resource names — and file names within a resource — unique if you hard-wire paths.** Duplicates are allowed, and they get `-2`/`-3` suffixes (`support`, `support-2`), but a suffix is a *rank within the duplicate set*, not an identity: renaming or deleting the first "Support" promotes the second one to `support`, and publishing re-derives the ranks from scratch. There is nothing stable to key on — two resources with the same name are indistinguishable after a clone — so a hard-wired `…-2` path can silently come to mean a different file. Unique names have no suffix and no such exposure.
 
 **How a path resolves.** With the `resources/` mount, the first segment is the *resource selector*: `resources/product-docs/references/menu.md` is looked up inside `product-docs` and nowhere else, so another resource that happens to contain a `product-docs/` folder can never answer for it. A mounted path must be complete — you named the resource *and* the path, so it matches exactly (case-insensitively), and a shortened one reports not-found rather than guessing at a nested file you did not name.
 
-Shortening is what the mount-less form is for. There the reference is matched across every resource linked to the agent, in three tiers — exact path, then case-insensitively, then as a path *suffix* — and the strictest tier that matches any file wins, so a file whose path **is** `notes.md` beats one at `archive/notes.md`. You only get the candidate list when several files match within the *same* tier. Dropping a *middle* segment still resolves nothing in either form: `product-docs/menu.md` will not find `resources/product-docs/references/menu.md`.
+Shortening is what the mount-less form is for. There the reference is matched across everything the agent can read — every linked resource **and** this conversation's attachments — in three tiers: exact path, then case-insensitively, then as a path *suffix*. The strictest tier that matches any file wins, so a file whose path **is** `notes.md` beats one at `archive/notes.md`. You only get the candidate list when several files match within the *same* tier. Dropping a *middle* segment still resolves nothing in either form: `product-docs/menu.md` will not find `resources/product-docs/references/menu.md`.
+
+No namespace outranks another: a bare `report.pdf` that names both a knowledge file and something the user attached is reported as ambiguous, listing both full paths, rather than one quietly answering for the other. Name the mount (`conversation/report.pdf`) when both exist.
 
 ### list_resource_folders
 
@@ -253,8 +259,8 @@ Retrieve a file and inject it into the conversation context for analysis. Text f
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | No\* | Canonical path (`resources/product-docs/references/menu.md`) or any unambiguous shortening of it (`references/menu.md`, `menu.md`) |
-| `file_id` | string | No\* | From conversation messages or `list_resource_files`. Prefer `path` for resource files |
+| `path` | string | No\* | Canonical path — `resources/product-docs/references/menu.md` for a knowledge or skill file, `conversation/report.pdf` for something attached to this conversation — or any unambiguous shortening of it (`references/menu.md`, `menu.md`) |
+| `file_id` | string | No\* | From conversation messages or `list_resource_files`. Prefer `path`: ids are regenerated at publish |
 | `resource_id` | string | No | Restricts a path to one resource — use when the same file name exists in several and the reference comes back ambiguous |
 
 \* At least one of `path` / `file_id` is required; `path` wins when both are given, except that a `file_id` the agent can read is never refused because of an unlinked `resource_id`. An unknown reference reports "File not found" with the discovery hint. "Access denied" means one of two things: a `file_id` whose file sits in a resource this agent is not linked to, or a `resource_id` the agent is not linked to — the latter reads identically whether or not that resource exists, so it never confirms one does.
@@ -265,7 +271,7 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `file_ids` | array | No | File IDs to send (conversation or resource files) |
+| `file_ids` | array | No | Files to send, each named by path (`conversation/report.pdf`, `resources/product-docs/price-list.pdf`) or by file ID |
 | `folder_ids` | array | No | Resource folder IDs — sends all files in them (alternative to `file_ids`) |
 | `message_text` | string | No | Accompanying text (WhatsApp caption / email body) |
 
