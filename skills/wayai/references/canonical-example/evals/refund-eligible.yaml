@@ -21,8 +21,8 @@ expected:
 evaluator_instructions: |
   The agent MUST:
   1. Consult the refund policy in the Company FAQ before promising anything (any combination of
-     list_resource_files / read_file targeting the refunds.md content counts — the exact tool
-     sequence and resource_id/file_id args are runtime-resolved, not statically asserted here).
+     list_resource_files / read_file targeting the refunds.md content counts — the agent may
+     address it by path or by id, so the exact tool sequence and args are not asserted here).
   2. Set ticket_intake.category to "refund" via set_state_path (state_slug, path, value).
   3. Confirm the order is inside the 14-day window (it is — 5 days), then transfer to
      Tier 2 Support for refund issuance.

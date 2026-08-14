@@ -215,6 +215,14 @@ Reset a state to its initial value (deletes the persisted row; reads fall back t
 
 Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. The knowledge resources linked to the agent are injected — as `id (name)` — into the `list_resource_folders` / `list_resource_files` `resource_id` parameter descriptions at turn time, so the agent discovers ids in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
 
+**Files are addressed by path.** Every resource file has a canonical path, `resources/<resource-slug>/<folders…>/<file-name>`, where the slug is the kebab-cased resource name (skill name for skills). `read_file` takes that path, `list_resource_files` returns it on every row, and `{{resources()}}` lists it under each resource when the link has `include_structure_in_prompt` enabled. Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
+
+**Keep resource names — and file names within a resource — unique if you hard-wire paths.** Duplicates are allowed, and they get `-2`/`-3` suffixes (`support`, `support-2`), but a suffix is a *rank within the duplicate set*, not an identity: renaming or deleting the first "Support" promotes the second one to `support`, and publishing re-derives the ranks from scratch. There is nothing stable to key on — two resources with the same name are indistinguishable after a clone — so a hard-wired `…-2` path can silently come to mean a different file. Unique names have no suffix and no such exposure.
+
+**How a path resolves.** With the `resources/` mount, the first segment is the *resource selector*: `resources/product-docs/references/menu.md` is looked up inside `product-docs` and nowhere else, so another resource that happens to contain a `product-docs/` folder can never answer for it. A mounted path must be complete — you named the resource *and* the path, so it matches exactly (case-insensitively), and a shortened one reports not-found rather than guessing at a nested file you did not name.
+
+Shortening is what the mount-less form is for. There the reference is matched across every resource linked to the agent, in three tiers — exact path, then case-insensitively, then as a path *suffix* — and the strictest tier that matches any file wins, so a file whose path **is** `notes.md` beats one at `archive/notes.md`. You only get the candidate list when several files match within the *same* tier. Dropping a *middle* segment still resolves nothing in either form: `product-docs/menu.md` will not find `resources/product-docs/references/menu.md`.
+
 ### list_resource_folders
 
 List folders in a resource (with `parent_folder_id` for hierarchy).
@@ -227,13 +235,13 @@ List folders in a resource (with `parent_folder_id` for hierarchy).
 
 ### list_resource_files
 
-List files in a resource; returns metadata including the `file_id` used by `read_file`.
+List files in a resource. Each row carries `path` (the address `read_file` takes), `file_id`, `title`, `file_name`, `mime_type`, `file_size`, `tags`, `metadata`, `folder_id`, `folder_name`, `resource_id`, and `resource_name`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `resource_id` | string | Yes | Resource to query |
 | `folder_id` | string | No | Filter by folder. Omit = all files; `00000000-0000-0000-0000-000000000000` = root-level only |
-| `search_query` | string | No | Search files by title |
+| `search_query` | string | No | Search files by title or file name |
 | `tags` | array | No | Match files with any of the tags |
 | `metadata_filter` | object | No | Same operator syntax as `list_resource_folders`, against `file_metadata_schema` |
 | `limit` | integer | No | Max results (default 50, max 100) |
@@ -241,11 +249,15 @@ List files in a resource; returns metadata including the `file_id` used by `read
 
 ### read_file
 
-Retrieve a file by ID and inject it into the conversation context for analysis.
+Retrieve a file and inject it into the conversation context for analysis. Text files come back inline; images and PDFs are attached to the same turn.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `file_id` | string | Yes | From conversation messages or `list_resource_files` |
+| `path` | string | No\* | Canonical path (`resources/product-docs/references/menu.md`) or any unambiguous shortening of it (`references/menu.md`, `menu.md`) |
+| `file_id` | string | No\* | From conversation messages or `list_resource_files`. Prefer `path` for resource files |
+| `resource_id` | string | No | Restricts a path to one resource — use when the same file name exists in several and the reference comes back ambiguous |
+
+\* At least one of `path` / `file_id` is required; `path` wins when both are given, except that a `file_id` the agent can read is never refused because of an unlinked `resource_id`. An unknown reference reports "File not found" with the discovery hint. "Access denied" means one of two things: a `file_id` whose file sits in a resource this agent is not linked to, or a `resource_id` the agent is not linked to — the latter reads identically whether or not that resource exists, so it never confirms one does.
 
 ### send_files
 
