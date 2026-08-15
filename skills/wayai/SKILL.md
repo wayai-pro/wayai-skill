@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.63.0
+version: 6.64.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -433,7 +433,7 @@ After the hub exists, follow the existing-hub workflow.
 - If a hub folder has no `AGENTS.md` (or only the seeded placeholder), fill it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
 - Keep it focused on *why* decisions were made and *what* makes this hub different. Don't restate platform mechanics — those live in this skill
 - Record agreed scope in an optional `## Build plan` checkbox section and tick items as they land — the progress report renders it as plan-vs-actual ([`references/progress-report.md`](references/progress-report.md#the-build-plan-convention))
-- **Rekor bases get the same treatment.** If you're also working with a Rekor base, record the context its settings can't capture in the base folder's `AGENTS.md` (create it + a `CLAUDE.md` shim if missing) — the Rekor skill owns the details
+- **Bases get the same treatment.** If you're also working with a base, record the context its settings can't capture in the base folder's `AGENTS.md` under `wayai-ws/bases/<base-id>/` (create it + a `CLAUDE.md` shim if missing)
 
 **Overflow content goes into `wayai-ws/hubs/<hub>/references/`:**
 - When `AGENTS.md` grows past ~200 lines or starts mixing topics, extract the deeper material into focused files under `wayai-ws/hubs/<hub>/references/`
@@ -495,7 +495,27 @@ wayai report list       # List your reports (newest first; --status <s>, --json)
 wayai report get        # Show a report's status + message thread (<id>, --json)
 wayai report accept     # Accept a shipped fix (<id>) → addressed
 wayai report contest    # Contest a shipped fix or a dismissal (<id> --reason "...") → back to triage
+
+# Bases — the Data surface. A base is org-level and hubs mount it; a separate
+# entity from a hub. `use`/`unbind` are local (this worktree's binding file);
+# every other command below reaches the platform.
+wayai bases list        # List bases (--tag to filter)
+wayai bases get <id>    # Show one base
+wayai bases create <id> --name "<name>"        # Create (--environment preview|production)
+wayai bases update <id> --name/--tags/--timezone/--settings/--integrations
+wayai bases rename <id> --name "<name>"        # Display name only — the id/slug is immutable
+wayai bases tag <id> --tags a,b                # Replaces the existing tags
+wayai bases delete <id>                        # Tombstone; --purge (preview only) destroys storage
+wayai bases create-preview <origin-id> --name "<name>"   # Clone config into a new preview
+wayai bases list-previews <origin-id>
+wayai bases promote <production-id> --from <preview-id>  # NOT `wayai publish`, which promotes a HUB
+wayai bases rollback <production-id> --promotion <id>
+wayai bases promotions <production-id>
+wayai bases use <base>  # Bind this worktree to a base (see Worktree bindings)
+wayai bases unbind      # Clear this worktree's base binding
 ```
+
+`wayai bases --help` prints the full tree. Two collisions worth holding onto: `wayai use`/`wayai unbind` bind a **hub** while `wayai bases use`/`wayai bases unbind` bind a **base**, and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. They are different entities — never substitute one for the other.
 
 **Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
 moves to `shipped` — you'll get an email, and `wayai login`/`wayai status` remind you once (or find it
@@ -505,11 +525,15 @@ Contests are bounded (a cap, and triage may mark a dismissal final); past those,
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
 
-### Worktree hub binding
+### Worktree bindings
 
-Each git checkout (main or linked worktree) can be bound to a single hub. `wayai push` and `wayai pull` refuse to run against a different hub once bound — this catches the common mistake of a prompt being routed to the wrong terminal/worktree. The binding is auto-set on the first successful pull (or new-hub creation) into an unbound checkout, and lives at `<git-dir>/wayai-binding` (per-checkout, never tracked). It is a routing tripwire, not a concurrency lock — it does not coordinate concurrent edits to the same hub.
+Each git checkout (main or linked worktree) can be bound to a single hub, and independently to a single base — two files, `<git-dir>/wayai-binding` and `<git-dir>/wayai-base-binding` (per-checkout, never tracked). They are routing tripwires, not concurrency locks — they do not coordinate concurrent edits.
 
-If `push`/`pull` errors with a binding mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use`, or modify `.git/wayai-binding` without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub the user thinks you're working on.
+**The hub binding is enforced today:** `wayai push` and `wayai pull` refuse to run against a different hub once bound, and it is auto-set on the first successful pull (or new-hub creation) into an unbound checkout. This catches the common mistake of a prompt being routed to the wrong terminal/worktree.
+
+**The base binding is currently a record, not yet a guard.** `wayai bases use` sets it and `wayai bases unbind` clears it, but no command refuses on a mismatch yet — base `pull`/`push` routing has not shipped. Do not rely on it to catch a wrong-worktree prompt; check which base you are targeting yourself.
+
+If `push`/`pull` errors with a binding mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use`, `wayai bases unbind`, `wayai bases use`, or modify either binding file without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub or base the user thinks you're working on.
 
 ## Repository Structure
 
@@ -526,6 +550,9 @@ wayai-ws/                                # All WayAI hub-as-code (init creates w
 ├── org/                                 # Org-as-code — shared resources (wayai org pull/push)
 │   ├── resources.yaml
 │   └── resources/<slug>/
+├── bases/                               # One folder per preview base (Data surface)
+│   └── <base-id>/                       # NOT WRITTEN YET — no command materializes this
+│       └── base.yaml                    # Base identity + config; `wayai bases use <folder>` reads it
 └── hubs/
     └── <hub-slug>--<label>/             # One folder per preview hub (disambiguated)
         ├── hub.yaml                     # Hub config + states + connections + outbound + resources
@@ -749,4 +776,4 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
 | **Progress report** | [`references/progress-report.md`](references/progress-report.md) | Creating or refreshing `wayai-ws/hubs/<hub>/progress.html` — the shareable build-progress & readiness snapshot — and the AGENTS.md `## Build plan` convention. Code-harness agents only |
-| **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | Canonical repo-root `AGENTS.md` bootstrap (reconcile a stale copy against it at session start) + the per-hub / Rekor-base memory pattern |
+| **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | Canonical repo-root `AGENTS.md` bootstrap (reconcile a stale copy against it at session start) + the per-hub / per-base memory pattern |
