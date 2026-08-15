@@ -501,11 +501,11 @@ This is the core native toolset providing:
 - **Conversation management:** Close conversations, transfer to team, update kanban status, schedule followups
 - **Agent orchestration:** Transfer to agent, consult agent
 - **File handling:** Get files, send files from conversations
-- **Resource access:** List resource folders, list resource files
+- **Resource access:** Browse files by path (`list_files`), read file contents (`read_file`)
 - **Tool orchestration:** Get tool schema, execute tool dynamically
 - **Skills:** Read skill, read skill file
 
-**Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `read_file`, `send_files`, `list_resource_folders`, `list_resource_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
+**Agent tools:** `close_conversation`, `transfer_to_team`, `update_kanban_status`, `schedule_followup`, `transfer_to_agent`, `consult_agent`, `read_file`, `send_files`, `list_files`, `get_tool_schema`, `execute_tool`, `read_skill`, `read_skill_file`
 
 #### External Resources
 

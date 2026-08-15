@@ -35,7 +35,7 @@ Note where each lives: stable identity in `instructions` (system prompt — cach
 ### 3. Agent → Resource
 `agents/support-pilot.yaml` `resources:` lists `name: Company FAQ`, which matches `hub.yaml` `resources[].name: Company FAQ`. The folder under `resources/` is the **slugified** resource name (`Company FAQ` → `company-faq`). Files inside the folder are the actual knowledge content — the list of files is **not** in YAML; the filesystem is the source of truth (per `references/resources.md`).
 
-The agent invokes the resource at runtime via the native tools `list_resource_files` (discover what's there) and `read_file` (read the content) — both declared in `tools.native`. The instructions reinforce this: look up the FAQ before promising anything.
+The agent invokes the resource at runtime via the native tools `list_files` (discover what's there) and `read_file` (read the content) — both declared in `tools.native`. The instructions reinforce this: look up the FAQ before promising anything.
 
 That same slugified folder name is also the file's runtime address: `resources/company-faq/refunds.md` is what `read_file` takes, so the path an author writes in the instructions is the path on disk. Prefer it over a `file_id` — publishing regenerates every UUID, while the names a path is built from clone verbatim. This holds because `Company FAQ` is the hub's only resource with that name; duplicate names get rank-based `-2` suffixes that are not stable across renames, deletes, or a publish.
 

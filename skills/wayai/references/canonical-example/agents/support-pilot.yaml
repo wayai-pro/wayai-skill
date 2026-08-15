@@ -17,7 +17,7 @@ tools:
     - set_state_path
     - update_kanban_status
     - close_conversation
-    - list_resource_files
+    - list_files
     - read_file
   delegation:
     - type: team

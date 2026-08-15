@@ -170,7 +170,7 @@ Markdown-formatted catalog of the resources (knowledge bases and skills) linked 
 |----------|---------|-------------|
 | `resource_type` | `all` | `all`, `kb` (knowledge only), or `skill` (skills only) |
 
-Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. When the agent's link to a resource has `include_structure_in_prompt` enabled, each file's canonical path (`resources/<resource-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_resource_folders` / `list_resource_files` native tools also expose these ids for on-demand browsing (see [native-tools.md](native-tools.md)).
+Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. When the agent's link to a resource has `include_structure_in_prompt` enabled, each file's canonical path (`resources/<resource-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
 
 ```
 {{resources()}}
@@ -209,7 +209,7 @@ Inlines the full text content of a resource linked to the current agent, resolve
 |----------|----------|-------------|
 | `resource_name` | Yes | The resource's `resource_name` (or `skill_name` for a skill) |
 
-For a skill, returns its `SKILL.md`. For a knowledge base, returns its files concatenated, each headed by its canonical path — `## resources/company-faq/refunds.md`. The heading is an address, not a label: the agent can pass it straight to `read_file`, and it is the same path `{{resources()}}` and `list_resource_files` report for that file. Content is fetched per turn and capped (~100 KB per resource) to bound prompt size; an unknown or unlinked name leaves the placeholder literal. Reach for `read_skill` / `list_resource_files` when the agent should fetch on demand instead of always inlining the whole resource.
+For a skill, returns its `SKILL.md`. For a knowledge base, returns its files concatenated, each headed by its canonical path — `## resources/company-faq/refunds.md`. The heading is an address, not a label: the agent can pass it straight to `read_file`, and it is the same path `{{resources()}}` and `list_files` report for that file. Content is fetched per turn and capped (~100 KB per resource) to bound prompt size; an unknown or unlinked name leaves the placeholder literal. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining the whole resource.
 
 > **Note:** content is inlined **raw and unescaped** into the system prompt (like `{{state()}}`), so only reference resources you trust — a knowledge base populated from externally-authored documents is placed verbatim into the agent's instructions.
 

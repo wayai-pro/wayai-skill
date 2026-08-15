@@ -213,9 +213,9 @@ Reset a state to its initial value (deletes the persisted row; reads fall back t
 
 ## Resource & File Tools
 
-Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. The knowledge resources linked to the agent are injected — as `id (name)` — into the `list_resource_folders` / `list_resource_files` `resource_id` parameter descriptions at turn time, so the agent discovers ids in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
+Discover and read knowledge-resource content, exchange files with the user, and (optionally) edit resource files through the provider's code-execution sandbox. `list_files` is the one discovery tool: the mounts an agent may browse are injected into its `path` parameter description at turn time, so it discovers what exists in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
 
-**Files are addressed by path.** Every resource file has a canonical path, `resources/<resource-slug>/<folders…>/<file-name>`, where the slug is the kebab-cased resource name (skill name for skills). `read_file` takes that path, `list_resource_files` returns it on every row, and `{{resources()}}` lists it under each resource when the link has `include_structure_in_prompt` enabled. Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
+**Files are addressed by path.** Every resource file has a canonical path, `resources/<resource-slug>/<folders…>/<file-name>`, where the slug is the kebab-cased resource name (skill name for skills). `read_file` takes that path, `list_files` returns it on every row, and `{{resources()}}` lists it under each resource when the link has `include_structure_in_prompt` enabled. Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
 
 **Files attached to the conversation are addressed the same way**, under `conversation/<file-name>` — the address the transcript itself announces. Every message a USER or a TEAM member sent with attachments is annotated with `[Attached files: conversation/report.pdf (Type: application/pdf, Size: 2048 bytes)]`, so the agent learns what arrived without a listing call, and passes the path straight to `read_file` or `send_files`. Earlier files are announced, never re-sent as content (see *File handling* in `roles-and-settings.md`); `read_file` returns the content, and for an image or a PDF, the file itself. Duplicate names take the same `-2`/`-3` ordinals as resources — but unlike a resource ordinal they are never promoted, because a hidden file keeps its own reserved (see the consult paragraph below).
 
@@ -241,29 +241,40 @@ Shortening is what the mount-less form is for. There the reference is matched ac
 
 No namespace outranks another: a bare `report.pdf` that names both a knowledge file and something the user attached is reported as ambiguous, listing both full paths, rather than one quietly answering for the other. Name the mount (`conversation/report.pdf`) when both exist.
 
-### list_resource_folders
+### list_files
 
-List folders in a resource (with `parent_folder_id` for hierarchy).
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `resource_id` | string | Yes | Resource to query |
-| `search_query` | string | No | Filter folders by name |
-| `metadata_filter` | object | No | MongoDB-style operators (`$eq`, `$ne`, `$gt/$gte/$lt/$lte`, `$in/$nin`, `$contains`, `$and/$or/$not`; nested paths like `"location.city"`) against `folder_metadata_schema` |
-
-### list_resource_files
-
-List files in a resource. Each row carries `path` (the address `read_file` takes), `file_id`, `title`, `file_name`, `mime_type`, `file_size`, `tags`, `metadata`, `folder_id`, `folder_name`, `resource_id`, and `resource_name`.
+Browse what the agent can reach, by path. Discovery is a drill-down: no `path` lists the mounts, a mount lists its top level, a folder path lists that folder.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `resource_id` | string | Yes | Resource to query |
-| `folder_id` | string | No | Filter by folder. Omit = all files; `00000000-0000-0000-0000-000000000000` = root-level only |
-| `search_query` | string | No | Search files by title or file name |
-| `tags` | array | No | Match files with any of the tags |
-| `metadata_filter` | object | No | Same operator syntax as `list_resource_folders`, against `file_metadata_schema` |
-| `limit` | integer | No | Max results (default 50, max 100) |
+| `path` | string | No | What to list. Omit (or `""`) = the mounts. `conversation` = files attached to this conversation. `resources` = every resource mount. `resources/<slug>` = that resource's top level; `resources/<slug>/<folder>/<subfolder>` = that folder |
+| `query` | string | No | Search files by title or file name. Under a resource path this searches the **whole subtree**, not just the level named |
+| `tags` | array | No | Match files with any of the tags (resource files only). Searches the subtree, like `query` |
+| `metadata_filter` | object | No | MongoDB-style operators (`$eq`, `$ne`, `$gt/$gte/$lt/$lte`, `$in/$nin`, `$contains`, `$and/$or/$not`; nested paths like `"location.city"`; a bare value means equality) against `file_metadata_schema`. Resource files only; searches the subtree |
+| `limit` | integer | No | Max rows (default 50, max 100) |
 | `offset` | integer | No | Pagination offset |
+
+**Filters need a resource.** A filter passed with no path — or with the bare `resources` path — is refused rather than ignored: mounts are not files, so answering with the unfiltered mount list would read as "these are your matches". Search one resource at a time (`resources/<slug>` plus the filter). On the `conversation` mount `query` works and `tags` / `metadata_filter` are refused, because an attachment carries neither. A `metadata_filter` the tool cannot evaluate is **reported, not applied**: an unknown `$operator`, a `$and`/`$or` that is not a non-empty array of objects, and a key naming a prototype member (`constructor`, `__proto__`, `prototype`) each come back as an error naming the offending token. That is deliberate — an empty page would be indistinguishable from a genuine no-match, so the agent would tell the user a document is absent from a resource that holds it. (Underneath, the shared predicate still matches nothing rather than everything for such a filter; the error is what makes the refusal legible.)
+
+**Path grammar.** The mount is the first segment and it decides the store: `conversation` is this conversation's attachments, `resources/<slug>` is one knowledge resource or skill. Everything after `resources/<slug>` is the folder chain, matched case-insensitively like every other path surface. Leading `./` and `/` are accepted.
+
+**Mount semantics.** The mounts are always `conversation` plus one `resources/<slug>` per **enabled** resource **and skill** linked to the agent — a skill's files live under `resources/` too. Disabling a resource withdraws its mount even while the agent link stands, matching what `{{resources()}}` and the injected mount list announce. `conversation` is listed even when it holds nothing, because it is a real mount; its row carries `file_count` (absent, not `0`, when the count could not be read). Consult-thread attachments are excluded here exactly as they are from `read_file` (see above). There is deliberately **no `conversations/` (plural) mount**: a past conversation's files are announced by its own archived transcript and counted by `get_conversations_summary`, so they are addressable without being browsable.
+
+**Response.** `{ path, entries, total, limit, offset }`, where `path` is the resolved location and `total` is the count the page was drawn from. Each entry is a `mount`, `folder`, or `file` row carrying its own `path`; `folder` rows carry the folder's `description`, and `file` rows carry `file_id` alongside the path, because `download_file` / `upload_file` still address by id.
+
+**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `resources/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which resources a hub holds but withheld from that agent. The "not linked" diagnostic survives only where an id was supplied (`read_file`'s explicit `resource_id`), where naming the resource already proves you knew it. **Admin note:** if an agent reports "no such path" for a resource you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
+
+### list_resource_files *(deprecated — use `list_files`)*
+
+Still works and still round-trips through `wayai push` / `pull`, but hidden from the Platform UI's Add grid: it addresses files by a `resource_id` a publish re-mints, and it cannot see conversation attachments at all. (The id itself is discoverable — the linked ids are still injected into its `resource_id` description at turn time — but an id written into instructions breaks at preview → production, which a path does not.) Nothing migrates an existing assignment — swap it deliberately.
+
+Parameters: `resource_id` (required), `folder_id`, `search_query`, `tags`, `limit`, `offset`, and `metadata_filter` *(accepted but never read — a filtered call returns the UNFILTERED page; use `list_files`, where the filter is real)*. Each row carries `path`, `file_id`, `title`, `file_name`, `mime_type`, `file_size`, `tags`, `metadata`, `folder_id`, `folder_name`, `resource_id`, `resource_name`.
+
+### list_resource_folders *(deprecated — use `list_files`)*
+
+Deprecated on the same terms. Lists folders in a resource with `parent_folder_id` for hierarchy reconstruction; `list_files` returns the same folders already arranged as paths.
+
+Parameters: `resource_id` (required), `search_query`, and `metadata_filter` *(accepted but never read, exactly as on `list_resource_files`)*.
 
 ### read_file
 
@@ -272,7 +283,7 @@ Retrieve a file and inject it into the conversation context for analysis. Text f
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `path` | string | No\* | Canonical path — `resources/product-docs/references/menu.md` for a knowledge or skill file, `conversation/report.pdf` for something attached to this conversation, or any unambiguous shortening of either (`references/menu.md`, `menu.md`). `conversations/<conversation_id>/receipt.pdf` addresses an earlier conversation's file and takes **no** shortening — mount, id and name in full |
-| `file_id` | string | No\* | From conversation messages or `list_resource_files`. Prefer `path`: ids are regenerated at publish |
+| `file_id` | string | No\* | From conversation messages or `list_files`. Prefer `path`: ids are regenerated at publish |
 | `resource_id` | string | No | Restricts a path to one resource — use when the same file name exists in several and the reference comes back ambiguous |
 
 \* At least one of `path` / `file_id` is required; `path` wins when both are given, except that a `file_id` the agent can read is never refused because of an unlinked `resource_id`. An unknown reference reports "File not found" with the discovery hint. "Access denied" means one of two things: a `file_id` whose file sits in a resource this agent is not linked to, or a `resource_id` the agent is not linked to — the latter reads identically whether or not that resource exists, so it never confirms one does.
@@ -439,7 +450,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 |--------|-------|
 | Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
-| Resource & File | `list_resource_folders`, `list_resource_files`, `read_file`, `send_files`, `download_file`, `upload_file` |
+| Resource & File | `list_files`, `read_file`, `send_files`, `download_file`, `upload_file` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
 | Meta | `get_tool_schema`, `execute_tool` |
