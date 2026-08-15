@@ -162,27 +162,38 @@ User preference: {{state(user, preferences).language}}
 
 ---
 
-### `{{resources()}}`
+### `{{files()}}`
 
 Markdown-formatted catalog of the resources (knowledge bases and skills) linked to the current agent.
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `resource_type` | `all` | `all`, `kb` (knowledge only), or `skill` (skills only) |
+Arguments are an **unordered token set** — write them in any order, quoted or not:
 
-Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. When the agent's link to a resource has `include_structure_in_prompt` enabled, each file's canonical path (`resources/<resource-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
+| Token | Description |
+|-------|-------------|
+| `kb` | Knowledge bases only (omit both `kb` and `skill` for everything) |
+| `skill` | Skills only |
+| `tree` | Also list every file's canonical path under its resource |
+
+Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. With `tree`, each file's canonical path (`resources/<resource-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). Path listings are capped at 200 per resource, so reach for `list_files` on a large knowledge base instead. An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
+
+`tree` is per call, so one template can show a bare catalog in one place and the full path listing in another.
 
 ```
-{{resources()}}
-{{resources(kb)}}
-{{resources(skill)}}
+{{files()}}
+{{files('kb')}}
+{{files('skill')}}
+{{files('kb','tree')}}
 ```
+
+> **Deprecated spelling:** `{{resources(...)}}` is the old name for this placeholder and keeps working indefinitely, with the same arguments. Prefer `{{files()}}`.
+>
+> One difference, and it exists to give you a way out: a resource link configured before this argument existed may carry a retired per-link "always show the structure" setting, which no interface can change any more. `{{resources(...)}}` still honors it, so an untouched instruction renders exactly what it always did; `{{files(...)}}` ignores it and obeys its arguments alone. If your paths disappear when you rename the call, add `'tree'`; if paths appear that you don't want, rename the call.
 
 ---
 
 ### `{{agent_skills()}}`
 
-XML-formatted skill metadata for the skills linked to the current agent. Used for progressive disclosure — the agent sees available skills and can load them on demand. Draws from the same linked-resource set as `{{resources(skill)}}`. The `read_skill` / `read_skill_file` native tools also list these skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
+XML-formatted skill metadata for the skills linked to the current agent. Used for progressive disclosure — the agent sees available skills and can load them on demand. Draws from the same linked-resource set as `{{files('skill')}}`. The `read_skill` / `read_skill_file` native tools also list these skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
 
 Returns (empty `<available_skills></available_skills>` when no skills are linked):
 ```xml
@@ -201,20 +212,30 @@ Returns (empty `<available_skills></available_skills>` when no skills are linked
 
 ---
 
-### `{{resource_content(NAME)}}`
+### `{{file_content(PATH)}}`
 
-Inlines the full text content of a resource linked to the current agent, resolved by name.
+Inlines file text by path, from a resource linked to the current agent.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `resource_name` | Yes | The resource's `resource_name` (or `skill_name` for a skill) |
+| `path` | Yes | `resources/<resource-slug>/<folders…>/<file-name>` for one file, or `resources/<resource-slug>` for the whole resource |
 
-For a skill, returns its `SKILL.md`. For a knowledge base, returns its files concatenated, each headed by its canonical path — `## resources/company-faq/refunds.md`. The heading is an address, not a label: the agent can pass it straight to `read_file`, and it is the same path `{{resources()}}` and `list_files` report for that file. Content is fetched per turn and capped (~100 KB per resource) to bound prompt size; an unknown or unlinked name leaves the placeholder literal. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining the whole resource.
+Two path shapes, one placeholder:
+
+- **A file path** — `{{file_content(resources/company-faq/refunds.md)}}` inlines that one file.
+- **A resource root** — `{{file_content(resources/company-faq)}}` inlines the whole resource: for a skill, its `SKILL.md`; for a knowledge base, its files concatenated, each headed by its canonical path (`## resources/company-faq/refunds.md`). That heading is an address, not a label — the agent can pass it straight to `read_file`, and it is the same path `{{files('tree')}}` and `list_files` report for that file.
+
+Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo). Only `resources/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt — the agent reads those with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
+
+> **A comma ends the path.** Arguments are comma-separated, so `{{file_content(resources/kb/Pricing, 2026.md)}}` addresses `resources/kb/Pricing` and resolves to nothing — quoting does not help. Rename such a file, or reach it with `read_file`, which takes the path as a tool argument rather than as placeholder syntax.
 
 > **Note:** content is inlined **raw and unescaped** into the system prompt (like `{{state()}}`), so only reference resources you trust — a knowledge base populated from externally-authored documents is placed verbatim into the agent's instructions.
 
+> **Deprecated spelling:** `{{resource_content(NAME)}}` takes a resource *name* instead of a path and inlines that whole resource. It keeps working indefinitely, but a name is ambiguous when two resources share one and cannot address a single file; prefer `{{file_content(PATH)}}`.
+
 ```
-{{resource_content(refund-policy)}}
+{{file_content(resources/refund-policy/refunds.md)}}
+{{file_content(resources/refund-policy)}}
 ```
 
 ---
@@ -283,7 +304,7 @@ Event information from conversation events (scheduling, appointments).
 
 Another agent's instructions and tools configuration (by agent name).
 
-> **Note:** this placeholder is not yet populated at runtime — an unresolved `{{agent_settings(NAME)}}` is left as the literal token (tracked separately). For the *current* agent's resources and skills, use `{{resources()}}` / `{{agent_skills()}}` instead.
+> **Note:** this placeholder is not yet populated at runtime — an unresolved `{{agent_settings(NAME)}}` is left as the literal token (tracked separately). For the *current* agent's resources and skills, use `{{files()}}` / `{{agent_skills()}}` instead.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
