@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.64.1
+version: 6.65.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
@@ -458,6 +458,14 @@ wayai init              # Set up .wayai.yaml (interactive — creates an org inl
 wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back). Auto-creates a lone new folder; a multi-hub workspace needs --hub or `wayai create`
+# `pull`/`push` are ONE verb each, routing by workspace subtree: `hubs/<hub>` (above) or `bases/<base>` (the Data surface).
+# The target resolves in this order: the `--hub`/`--base` flag → a positional → the folder you are cd'd into →
+#   `wayai-ws/wayai.yaml`'s `default_hub`/`default_base` → the sole folder across both subtrees.
+# So in a workspace holding BOTH a hub folder and a base folder, a bare `wayai pull` is refused as ambiguous.
+# Name the subtree — `wayai pull bases/crm`, `wayai push hubs/support` — or declare ONE default in wayai-ws/wayai.yaml.
+# An invocation naming a target in BOTH subtrees is refused, never merged; run the two it prints, one at a time.
+wayai pull bases/<base> # Pull a base's config into wayai-ws/bases/<base>/ (-y skips the overwrite confirm; auto-binds; mirrors a production origin read-only)
+wayai push bases/<base> # Push a base folder to its PREVIEW base (--dry-run to stop after the diff; --prune to apply removals). Production is `wayai bases promote`, never push
 wayai create [folder]   # Explicitly create a new hub from an idless folder, then push (--label names the preview). The discoverable verb when a workspace has more than one hub folder
 wayai diff              # Dry-run diff of local files vs preview (read-only); --production diffs vs the linked production hub
 wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
@@ -531,7 +539,7 @@ Each git checkout (main or linked worktree) can be bound to a single hub, and in
 
 **The hub binding is enforced today:** `wayai push` and `wayai pull` refuse to run against a different hub once bound, and it is auto-set on the first successful pull (or new-hub creation) into an unbound checkout. This catches the common mistake of a prompt being routed to the wrong terminal/worktree.
 
-**The base binding is currently a record, not yet a guard.** `wayai bases use` sets it and `wayai bases unbind` clears it, but no command refuses on a mismatch yet — base `pull`/`push` routing has not shipped. Do not rely on it to catch a wrong-worktree prompt; check which base you are targeting yourself.
+**The base binding is enforced the same way:** `wayai pull bases/<base>` and `wayai push bases/<base>` refuse to run against a different base once bound, and it is auto-set on the first successful pull (or new-preview creation) into an unbound checkout. `wayai bases use` sets it manually and `wayai bases unbind` clears it.
 
 If `push`/`pull` errors with a binding mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use`, `wayai bases unbind`, `wayai bases use`, or modify either binding file without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub or base the user thinks you're working on.
 
@@ -546,13 +554,24 @@ CLAUDE.md                                # Root Claude Code shim — `@AGENTS.md
 └── references/                          # On-demand deep-dive references (see index below)
 .opencode/skills/wayai/                  # OpenCode skill install (same provisioner; same SKILL.md + references/ layout)
 .agents/skills/wayai/                    # Neutral skill install (same provisioner; same SKILL.md + references/ layout)
-wayai-ws/                                # All WayAI hub-as-code (init creates wayai-ws/hubs/)
+wayai-ws/                                # All WayAI config-as-code (init creates wayai-ws/hubs/)
+├── wayai.yaml                           # OPTIONAL repo defaults — `default_hub:` / `default_base:`
+│                                        #   Which subtree a bare `wayai pull`/`push` targets. Declare
+│                                        #   AT MOST ONE: declaring both is a mixed invocation and is
+│                                        #   refused. Not created by any command — write it yourself.
 ├── org/                                 # Org-as-code — shared resources (wayai org pull/push)
 │   ├── resources.yaml
 │   └── resources/<slug>/
-├── bases/                               # One folder per preview base (Data surface)
-│   └── <base-id>/                       # NOT WRITTEN YET — no command materializes this
-│       └── base.yaml                    # Base identity + config; `wayai bases use <folder>` reads it
+├── bases/                               # One folder per preview base (Data surface) — `wayai pull bases/<base>`
+│   └── <base-id>/
+│       ├── base.yaml                    # Base identity; `wayai bases use <folder>` reads it
+│       ├── record-types/<id>.yaml       # One file per entity, per kind. Secrets are never written
+│       ├── relationship-types/<id>.yaml
+│       ├── inbound-webhooks/<id>.yaml
+│       ├── triggers/<id>.yaml
+│       ├── toolsets/<id>.yaml
+│       ├── actions/<id>.yaml
+│       └── seeds/<id>.yaml
 └── hubs/
     └── <hub-slug>--<label>/             # One folder per preview hub (disambiguated)
         ├── hub.yaml                     # Hub config + states + connections + outbound + resources
