@@ -10,6 +10,9 @@ file you already have is never overwritten:
   *memory*, seeded as a scaffold on pull/push. See
   [Hub-Folder Memory](../SKILL.md#hub-folder-memory) for what belongs in it.
 
+A third file follows the same pattern but is **yours to create**: a base folder's
+`AGENTS.md`. See [Base folders](#base-folders) below.
+
 ## Keep the root file fresh
 
 The block below is the source of truth for the repo-root `AGENTS.md`. **At the
@@ -18,31 +21,31 @@ this block, (re)write it to match.** The CLI seed is a bootstrap, not a frozen
 artifact — this reconcile step is what stops it going stale (the failure mode
 that got the original auto-write removed).
 
+One skill and one CLI cover everything — hubs, agents, channels **and** bases.
+An older repo may still carry a root `AGENTS.md` that installs a second skill and
+tells you to load both every session; that is the drift this reconcile removes.
+Base work loads [`references/bases/`](bases/README.md) on demand instead.
+
 <!-- BEGIN root-agents-md — drift-guarded byte-for-byte against ROOT_AGENTS_MD in apps/cli/src/lib/workspace-files.ts -->
 ```text
-# Working with WayAI and Rekor
+# Working with WayAI
 
-WayAI is the layer that talks to people across channels; Rekor is the data
-layer (system of record) behind it. They are used together.
+WayAI is the layer that talks to people across channels, plus the data layer
+(Bases) behind it. One CLI, one skill, one login.
 
 ## At the start of every session
 
-1. Check for updates first. Make sure both skills and both CLIs are current,
-   and update whatever is not:
-   - WayAI skill: `wayai status` → if newer, `mkdir -p .claude && npx skills add wayai-pro/wayai-skill -y`
-   - Rekor skill: `rekor status` → if newer, `mkdir -p .claude && npx skills add wayai-pro/rekor-skill -y`
-   - CLIs: `wayai update` and `rekor update`
-2. Load both the WayAI and Rekor skills at the start of every session — every
-   time, even for a quick task. They hold the real instructions for everything
-   else.
+1. Check for updates first, and update whatever is not current:
+   - Skill: `wayai status` → if newer, `mkdir -p .claude && npx skills add wayai-pro/wayai-skill -y`
+   - CLI: `wayai update`
+2. Load the WayAI skill at the start of every session — every time, even for a
+   quick task. It holds the real instructions for everything else.
 
-More detail if you need it:
-- WayAI: https://www.wayai.pro/docs/get-started
-- Rekor: https://rekor.pro/en/docs/get-started
+More detail if you need it: https://www.wayai.pro/docs/get-started
 
 ## When helping the person you are working with
 
-- They may be new to WayAI and Rekor — use plain language, not jargon.
+- They may be new to WayAI — use plain language, not jargon.
 - Don't explain things they didn't ask about. Only if they seem stuck or ask
   what something means, give a one-line answer, then move on — don't turn
   replies into tutorials.
@@ -50,10 +53,16 @@ More detail if you need it:
 ```
 <!-- END root-agents-md -->
 
-## Rekor bases
+## Base folders
 
-A Rekor *base* folder gets the same treatment from the `rekor` CLI + Rekor skill:
-create the base folder's `AGENTS.md` / `CLAUDE.md` when missing, and record the
-context the base's settings can't capture. If you're working in a Rekor base and
-those files are absent, create them the same way — the Rekor skill covers the
-details.
+A base folder deserves the same memory a hub folder gets, but **the CLI does not
+seed it** — `wayai pull bases/<base>` writes only `base.yaml` and the entity
+files. When you work in `wayai-ws/bases/<base>/`, create `AGENTS.md` (and a
+one-line `CLAUDE.md` holding `@AGENTS.md`) yourself if they are missing, in the
+same shape as the per-hub pair.
+
+Use it for what the base's config files can't capture: the base's purpose, key
+decisions and *why*, the business rules and terminology behind the schema,
+integration quirks. Keep it about *why / what is different* — surface mechanics
+live in the skill. Details:
+[`references/bases/config-as-code.md`](bases/config-as-code.md).

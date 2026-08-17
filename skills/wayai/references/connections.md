@@ -165,7 +165,7 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 ```yaml
 connections:
   # Pin a specific org credential by name
-  - name: rekor-clinica
+  - name: clinic-scheduling
     type: Tool
     service: MCP Server
     base_url: https://mcp.example.com/mcp

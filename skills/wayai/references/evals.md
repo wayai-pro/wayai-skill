@@ -145,12 +145,12 @@ Resolution happens only in the frozen run snapshot. `wayai pull` and `wayai push
 
 ### Seed fixtures (`fixture:`) — repeatable mutating evals
 
-**Any eval that writes SHOULD start from a known baseline — declare a `fixture:`** (or assert against state you control; see [Authoring](#authoring) principle 5). It is the recommended default for mutating evals, not an optional add-on. A scenario **set** or a **journey** names the Rekor fixture its agent turn mutates, and the platform owns the session lifecycle, so it **acquires the base's seed lease before the session and releases it after**: acquiring resets the fixture, releasing clears it, and the lock in between means a data-mutating eval starts from a known baseline every run without a second session mutating the same rows underneath it. Sets/journeys with no `fixture:` behave exactly as before — but an un-fixtured mutating eval silently passes on the *previous* run's residue.
+**Any eval that writes SHOULD start from a known baseline — declare a `fixture:`** (or assert against state you control; see [Authoring](#authoring) principle 5). It is the recommended default for mutating evals, not an optional add-on. A scenario **set** or a **journey** names the [seed fixture](bases/config-as-code.md) its agent turn mutates, and the platform owns the session lifecycle, so it **acquires the base's seed lease before the session and releases it after**: acquiring resets the fixture, releasing clears it, and the lock in between means a data-mutating eval starts from a known baseline every run without a second session mutating the same rows underneath it. Sets/journeys with no `fixture:` behave exactly as before — but an un-fixtured mutating eval silently passes on the *previous* run's residue.
 
 ```yaml
 # evals/failure-modes/book-exact-slot.yaml — declare on the scenario
-fixture: clinic-baseline    # the Rekor fixture this set depends on
-target_base: clinic-preview # the Rekor base it is seeded against
+fixture: clinic-baseline    # the seed fixture this set depends on
+target_base: clinic-preview # the preview base it is seeded against
 runs: 3
 variables: { case: [ ... ] }   # pairs with the fixture (see below)
 input: { role: user, content: "..." }
@@ -167,31 +167,31 @@ transcript: [ ... ]
 ```
 
 Lifecycle and rules:
-- **Acquire before** — at session start the platform **acquires the base's seed lease**: one atomic Rekor operation that locks the base *and* resets the fixture to its declared baseline. If it **fails for a reason you must fix** (no hub seed connection, no `target_base`, no credential, a missing base or fixture, an out-of-scope token), the session is **aborted** with a clear `fixture_seed_failed` — no runs are scored, because an unseeded base is a setup failure, not an assertion failure. If Rekor is merely **out of capacity for a moment**, the refusal is the separate, waitable `fixture_seed_unavailable` instead, which `run-eval` retries for you (see [Running](#running-evals)).
+- **Acquire before** — at session start the platform **acquires the base's seed lease**: one atomic operation that locks the base *and* resets the fixture to its declared baseline. If it **fails for a reason you must fix** (no hub seed connection, no `target_base`, no credential, a missing base or fixture, an out-of-scope token), the session is **aborted** with a clear `fixture_seed_failed` — no runs are scored, because an unseeded base is a setup failure, not an assertion failure. If the base is merely **out of capacity for a moment**, the refusal is the separate, waitable `fixture_seed_unavailable` instead, which `run-eval` retries for you (see [Running](#running-evals)).
 - **One session per base, enforced** — a base admits **one eval session at a time**. A second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first. Note the unit is the **base**, not the fixture: two sessions on *different* fixtures of the same base still serialize. `run-eval` waits this out automatically (see [Running](#running-evals)).
 - **Release after** — on every terminal path (completed, stopped, deleted mid-run, or watchdog-reaped) the lease is released, which clears the fixture and unlocks the base in one operation. A session still finishing a turn that started **before** it was stopped keeps its lease until that turn settles — releasing under a live writer is precisely what the lease prevents.
 - **Correctness rests on acquire, never on teardown** — the reset is part of acquiring, so a release that fails (network blip, crashed worker) cannot corrupt the next session: its acquire re-establishes the baseline. A lease left behind by a crash is healed automatically at the next acquire on that base.
 - **Preview bases only** — seed operations are refused on a production base. `target_base` must name a disposable preview.
 - **Set-level agreement** — the fixture is a property of the shared base, so **all enabled scenarios in a set must declare the same fixture** (or none); two different fixtures in one set is rejected with `fixture_mismatch`. A journey declares it once for its whole flow.
-- **`target_base`** — the Rekor **base** the fixture is seeded against. Required alongside `fixture:` (the hub seed connection supplies the API origin + token; the base rides the eval config). Must agree across a set, same as the fixture.
+- **`target_base`** — the preview **base** the fixture is seeded against ([bases/README.md](bases/README.md)). Required alongside `fixture:` (the hub seed connection supplies the API origin + token; the base rides the eval config). Must agree across a set, same as the fixture.
 
-**Setup (once per hub):** create a **seed connection** — a **REST API** connection (`type: Tool`, `service: REST API`) whose **Base URL** is the Rekor API origin (`https://api.rekor.pro`) and whose bearer/API-key credential is a Rekor token scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it. **Config-as-code (recommended for CI):** declare that connection under `connections:` and set the hub's **`seed_connection: <connection name>`** field in `hub.yaml`, then `wayai push`. The binding resolves by name (the Base URL is validated on push, same guard as the setup PATCH) and round-trips on `wayai pull`. Omitting the field leaves the binding unchanged; `seed_connection: null` clears it. It is also settable imperatively via the `update_hub` MCP tool or `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`.
+**Setup (once per hub):** create a **seed connection** — a **REST API** connection (`type: Tool`, `service: REST API`) whose **Base URL** is the Data API origin (`https://data.wayai.pro`) and whose bearer/API-key credential is a base token (`wayai bases tokens create`) scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it. **Config-as-code (recommended for CI):** declare that connection under `connections:` and set the hub's **`seed_connection: <connection name>`** field in `hub.yaml`, then `wayai push`. The binding resolves by name (the Base URL is validated on push, same guard as the setup PATCH) and round-trips on `wayai pull`. Omitting the field leaves the binding unchanged; `seed_connection: null` clears it. It is also settable imperatively via the `update_hub` MCP tool or `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`.
 
 ```yaml
 # hub.yaml — bind the seed connection by name (config-as-code)
 connections:
-  - name: Rekor Seeds
+  - name: Base Seeds
     type: Tool
     service: REST API
-    base_url: https://api.rekor.pro
-    credential: Rekor Write Seeds   # org credential holding the write:seeds token
+    base_url: https://data.wayai.pro
+    credential: Base Write Seeds   # org credential holding the write:seeds token
 hub:
-  seed_connection: Rekor Seeds
+  seed_connection: Base Seeds
 ```
 
 ### Seed user-scope state (`initial_state`) — test memory of prior conversations
 
-**When an agent's behavior depends on WayAI user-scope [state](states.md) it remembers across conversations — a recurring-customer shortcut, a saved profile, a "confirmed" flag — declare `initial_state:`** to pre-populate that state before the scenario's `input` runs. Without it, every eval starts from a cold user with empty state, so memory-dependent behavior (and its regressions) can't be trapped. `initial_state` is the WayAI-state counterpart to the Rekor `fixture:` above: seeded before the run, isolated per run, and torn down when the session ends.
+**When an agent's behavior depends on WayAI user-scope [state](states.md) it remembers across conversations — a recurring-customer shortcut, a saved profile, a "confirmed" flag — declare `initial_state:`** to pre-populate that state before the scenario's `input` runs. Without it, every eval starts from a cold user with empty state, so memory-dependent behavior (and its regressions) can't be trapped. `initial_state` is the WayAI-state counterpart to the base `fixture:` above: seeded before the run, isolated per run, and torn down when the session ends.
 
 ```yaml
 # evals/returning-patient/known-plan.yaml
@@ -386,7 +386,7 @@ A session is capped at **1000 total runs** across the scenarios it runs — ever
 
 **Waiting on a busy fixture.** A base admits one session at a time, so `run-eval` queues by default when another session holds the fixture, printing the backend's reason and retrying with backoff **inside the existing `--timeout` budget** — two CI branches pointed at one hub resolve within the job's own timeout instead of failing. Ctrl-C during the wait exits through the same stop path as any other interrupt.
 
-**Waiting on Rekor backpressure.** The same queue also waits out `fixture_seed_unavailable` (409): Rekor is momentarily out of write capacity and refused the lease acquire *before storing anything*, so retrying is safe and usually succeeds within a minute. This can hit a **strictly sequential** run — one session finishing and the next starting while the base is still draining — so it is not a sign that two things are competing for the fixture. Any transient upstream status (429, 502, 503, 504) arrives under this one code; Rekor's own status stays in the message text so an operator can see what it answered. When Rekor sends a `Retry-After` **in the numeric delta-seconds form** (`Retry-After: 30`), it is forwarded on the response body as `details.retry_after_seconds` and the wait honors it in full as a floor — never shortened, only ever extended by the client's own backoff, and bounded solely by your `--timeout`. The HTTP-date form (`Retry-After: Wed, 21 Oct 2026 07:28:00 GMT`) is deliberately ignored, because resolving it depends on the client's clock and a skewed one turns a one-second hint into an hours-long wait; when it is ignored the field is simply absent and the client falls back to its own backoff. Nothing is left half-applied, and the retry reuses the same lease, so it costs no extra ledger capacity.
+**Waiting on base backpressure.** The same queue also waits out `fixture_seed_unavailable` (409): the base is momentarily out of write capacity and refused the lease acquire *before storing anything*, so retrying is safe and usually succeeds within a minute. This can hit a **strictly sequential** run — one session finishing and the next starting while the base is still draining — so it is not a sign that two things are competing for the fixture. Any transient upstream status (429, 502, 503, 504) arrives under this one code; the base's own status stays in the message text so an operator can see what it answered. When the base sends a `Retry-After` **in the numeric delta-seconds form** (`Retry-After: 30`), it is forwarded on the response body as `details.retry_after_seconds` and the wait honors it in full as a floor — never shortened, only ever extended by the client's own backoff, and bounded solely by your `--timeout`. The HTTP-date form (`Retry-After: Wed, 21 Oct 2026 07:28:00 GMT`) is deliberately ignored, because resolving it depends on the client's clock and a skewed one turns a one-second hint into an hours-long wait; when it is ignored the field is simply absent and the client falls back to its own backoff. Nothing is left half-applied, and the retry reuses the same lease, so it costs no extra ledger capacity.
 
 The exceptions, all exit 1: `--no-queue` fails fast on either refusal; `--no-wait` implies it (that flag exists to free the terminal, so it must not start blocking); and a refusal that waiting cannot resolve — a rotated seed credential, a full lease ledger, a misconfigured seed connection (`fixture_seed_failed`) — is never queued. **`--timeout` is the whole command's budget**, so time spent waiting is time not spent watching the run: if it expires with the session still going, `run-eval` exits 1 (a run that scored nothing is not a success) and tells you how much of the budget the wait consumed. Raise `--timeout` on hubs where queueing is routine.
 
@@ -395,9 +395,9 @@ The exceptions, all exit 1: `--no-queue` fails fast on either refusal; `--no-wai
 **The preview's lease ledger is full** (`fixture_lease_capacity_exceeded`). Each session start writes one permanent row to the base's lease ledger, capped at 1,000 per preview; warnings appear on the run response from 80%. The ledger is not prunable, so the remedy is to **replace the disposable preview**: purge it and re-clone from its origin, then point `target_base` at the replacement. Heavy CI usage reaches this in months, not days.
 
 **A lease outlived its session.** Usually invisible — the next acquire on that base detects a dead holder and clears it automatically. Three cases need a human:
-- *The seed connection's token was rotated* while a lease was held. The new credential does not own the old lease, so nothing can release it. The refusal says so and names the fix: `rekor admin eval-leases release` (platform-admin, audited). `run-eval` does **not** queue on this one — waiting cannot resolve it.
+- *The seed connection's token was rotated* while a lease was held. The new credential does not own the old lease, so nothing can release it. Clearing it takes an **audited platform-admin lease release**, which the CLI does not currently expose. `run-eval` does **not** queue on this one; waiting cannot resolve it.
 - *A conflict names a session that never finishes.* Stop it (`wayai eval session stop <id>`); the drain releases the lease once its last turn settles.
-- *The holder's hub was deleted while one of its eval turns was still running.* Deletion deliberately does **not** release then — the turn it already started cannot be called back, and releasing would reset the fixture underneath it. Nothing heals this automatically, and the refusal is the generic one (a holder on another hub is never named), so it is the case to suspect when a base stays locked with no session you can find. Same fix: `rekor admin eval-leases release`.
+- *The holder's hub was deleted while one of its eval turns was still running.* Deletion deliberately does **not** release then — the turn it already started cannot be called back, and releasing would reset the fixture underneath it. Nothing heals this automatically, and the refusal is the generic one (a holder on another hub is never named), so it is the case to suspect when a base stays locked with no session you can find. Same fix: the audited platform-admin lease release above.
 
 ```bash
 wayai eval session stop <session_id>     # cancel a session left running
@@ -405,7 +405,7 @@ wayai eval session stop <session_id>     # cancel a session left running
 
 Safe to run at any time: a session that already finished keeps its status and completion time, and the command says so instead of reporting a cancel — so a session you stop "just in case" is never mislabelled, and a finished one points you at its results rather than a re-run. Use it whenever a `run-eval` process died without cancelling (a killed terminal, a CI job cancellation, a lost connection); `run-eval` prints the session id you need on every exit path.
 
-If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals), the session first resets it against Rekor; a pre-session seed that fails for a reason you must fix aborts the run with `fixture_seed_failed` (nothing is scored) — a merely transient refusal is `fixture_seed_unavailable` and is waited out instead — and enabled scenarios declaring different fixtures are rejected with `fixture_mismatch`.
+If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals), the session first resets it against the target base; a pre-session seed that fails for a reason you must fix aborts the run with `fixture_seed_failed` (nothing is scored) — a merely transient refusal is `fixture_seed_unavailable` and is waited out instead — and enabled scenarios declaring different fixtures are rejected with `fixture_mismatch`.
 
 ---
 

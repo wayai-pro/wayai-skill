@@ -1,17 +1,23 @@
 ---
 name: wayai
-version: 6.65.0
+version: 6.66.0
 description: |
-  Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics.
+  Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
+  plus the Data surface (bases, record types, records, relationships, files, toolsets).
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
   connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns;
   running analytics or evals; annotating conversation outcomes; generating a shareable hub
   progress/readiness report (progress.html); reviewing or editing workspace YAML
-  (hub.yaml, agents/*.yaml) or agent instruction Markdown; using the wayai CLI (push, pull, publish,
-  send-message, conversations, sync-skills, create-credential, update-credential, analytics,
-  analytics sql, run-eval, eval capture, evals sql, org, init); analyzing LLM token/cost spend per
-  message, model, agent, or credential; or interpreting WayAI platform
-  terminology (pilot/copilot, preview/production, kanban statuses, AI modes, agent roles, journeys).
+  (hub.yaml, agents/*.yaml, base.yaml, record-types/*.yaml) or agent instruction Markdown;
+  designing a base schema, upserting or querying records, linking records with relationships,
+  storing versioned files or attachments, wiring inbound webhooks, triggers or external sources,
+  building MCP toolsets and Actions, scoping base API tokens, or seeding eval fixtures;
+  using the wayai CLI (push, pull, publish, send-message, conversations, sync-skills,
+  create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, evals sql,
+  org, init, bases, records, record-types, relationships, files, toolsets, actions, triggers,
+  inbound-webhooks, seed); analyzing LLM token/cost spend per message, model, agent, or credential;
+  or interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
+  AI modes, agent roles, journeys, base, record type, promotion, external_id).
 ---
 
 # WayAI Skill
@@ -43,6 +49,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
 | Org credentials — create / rotate / edit | CLI (`wayai create-credential` / `wayai update-credential`) or UI |
 | Org-level shared resources (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
+| Bases — schemas, records, relationships, files, toolsets (the Data surface) | CLI (`wayai bases`, `wayai records`, `wayai record-types`, …; config-as-code via `wayai pull`/`push bases/<base>`) — open [`references/bases/README.md`](references/bases/README.md) first |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
 | Diagnose why a hub misbehaves (audio/TTS not delivered, agent silent, a tool failing) — check connection/credential health FIRST | CLI (`wayai alerts`) — surfaces active Status & Notices alerts (e.g. an invalid provider key shows as `connection_auth` 401). Run this before reading code or filing a report |
@@ -74,6 +81,7 @@ Organization                ← CLI (`wayai org create`) or UI
 ├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
 ├── Org Tags                ← UI — gate which credentials each hub can resolve
 ├── Org Resources           ← CLI (`wayai org pull/push`) — shared knowledge/skills, fan out to linked hubs
+├── Bases                   ← CLI (`wayai bases`) — the Data surface. Org-level, NOT inside a hub (see Bases)
 └── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
     ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI
     ├── Channels            ← auto-provisioned, never authored (see Channels)
@@ -267,6 +275,19 @@ Agents link resources in `agents/<slug>.yaml` under a `resources:` block (by nam
 
 File handling (text vs binary, 10 MB cap), skill authoring, execution modes: [`references/resources.md`](references/resources.md).
 
+## Bases (the Data surface)
+
+A **base** is an org-level data container — the system of record behind your hubs. Hubs hold conversations; bases hold the structured data those conversations act on. Same CLI, same login, same workspace; a separate entity with its own subtree and its own promote verb.
+
+- **Primitives:** record type → record, relationship type → relationship, file type → file, plus Actions and toolsets (curated MCP tools an agent calls), triggers and inbound webhooks (change in/out), external sources (back a record type with an external API), and seed fixtures (hermetic eval data)
+- **The one rule:** config writes (record types, relationship types, file types, triggers, inbound webhooks, Actions, toolsets, seeds) only land on a **preview** base; data writes work anywhere. Promotion is human-run — surface `wayai bases promote <prod> --from <preview> --dry-run` and wait
+- **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
+- **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
+- **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
+- **Connecting a hub:** today via an ordinary MCP Server connection pointed at a toolset, or as an eval `target_base:`. Hub-local `resources/` files are a *different* surface and stay hub-local
+
+**Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from. Before the first base task in a repo, also reconcile the repo-root `AGENTS.md` against [`references/agents-md-template.md`](references/agents-md-template.md) (step 4 of the existing-hub workflow does this too) — an older repo's copy bootstraps a second skill that no longer exists.
+
 ## Evals
 
 Test scenarios that run the **real** agent with its **real** tools and score the result. The primitives:
@@ -275,7 +296,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Scenario set** — first-level subfolder (one level only). `wayai run-eval` runs exactly one set per session, whole or narrowed to chosen scenarios with repeatable `--eval` (and `--runs` for chosen repetitions) — the cheap loop when a change touches a few scenarios of a large set
 - **Journey** (`journeys/<slug>.yaml`, flat folder) — a stored happy-path transcript that materializes one derived eval per agent turn. The default way to build broad regression coverage: `wayai eval journey capture <conversation_id>`, then `wayai pull` (syncs server-minted step ids)
 - **Per-run `variables`** + `runs: N` — reliability is a distribution, not a 1/1 sample; each run resolves `{{var(name)}}` against its own disjoint row
-- **Seed `fixture:`** — for any eval that *writes*: names a Rekor fixture the platform LEASES for the session — resetting it on acquire, clearing it on release — so runs start from a known baseline instead of the last run's residue. One preview base admits **one eval session at a time**: a second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first, and `run-eval` waits it out by default — as it does `fixture_seed_unavailable` (409), Rekor briefly refusing the lease under its own write backpressure
+- **Seed `fixture:`** — for any eval that *writes*: names a [base](references/bases/README.md) fixture the platform LEASES for the session — resetting it on acquire, clearing it on release — so runs start from a known baseline instead of the last run's residue. One preview base admits **one eval session at a time**: a second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first, and `run-eval` waits it out by default — as it does `fixture_seed_unavailable` (409), the base briefly refusing the lease under its own write backpressure
 - **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
 
@@ -488,7 +509,7 @@ wayai analytics query   # Structured ClickHouse query (multi-variable, group_by,
 wayai analytics sql     # Raw single-SELECT SQL over `conversation` (one row per conversation) and `message` (per-message tokens/cost/operations — the surface for cost analysis); --schema prints both catalogs + the message-grain rules (`data.*` paths need `toFloat64OrNull(toString(...))` for numerics, `toString(...)` for grouping); --limit, --json
 wayai evals             # List eval scenarios for the hub (--enabled / --disabled)
 wayai evals sql         # Raw single-SELECT SQL over the hub's eval result rows ("SELECT …"; --schema prints the column + eval-score-path catalog; --limit, --json)
-wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set to pick on multi-set hubs; repeatable --eval <name> runs ONLY those scenarios and --runs 2,6 only those repetitions of one; --pacing conservative|balanced|fast|<ms> to throttle run dispatch; waits inside --timeout for a fixture held by another session or for transient Rekor backpressure — --no-queue fails fast and --no-wait implies it; exits 1 if --timeout expires with the session still running)
+wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set to pick on multi-set hubs; repeatable --eval <name> runs ONLY those scenarios and --runs 2,6 only those repetitions of one; --pacing conservative|balanced|fast|<ms> to throttle run dispatch; waits inside --timeout for a fixture held by another session or for transient base write backpressure — --no-queue fails fast and --no-wait implies it; exits 1 if --timeout expires with the session still running)
 wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
@@ -504,9 +525,9 @@ wayai report get        # Show a report's status + message thread (<id>, --json)
 wayai report accept     # Accept a shipped fix (<id>) → addressed
 wayai report contest    # Contest a shipped fix or a dismissal (<id> --reason "...") → back to triage
 
-# Bases — the Data surface. A base is org-level and hubs mount it; a separate
-# entity from a hub. `use`/`unbind` are local (this worktree's binding file);
-# every other command below reaches the platform.
+# Bases — the Data surface. A base is org-level and a separate entity from a hub.
+# `use`/`unbind` are local (this worktree's binding file); every other command
+# below reaches the platform. Full grammar: references/bases/.
 wayai bases list        # List bases (--tag to filter)
 wayai bases get <id>    # Show one base
 wayai bases create <id> --name "<name>"        # Create (--environment preview|production)
@@ -521,9 +542,15 @@ wayai bases rollback <production-id> --promotion <id>
 wayai bases promotions <production-id>
 wayai bases use <base>  # Bind this worktree to a base (see Worktree bindings)
 wayai bases unbind      # Clear this worktree's base binding
+wayai bases tokens|secrets|sql|import|batch|providers|report ...   # namespaced — each names a concept WayAI already owns
+                        # (`wayai report` files a PLATFORM bug; `wayai bases report` files a base one)
+
+# Everything INSIDE a base is its own top-level namespace, each taking --base <id>:
+wayai records | record-types | relationships | relationship-types | query-relationships
+wayai files | file-types | attachments | toolsets | actions | triggers | inbound-webhooks | seed
 ```
 
-`wayai bases --help` prints the full tree. Two collisions worth holding onto: `wayai use`/`wayai unbind` bind a **hub** while `wayai bases use`/`wayai bases unbind` bind a **base**, and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. They are different entities — never substitute one for the other.
+`wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` bind a **hub** while `wayai bases use`/`wayai bases unbind` bind a **base**, and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. They are different entities — never substitute one for the other.
 
 **Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
 moves to `shipped` — you'll get an email, and `wayai login`/`wayai status` remind you once (or find it
@@ -792,6 +819,14 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, authoring & interpreting principles |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
+| **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
+| **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, relationship types, relationships, batch, bulk import |
+| **Bases** | [`references/bases/querying.md`](references/bases/querying.md) | `wayai bases sql` — tables, mandatory scoping predicates, JSON subcolumns, the example gallery; `x-search` tuning and timezone configuration |
+| **Bases** | [`references/bases/files.md`](references/bases/files.md) | File types, versioned path-addressed files, history/diff, S3 mounts, record attachments |
+| **Bases** | [`references/bases/config-as-code.md`](references/bases/config-as-code.md) | `wayai-ws/bases/<base>/`, subtree routing and mixed-invocation refusal, `base.yaml`, promote/rollback, eval mode, seed fixtures and leases |
+| **Bases** | [`references/bases/integrations.md`](references/bases/integrations.md) | Canonical-first modeling and the pattern catalog; external sources, inbound webhooks, triggers, provider adapters |
+| **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, the secret vault, modeling & tool-design principles |
+| **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
 | **Progress report** | [`references/progress-report.md`](references/progress-report.md) | Creating or refreshing `wayai-ws/hubs/<hub>/progress.html` — the shareable build-progress & readiness snapshot — and the AGENTS.md `## Build plan` convention. Code-harness agents only |
