@@ -18,32 +18,14 @@ It sits on two directions, and both use the same signing scheme:
 The executor is invisible to the agent. Whether a record is native, source-backed, or executor-backed, the agent reads and writes it through the same `wayai records` / toolset surface — see [toolsets.md](toolsets.md).
 
 ## Table of Contents
-- [What this file does NOT carry](#what-this-file-does-not-carry)
 - [Do you even need one?](#do-you-even-need-one)
 - [The contract: verify → act → write back](#the-contract-verify--act--write-back)
+- [The SDK and the wire](#the-sdk-and-the-wire)
 - [Writing results back](#writing-results-back)
 - [Where to run it](#where-to-run-it)
 - [Certificate-bearing integrations (the vault pattern)](#certificate-bearing-integrations-the-vault-pattern)
 - [Retries and dead-lettering](#retries-and-dead-lettering)
 - [Local development](#local-development)
-
----
-
-## What this file does NOT carry
-
-> **You cannot write the verify step from this file.** It deliberately does not carry the request-signing
-> contract's identifiers — the verification SDK's package name and exports, the signature / timestamp /
-> idempotency **header names**, or the canonical-string construction, digest and encoding the signature
-> is computed over. Those are published with the Data backend and are the part of this surface still
-> settling as the Data layer folds into the platform, so a skill that pinned a spelling would hand out
-> a stale one.
->
-> **So scope your expectations of this file:** it tells you *whether* you need an executor, what the
-> service must guarantee, where to run it, how credentials reach it, and how failures are retried. For
-> the bytes on the wire, get the current SDK and header spellings from the Data backend's own
-> executor documentation before you write the handler.
-
-Verification is the part worth not improvising. Constant-time comparison, timestamp skew, signature-list rotation during secret rotation, and hashing the **exact raw body bytes** are each easy to get subtly wrong, and one mistake means anyone on the internet can forge a request into your executor — which is why the published SDK exists and why this file will not half-specify it.
 
 ---
 
@@ -64,7 +46,7 @@ Sources, field mapping, and the trigger/inbound-webhook edges are covered in [in
 
 ## The contract: verify → act → write back
 
-Every dispatched request carries an **HMAC signature** over id + timestamp + method + path + body, a **timestamp** the receiver checks for freshness, and a **delivery id** used for dedupe — one scheme in both directions, so the same signer works for what you receive and what you send back. Your executor must:
+Every dispatched request carries an **HMAC signature** over id + timestamp + method + path + body, a **timestamp** the receiver checks for freshness, and an **idempotency key** (falling back to the message id) used for dedupe — one scheme in both directions, so the same signer works for what you receive and what you send back. Your executor must:
 
 - **Verify every request** — reject unsigned, invalid, or stale. Stale rejection is the replay defense; a signature check alone is not one.
 - **Read the raw body bytes.** The signature covers exact bytes, so mount the handler *before* any JSON body parser. Re-serialized JSON will not verify.
@@ -76,6 +58,69 @@ Every dispatched request carries an **HMAC signature** over id + timestamp + met
 - **Write the result back** — inline for a fast synchronous action, or via an inbound webhook for slow/async work (below).
 
 The SDK gives you signature + freshness verification, idempotency dedupe, and the error envelope; you write one handler function.
+
+---
+
+## The SDK and the wire
+
+**Never hand-roll verification.** Constant-time comparison, timestamp skew, signature-list rotation during secret rotation, and hashing the **exact raw body bytes** are each easy to get subtly wrong, and one mistake means anyone on the internet can forge a request into your executor. Use the published SDK:
+
+```bash
+npm i @wayai/executor-sdk
+```
+
+Zero dependencies, dual ESM/CJS, runs anywhere with Web Crypto (Node ≥24 per the package's declared engines, Cloudflare Workers, Deno, Bun).
+
+```ts
+import { createExecutor, toFetchHandler, ExecutorError } from '@wayai/executor-sdk'
+
+const executor = createExecutor({
+  secret: process.env.SIGNING_SECRET!,        // the source's or trigger's signing secret
+  handler: async ({ body }) => {
+    // Already verified: signature checked, timestamp fresh, retry deduped.
+    // `body` is the RAW request string — the exact bytes the signature covers. Parse it yourself.
+    const payload = JSON.parse(body) as { data?: unknown }
+    if (!payload.data) {
+      throw new ExecutorError({ code: 'MISSING_DATA', message: 'no data', retriable: false, status: 422 })
+    }
+    return { status: 200, body: JSON.stringify({ ok: true }) }
+  },
+})
+
+export default { fetch: toFetchHandler(executor) }
+```
+
+The handler returns a `{ status, body, contentType? }` result — cached under the dedupe key and replayed verbatim on a duplicate delivery — or nothing at all, which answers `204`.
+
+`toNodeHandler` is the Express/Node equivalent. Other exports: `verify` and `signRequest` (the primitives, if you are not using `createExecutor`), `fetchExecutorCredential` (the vault pull, below), `MemoryStore` plus the `IdempotencyStore` interface (swap in a shared store when you run more than one instance), `ExecutorError` / `toHttpStatus` / `jsonResponseBody` (the error envelope), and `DATA_HEADERS` (the header names below, as constants).
+
+### Headers on every dispatch
+
+| Header | Meaning |
+|---|---|
+| `X-Data-Signature` | `v1,<lowercase-hex HMAC-SHA256>` — a space-delimited list of `scheme,hex` entries, so a key rotation can emit old and new at once. Accept on **any** matching `v1` entry; skip unknown schemes. |
+| `X-Data-Timestamp` | Unix **seconds**. Reject outside your freshness window — this, not the signature, is the replay defense. |
+| `X-Data-Id` | The message id. **Bound into the signature**, so you must read it to rebuild the signed string. |
+| `X-Data-Idempotency-Key` | On proxied writes only — the logical-operation identity, stable across retries of the same intent. |
+| `X-Data-Delivery-Id` | On trigger webhooks only — a per-delivery id for tracing. **Not the dedupe key** (see below). |
+| `X-Data-Credential-Url` / `-Token` / `-Names` | Present only when the source declares `executor_secrets` (see the vault pattern below). |
+
+Only `X-Data-Signature`, `-Timestamp` and `-Id` are on **every** dispatch; the rest are conditional as noted.
+
+**Dedupe on `X-Data-Idempotency-Key`, falling back to `X-Data-Id`** — that pair, in that order, is what the SDK keys its store on. Do not key on `X-Data-Delivery-Id`: it is absent on proxied writes, so every proxied write would collide on one `undefined` key and replay the first response for all of them.
+
+### What the signature covers
+
+```
+canonical = ["v1", id, timestamp, method, path, body].join("\n")
+signature = HMAC-SHA256(secret, canonical)   → lowercase hex
+```
+
+`timestamp` is the integer seconds as a string, `method` the HTTP method, `path` the request `pathname + search`, and `body` the **exact raw body bytes** (`""` when there is none). Binding method and path is what stops a captured signature being replayed as a different request — so mount your handler *before* any JSON body parser; re-serialized JSON will not verify.
+
+> **Do not confuse this with the API-channel webhook scheme.** WayAI's API-channel webhooks sign with `x-wayai-signature: v1=<hex>` over `"{timestamp}:{body}"` — different headers, a `=` instead of a `,`, and a different signed string. The two are separate surfaces; a verifier written for one will silently reject the other.
+
+Timestamp skew is deliberately the **receiver's** call — the SDK's `verify` enforces it, the primitives leave it to you.
 
 ---
 
@@ -94,7 +139,7 @@ printf '%s' "$HOOK_SECRET" | wayai inbound-webhooks create --base <base> \
   --name executor-results --record-type-scope results --secret-stdin
 ```
 
-Sign the write-back with the **same scheme in the opposite direction** — the SDK's signing helper is the inverse of its verify side, so one secret and one signer cover both edges. By default, writes arriving through an inbound webhook do **not** re-fire triggers, so an executor writing its own result back cannot loop.
+Sign the write-back with the **same scheme in the opposite direction** — `signRequest` from the SDK is the inverse of its verify side, returning the `X-Data-Signature` / `X-Data-Timestamp` / `X-Data-Id` headers to attach, so one secret and one signer cover both edges. By default, writes arriving through an inbound webhook do **not** re-fire triggers, so an executor writing its own result back cannot loop.
 
 Inbound webhooks can only be created or deleted in **preview** bases, then promoted. Payload translation, source bindings, and hydrating ("notification + fetch") webhooks are in [integrations.md](integrations.md).
 
@@ -135,7 +180,14 @@ Then declare it on the record type's source config (pushed with `wayai record-ty
 { "executor_secrets": [{ "name": "partner-cert", "secret_ref": "vault:partner-cert" }] }
 ```
 
-On every proxied call the base advertises a **short-lived, single-use grant** to the executor. Inside your **already-verified** handler, pull the credential by name with the SDK's credential-pull helper, passing the inbound request (it carries the grant):
+On every proxied call the base advertises a **short-lived, single-use grant** to the executor, as the `X-Data-Credential-*` headers. Inside your **already-verified** handler, pull the credential by name with `fetchExecutorCredential`, passing the inbound request (it carries the grant):
+
+```ts
+import { fetchExecutorCredential } from '@wayai/executor-sdk'
+
+const cert = await fetchExecutorCredential(request, 'partner-cert')
+// → { name, contentType, value }   (the helper camelCases the wire's content_type)
+```
 
 - **Pull once per invocation and reuse** — the grant is single-use per credential name.
 - The value comes back **verbatim**; decode it according to its recorded content type.

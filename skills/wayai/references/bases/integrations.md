@@ -92,9 +92,26 @@ They also round-trip through config-as-code (`sources:` on the record_type file 
 
 ### `field_mapping` rules
 
-**Optional** — omit for identity passthrough (the upstream object is stored as the record data verbatim, and writes send your data unchanged). When set, it maps between your canonical schema and the upstream's field names in both directions. `to_external` is the write direction (canonical → upstream). A plain rename in `to_external` **auto-inverts on read** (upstream `state` → canonical `status`), which covers most mappings; a rich rule does not auto-invert and needs an explicit read-direction counterpart — either the mapping's inbound-direction rename block or a [`computed`](#compose-a-canonical-field-from-several-upstream-fields) field.
+**Optional** — omit for identity passthrough (the upstream object is stored as the record data verbatim, and writes send your data unchanged). When set, it maps between your canonical schema and the upstream's field names in both directions:
 
-> **The inbound-direction block's key name is not spelled on this surface.** It carries the runtime's internal code name, which is deliberately kept off integrator-facing docs. Prefer the forms that do not need it: auto-inverting plain renames in `to_external`, `computed` for anything derived on read, or [`source_binding`](#inbound-webhooks) to reuse a source's whole contract. If a rich rule genuinely needs an explicit read-side counterpart, read the key back from an existing source config (`wayai record-types get <id> --base <base>`) rather than guessing.
+- **`to_external`** — the write direction, canonical → upstream.
+- **`to_record`** — the read direction, upstream → canonical.
+
+A plain rename in `to_external` **auto-inverts on read** (upstream `state` → canonical `status`), which covers most mappings, so `to_record` is optional and usually omitted. A *rich* rule does not auto-invert — it is skipped by the auto-inversion — so a mapping that needs one on read has to spell the read direction out.
+
+> **`to_record` REPLACES the read direction; it does not add to it.** The moment the key is present the auto-inversion of `to_external` is not used **at all**, so `to_record` must list **every** field you want mapped on read — including the plain renames that would otherwise have inverted for free. A `to_record` holding only the one rich field silently drops every other field from every read: proxied `get`/`list` return records missing them, and an inbound webhook with `merge` off full-replaces the stored record with the reduced shape. Prefer keeping mappings plain (auto-inversion), or [`computed`](#compose-a-canonical-field-from-several-upstream-fields) for derived values, precisely to avoid owning this list.
+
+```json
+{
+  "to_external": { "status": "state", "due": { "path": "dueDate", "date_format": "dd/MM/yyyy" } },
+  "to_record": {
+    "state": "status",
+    "dueDate": { "path": "due", "date_format": "dd/MM/yyyy" }
+  }
+}
+```
+
+Note `"state": "status"` is restated even though it would have auto-inverted on its own — omit it and the canonical `status` stops being populated. A `to_record` key is the upstream field name and its value (or rich-rule `path`) names the canonical field, the mirror of `to_external`. Because it is read-only it rejects the write-side-only forms (`targets`, `parts`, `target`) at config time rather than ignoring them.
 
 A value is either a simple rename (`"status": "invoice_status"`) or a rich rule `{ path, values, default, transform, date_format, array_mode, target }`:
 
@@ -102,7 +119,7 @@ A value is either a simple rename (`"status": "invoice_status"`) or a rich rule 
 - `values` — an enum map, **always canonical-keyed** (`{ "<your value>": "<upstream value>" }`, e.g. `{ "active": "ACTIVE" }`). The *same* map serves both directions: forward (write) looks up by key, reverse (read) matches by value and returns the key. **The orientation does not flip in a read-direction rule** even though everything else in such a rule reads upstream → canonical: a `values` map stays canonical-keyed and is reverse-matched. As a convenience the reverse path also accepts the intuitive upstream-keyed form when the canonical-keyed match misses — but write the canonical-keyed form to stay unambiguous (reverse-match wins on any key/value overlap). A fully backwards or mistyped map otherwise passes the raw upstream value through unchanged rather than erroring, so confirm by reading a record back after configuring.
 - `default` — value used when the field is missing.
 - `array_mode` — `first` / `last` / `flatten` for array-valued paths.
-- `date_format` — bidirectional date/time reshaping between the external wire format and the base's canonical form. Tokens `yyyy MM dd HH mm ss` plus literal separators (`/ - : . space T`), e.g. `"date_format": "dd/MM/yyyy"`. The canonical side is **ISO-8601 by default** (`yyyy-MM-dd` for a date-only pattern, `yyyy-MM-ddTHH:mm:ss` when a time is present); a companion key on the same rule can override it to truncate or reshape on the canonical side — that key also carries the internal code name and is not spelled here. A value that doesn't match `date_format` passes through unchanged. Applied after `transform`.
+- `date_format` — bidirectional date/time reshaping between the external wire format and the base's canonical form. Tokens `yyyy MM dd HH mm ss` plus literal separators (`/ - : . space T`), e.g. `"date_format": "dd/MM/yyyy"`. The canonical side is **ISO-8601 by default** (`yyyy-MM-dd` for a date-only pattern, `yyyy-MM-ddTHH:mm:ss` when a time is present); set **`record_format`** on the same rule to truncate or reshape the canonical side instead — same token vocabulary, e.g. `{ "date_format": "HH:mm:ss", "record_format": "HH:mm" }` stores `09:30` from an upstream `09:30:00`. `record_format` is ignored unless `date_format` is set. A value that doesn't match `date_format` passes through unchanged. Applied after `transform`.
 - `target` (`to_external`, write side; default `body`) — route a mapped param to the request **query string** (`"target": "query"`) instead of the body on `create`/`update`. Value maps, transforms and defaults still apply — the write-direction counterpart of `forward_filters.target`. Use it for an upstream whose create/update params are query params, e.g. `"activity_id": { "path": "idActivity", "values": { "lash-lift": "42" }, "target": "query" }` sends `?idActivity=42`. A query-target name colliding with a param already in the endpoint's `url` is rejected at config time; each split `targets` entry can pick its own `target`.
 
 #### Split one field into several upstream params
@@ -266,7 +283,7 @@ A non-REST upstream — all-POST verb paths, a form body, a `{ success, dados }`
 }
 ```
 
-`patient` → `paciente` is a plain rename, so it auto-inverts on read. `date` is a rich rule and does not, so the read direction is supplied here by a `computed` field over the raw upstream `data` key — the spellable alternative to an explicit read-direction rename block.
+`patient` → `paciente` is a plain rename, so it auto-inverts on read. `date` is a rich rule and does not, so the read direction is supplied here by a `computed` field over the raw upstream `data` key — which, unlike a `to_record` block, adds to the auto-inversion instead of replacing it.
 
 ---
 
@@ -287,14 +304,14 @@ wayai inbound-webhooks delete <id> --base <base> [-y]
 
 The shared secret is **read from stdin or a masked prompt, never an argument** — `--secret-stdin` for CI, or omit it to be prompted. An argv element is readable from `/proc/<pid>/cmdline`, shell history and CI job logs, and whoever reads it can sign forged deliveries into the base.
 
-**Authentication.** By default the sender signs each ingest request and the base verifies an HMAC over id + timestamp + method + path + body. The delivery also carries a **timestamp** the receiver checks for freshness and a **delivery id** used for dedupe: a duplicate (a retry or replay carrying the same delivery id) replays the first response instead of writing again. **This is one scheme in both directions** — the same signature, timestamp and delivery id that triggers and proxied executor calls use, so one signer works both ways. A receiver must verify it with the SDK published alongside the Data backend rather than hand-rolling it — [executors.md](executors.md) covers what the receiver must guarantee, and states plainly that the header names and SDK identifiers come from the Data backend's own executor documentation, not from this skill. A legacy body-only HMAC is still accepted for older senders. For senders that authenticate with a **static per-account header** instead of signing each request, `--ingest-auth '{"type":"static_header","header":"X-Account-Key"}'` compares that header's value against the shared secret in constant time.
+**Authentication.** By default the sender signs each ingest request and the base verifies an HMAC over id + timestamp + method + path + body. The delivery also carries a **timestamp** the receiver checks for freshness and an **idempotency key** (falling back to the message id) used for dedupe: a duplicate replays the first response instead of writing again. **This is one scheme in both directions** — the same signature and timestamp that triggers and proxied executor calls use, so one signer works both ways. A receiver must verify it with the published SDK rather than hand-rolling it — [executors.md](executors.md#the-sdk-and-the-wire) carries the package, the header names, and the exact canonical string the signature covers. A legacy body-only HMAC is still accepted for older senders. For senders that authenticate with a **static per-account header** instead of signing each request, `--ingest-auth '{"type":"static_header","header":"X-Account-Key"}'` compares that header's value against the shared secret in constant time.
 
 `--record-type-scope` restricts which record_types the webhook may write to (omit for all). Inbound webhooks can only be created and deleted in **preview** bases; promote with `wayai bases promote <production-id> --from <preview-id>`.
 
 **Translate the received payload before write.** By default the payload is stored as-is. To store **canonical** records straight from an external system's raw shape, attach a mapping — the same `field_mapping` contract external sources use (renames, value maps, date reformatting, `computed`), applied in the inbound direction:
 
 - `--source-binding '{"record_type":"<id>","source":"<name>"}'` reuses an existing source's `field_mapping`, so the same translation that proxies that record_type's reads and writes also canonicalizes inbound deliveries — one contract, both directions. **Prefer this form.**
-- `--field-mapping '{"to_external":{"status":"state"}}'` is an inline mapping for a purely-native record_type with no source; `to_external` renames auto-invert on read, and a `computed` block covers derived fields. (The explicit inbound-direction rename block is also accepted but its key is not spelled here — see the note under [`field_mapping` rules](#field_mapping-rules).)
+- `--field-mapping '{"to_external":{"status":"state"}}'` is an inline mapping for a purely-native record_type with no source; `to_external` renames auto-invert on read, `to_record` spells the read direction out (replacing that auto-inversion entirely — see the warning under [`field_mapping` rules](#field_mapping-rules)), and a `computed` block covers derived fields.
 
 The two are mutually exclusive. The mapping is validated when the webhook is created and again at promotion (a `source_binding` must still resolve to a source that has a `field_mapping`). This makes an executor-free **native-mirror sync** complete: pair an inbound webhook's read-direction mapping with an `external_write` trigger's `to_external` to keep a native record_type in sync with a plain-HTTP upstream in both directions, reusing a single source contract.
 
@@ -350,7 +367,7 @@ wayai triggers delete <id> --base <base> [-y]
 
 `--filter '<json>'` fires only on records matching a condition, using the same Filter DSL queries use, evaluated against the record (or relationship) being written: `--filter '{"field":"data.status","op":"eq","value":"paid"}'`. Combine conditions with `and`/`or` groups. A malformed filter is rejected at create time.
 
-**Delivery.** Webhook and `external_write` deliveries are HMAC-signed with the same scheme described under [Inbound webhooks](#inbound-webhooks) — a request signature plus a timestamp the receiver checks for freshness and a delivery id for dedupe — so one signer serves both directions. Verify with the published SDK, never by hand ([executors.md](executors.md)). Failed attempts are retried with backoff and dead-lettered after repeated failure; inspect with `wayai triggers deliveries`.
+**Delivery.** Webhook and `external_write` deliveries are HMAC-signed with the same scheme described under [Inbound webhooks](#inbound-webhooks) — a request signature plus a timestamp the receiver checks for freshness and an idempotency key (falling back to the message id) for dedupe — so one signer serves both directions. Verify with the published SDK, never by hand ([executors.md](executors.md)). Failed attempts are retried with backoff and dead-lettered after repeated failure; inspect with `wayai triggers deliveries`.
 
 **Loop guards.** By default writes that arrive from an inbound webhook don't re-fire triggers, and `--skip-cascade-writes <bool>` (default `true`) keeps a trigger from firing on writes an `internal_write` cascade produced. Both round-trip in config-as-code as `skip_inbound_webhook_writes` and `skip_cascade_writes` on the trigger file. Triggers can only be created and deleted in **preview** bases.
 
