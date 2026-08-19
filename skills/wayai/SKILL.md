@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.68.0
+version: 6.68.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -533,7 +533,7 @@ wayai bases get <id>    # Show one base
 wayai bases create <id> --name "<name>"        # Create (--environment preview|production)
 wayai bases update <id> --name/--tags/--timezone/--settings/--integrations
 wayai bases rename <id> --name "<name>"        # Display name only — the id/slug is immutable
-wayai bases tag <id> --tags a,b                # Replaces the existing tags
+wayai bases tag <id> --tags a,b                # Replaces the existing tags; names must exist as organization tags
 wayai bases delete <id>                        # Tombstone; --purge (preview only) destroys storage
 wayai bases create-preview <origin-id> --name "<name>"   # Clone config into a new preview
 wayai bases list-previews <origin-id>

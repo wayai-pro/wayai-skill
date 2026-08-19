@@ -126,6 +126,10 @@ wayai bases create <base-id> --name "<Display Name>" [--tags a,b] [--timezone <I
 `--environment production` is the default, and what your plan bounds is **capacity** — records,
 operations, import rows — not which environment you may create.
 
+`--tags` names the organization's own tags — the same list hubs and credentials draw from, created
+under Settings → Organization → Tags. A name that is not in that list is rejected rather than
+created, so tags mean the same thing wherever they appear.
+
 **Create production first for anything you intend to keep.** The id is immutable and so is the
 environment, so the durable name has to be claimed by the production base at creation; then take a
 linked preview off it for config work and promote from there:
