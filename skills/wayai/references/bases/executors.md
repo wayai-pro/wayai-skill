@@ -23,7 +23,7 @@ The executor is invisible to the agent. Whether a record is native, source-backe
 - [The SDK and the wire](#the-sdk-and-the-wire)
 - [Writing results back](#writing-results-back)
 - [Where to run it](#where-to-run-it)
-- [Certificate-bearing integrations (the vault pattern)](#certificate-bearing-integrations-the-vault-pattern)
+- [Certificate-bearing integrations (the credential-pull pattern)](#certificate-bearing-integrations-the-credential-pull-pattern)
 - [Retries and dead-lettering](#retries-and-dead-lettering)
 - [Local development](#local-development)
 
@@ -92,7 +92,7 @@ export default { fetch: toFetchHandler(executor) }
 
 The handler returns a `{ status, body, contentType? }` result — cached under the dedupe key and replayed verbatim on a duplicate delivery — or nothing at all, which answers `204`.
 
-`toNodeHandler` is the Express/Node equivalent. Other exports: `verify` and `signRequest` (the primitives, if you are not using `createExecutor`), `fetchExecutorCredential` (the vault pull, below), `MemoryStore` plus the `IdempotencyStore` interface (swap in a shared store when you run more than one instance), `ExecutorError` / `toHttpStatus` / `jsonResponseBody` (the error envelope), and `DATA_HEADERS` (the header names below, as constants).
+`toNodeHandler` is the Express/Node equivalent. Other exports: `verify` and `signRequest` (the primitives, if you are not using `createExecutor`), `fetchExecutorCredential` (the credential pull, below), `MemoryStore` plus the `IdempotencyStore` interface (swap in a shared store when you run more than one instance), `ExecutorError` / `toHttpStatus` / `jsonResponseBody` (the error envelope), and `DATA_HEADERS` (the header names below, as constants).
 
 ### Headers on every dispatch
 
@@ -103,7 +103,7 @@ The handler returns a `{ status, body, contentType? }` result — cached under t
 | `X-Data-Id` | The message id. **Bound into the signature**, so you must read it to rebuild the signed string. |
 | `X-Data-Idempotency-Key` | On proxied writes only — the logical-operation identity, stable across retries of the same intent. |
 | `X-Data-Delivery-Id` | On trigger webhooks only — a per-delivery id for tracing. **Not the dedupe key** (see below). |
-| `X-Data-Credential-Url` / `-Token` / `-Names` | Present only when the source declares `executor_secrets` (see the vault pattern below). |
+| `X-Data-Credential-Url` / `-Token` / `-Names` | Present only when the source declares `executor_secrets` (see the credential-pull pattern below). |
 
 Only `X-Data-Signature`, `-Timestamp` and `-Id` are on **every** dispatch; the rest are conditional as noted.
 
@@ -162,22 +162,35 @@ These are exactly the cases the Data backend deliberately does not handle itself
 
 ---
 
-## Certificate-bearing integrations (the vault pattern)
+## Certificate-bearing integrations (the credential-pull pattern)
 
-When an upstream requires a client certificate, store it in the **vault** — org-scoped, so one credential serves every base in the org — making it a first-class, rotatable, audited credential rather than a file baked into the executor image.
+When an upstream requires a client certificate, store it as a **base credential** — held by the base itself, making it a first-class, rotatable, audited credential rather than a file baked into the executor image.
+
+Create it on the base that dispatches to the upstream. Base credentials are managed through the
+base credential API today; dedicated CLI and web surfaces land with organization-credential linking.
+(`wayai bases secrets` is NOT this surface — it writes to the retired organization vault, which no
+`credential:` reference resolves against.)
 
 ```bash
-# --file reads the .p12/.pem and base64-encodes it; --content-type records the format.
-# (--value-stdin / --value-prompt are the alternatives for text values. There is no
-#  --value <v> flag: an argv element leaks through /proc, shell history, and CI logs.)
-wayai bases secrets create --name partner-cert --file ./partner.p12 \
-  --content-type application/x-pkcs12 --expires-at 2027-01-01T00:00:00Z
+# The credential value is PIPED, never an argv element: an argument leaks through /proc/<pid>/cmdline
+# on a default host, shell history, and CI job logs. `openssl base64 -A` emits one unwrapped line
+# (GNU `base64` wraps at 76 columns by default, which would put raw newlines inside the JSON string
+# and get the request rejected as malformed); `jq -Rs` builds the body, trimming the trailing
+# newline so the stored value is the certificate exactly. `expires_at` is metadata for your own
+# renewal sweeps — nothing refuses a credential for being past it.
+openssl base64 -A -in ./partner.p12 \
+  | jq -Rs '{name: "partner-cert", value: rtrimstr("\n"),
+             content_type: "application/x-pkcs12", expires_at: "2027-01-01T00:00:00Z"}' \
+  | curl -X POST "https://data.wayai.pro/v1/$BASE/credentials" \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data @-
 ```
+
+A value is write-only on every verb: reads return metadata, never the stored credential.
 
 Then declare it on the record type's source config (pushed with `wayai record-types upsert <id> --base <base> --name "<Name>" --sources @sources.json`) so the executor can **pull it at dispatch** — the right pattern for a binary or per-tenant credential too large to inject inline:
 
 ```json
-{ "executor_secrets": [{ "name": "partner-cert", "secret_ref": "vault:partner-cert" }] }
+{ "executor_secrets": [{ "name": "partner-cert", "secret_ref": "credential:partner-cert" }] }
 ```
 
 On every proxied call the base advertises a **short-lived, single-use grant** to the executor, as the `X-Data-Credential-*` headers. Inside your **already-verified** handler, pull the credential by name with `fetchExecutorCredential`, passing the inbound request (it carries the grant):
@@ -193,9 +206,9 @@ const cert = await fetchExecutorCredential(request, 'partner-cert')
 - The value comes back **verbatim**; decode it according to its recorded content type.
 - The grant headers are **not signature-bound**. If you sit behind a TLS-terminating proxy, pin the allowed origin to `https://data.wayai.pro`.
 
-For a per-tenant certificate, template the reference — `"secret_ref": "vault:partner-cert-{{auth.base_id}}"` resolves each calling base's own credential. Only `{{auth.org_id}}` and `{{auth.base_id}}` are allowed in that position.
+A per-tenant certificate needs no templating: a reference already resolves against the credentials of the base serving the request, so the same `"secret_ref": "credential:partner-cert"` picks up each tenant base's own certificate. Placeholders are rejected in a `credential:` reference for that reason.
 
-The certificate never leaves the vault for disk: the executor stays stateless, the pull is scoped and audited, and rotation is central — `wayai bases secrets rotate <id>` installs a new value **you supply** (it is never auto-generated), and `wayai bases secrets list --expiring --days 30` surfaces what is about to lapse before an upstream starts rejecting handshakes.
+The certificate is never written to disk: the executor stays stateless, the pull is short-lived, single-use and audited, and rotating the credential on the base installs a new value **you supply** (it is never auto-generated) — the running executor picks it up on its next pull, with no redeploy.
 
 Secrets are stripped from pulled config files and are never committed — see [config-as-code.md](config-as-code.md).
 
@@ -230,4 +243,4 @@ Set that same value as your executor's **signing-secret environment variable** (
 
 Triggers, like inbound webhooks, can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
 
-**Ship checklist:** verification on (bypass off) · raw-body handler mounted before any parser · shared dedupe store if replicated · error envelope with a deliberate `retriable` on every failure path · no secrets or PII in logs · certificate in the vault, not the image · `deliveries` checked after the first real dispatch.
+**Ship checklist:** verification on (bypass off) · raw-body handler mounted before any parser · shared dedupe store if replicated · error envelope with a deliberate `retriable` on every failure path · no secrets or PII in logs · certificate stored as a base credential, not baked into the image · `deliveries` checked after the first real dispatch.

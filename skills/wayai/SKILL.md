@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.68.1
+version: 6.69.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -825,7 +825,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/files.md`](references/bases/files.md) | File types, versioned path-addressed files, history/diff, S3 mounts, record attachments |
 | **Bases** | [`references/bases/config-as-code.md`](references/bases/config-as-code.md) | `wayai-ws/bases/<base>/`, subtree routing and mixed-invocation refusal, `base.yaml`, promote/rollback, eval mode, seed fixtures and leases |
 | **Bases** | [`references/bases/integrations.md`](references/bases/integrations.md) | Canonical-first modeling and the pattern catalog; external sources, inbound webhooks, triggers, provider adapters |
-| **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, the secret vault, modeling & tool-design principles |
+| **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, base credentials, modeling & tool-design principles |
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |

@@ -1,6 +1,6 @@
 # Toolsets and Actions (the MCP factory)
 
-How a base publishes a **purpose-built MCP server** for an agent: Actions (the tool definitions), toolsets (the surface that composes them), the tokens that reach them, and the org vault behind them. Open this when you are about to author or debug a curated tool surface over base data — for the base ontology itself see [`records.md`](records.md) and [`querying.md`](querying.md); for the config-as-code round trip see [`config-as-code.md`](config-as-code.md).
+How a base publishes a **purpose-built MCP server** for an agent: Actions (the tool definitions), toolsets (the surface that composes them), the tokens that reach them, and the credentials behind them. Open this when you are about to author or debug a curated tool surface over base data — for the base ontology itself see [`records.md`](records.md) and [`querying.md`](querying.md); for the config-as-code round trip see [`config-as-code.md`](config-as-code.md).
 
 An agent connected to a toolset sees `create_invoice`, `list_payments` — its own domain verbs. It never sees generic record CRUD, and no Data-platform concepts at all.
 
@@ -14,7 +14,7 @@ An agent connected to a toolset sees `create_invoice`, `list_payments` — its o
 - [Promotion blocking](#promotion-blocking)
 - [Per-Action grammar](#per-action-grammar)
 - [API tokens](#api-tokens)
-- [The org secret vault](#the-org-secret-vault)
+- [Credentials behind a base's integrations](#credentials-behind-a-bases-integrations)
 - [Modeling principles for agent consumption](#modeling-principles-for-agent-consumption)
 - [Tool design principles](#tool-design-principles)
 - [Recipes](#recipes)
@@ -454,7 +454,7 @@ TOKEN="$(wayai bases tokens create-for-toolset <slug> --base <base> --json \
 
 ### Permissions and scope
 
-**Permissions:** `read:records`, `write:records`, `read:record_types`, `write:record_types`, `read:relationships`, `write:relationships`, `read:relationship_types`, `write:relationship_types`, `read:attachments`, `write:attachments`, `read:files`, `write:files`, `read:file_types`, `write:file_types`, `read:inbound_webhooks`, `write:inbound_webhooks`, `read:triggers`, `write:triggers`, `read:toolsets`, `write:toolsets`, `read:actions`, `write:actions`, `read:seeds`, `write:seeds`, `read:bases`, `write:bases`, `read:audit` (read-only change history; admin-gated, not implied by other grants), `write:imports` (bulk historical import — separate from `write:records` because an import commits without firing triggers, and not implied by other grants), or `*` for all.
+**Permissions:** `read:records`, `write:records`, `read:record_types`, `write:record_types`, `read:relationships`, `write:relationships`, `read:relationship_types`, `write:relationship_types`, `read:attachments`, `write:attachments`, `read:files`, `write:files`, `read:file_types`, `write:file_types`, `read:inbound_webhooks`, `write:inbound_webhooks`, `read:triggers`, `write:triggers`, `read:toolsets`, `write:toolsets`, `read:actions`, `write:actions`, `read:seeds`, `write:seeds`, `read:bases`, `write:bases`, `read:audit` (read-only change history; admin-gated, not implied by other grants), `write:imports` (bulk historical import — separate from `write:records` because an import commits without firing triggers, and not implied by other grants), `read:base_credentials` / `write:base_credentials` (a base's credentials; metadata only on read — a stored value is never returned, and neither is implied by other grants), or `*` for all.
 
 **Scope fields:** `bases` (required), `record_types` (optional — omit for all), `environments` (optional — `production`, `preview`, or omit for both).
 
@@ -472,9 +472,15 @@ wayai bases tokens prune --unused-since 30d --yes
 
 `prune` selects by **staleness only** — expired, or unused past the window — never by name, and previews before revoking (`--yes` is required non-interactively). Expiry is authoritative: an **expired** token is pruned regardless of binding, so `--include-bound` does not gate that half. The bound-token skip (and `--include-bound`) applies to the *unused-past-the-window* branch only, which also always skips legacy tokens whose usage was never tracked — "stale" is unknowable for those; revoke them individually if truly unused.
 
-## The org secret vault
+## Credentials behind a base's integrations
 
-Organization-level credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Values are encrypted at rest and always masked in responses. Reference them from source or trigger config (an executor's signing secret, see [`executors.md`](executors.md) and [`integrations.md`](integrations.md)), or have an executor read one at runtime.
+Credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Values are encrypted at rest and always masked in responses. Reference them from source or trigger config as `credential:<name>` (an executor's signing secret, see [`executors.md`](executors.md) and [`integrations.md`](integrations.md)), or have an executor read one at runtime.
+
+**A credential belongs to one base.** A `credential:<name>` reference resolves against the credentials of the base serving the request, so the same configuration promoted or cloned elsewhere reads that base's own credential of that name. A preview is created with a copy of its origin's credentials, so cloned integrations keep working.
+
+**Promotion publishes what you opt in.** Each credential carries a publish flag (on by default): promoting a preview copies its opted-in credentials onto production, overwriting the production credential of the same name. Turn the flag off for anything production owns — a live API key you set there directly — and the promotion leaves it untouched. Credentials linked from an organization credential are never published this way; they are re-linked on production instead. Whatever a promoted source references and production still lacks is listed by name in the promotion result, before and after cutover.
+
+**Managing them, right now:** the base-level credential API (`/v1/{base}/credentials` — create, list metadata, rotate, delete) is the current surface; dedicated CLI and web surfaces land with organization-credential linking. The `wayai bases secrets` commands below still operate the **organization vault**, which is retired: values stored there are no longer what a `credential:`/`vault:` reference resolves, so create a credential on the base that needs it.
 
 **Secret values never travel in argv** — there is deliberately no `--value` flag. An argv element is readable from `/proc/<pid>/cmdline` on a default host and lands in shell history and CI job logs. A value arrives from a pipe, a masked prompt, or a file.
 
@@ -500,7 +506,7 @@ wayai bases secrets delete <id> [-y]
 
 Set `--expires-at` (ISO-8601) on credentials that lapse — yearly certificates, time-bound tokens — then `wayai bases secrets list --expiring` surfaces what needs renewing before it breaks an integration. Expiry is informational; a secret is never auto-disabled.
 
-External source credentials are **not** carried over by `wayai bases promote` — a net-new inline source credential has to be set on production directly, and the promote prints which ones.
+An **inline** source credential is not carried over by `wayai bases promote` — set it on production directly. A `credential:<name>` reference resolves against the credentials of the base serving the request, and a promotion publishes the preview credentials you opted in (see above); either way the promote prints every credential production will still lack.
 
 ---
 

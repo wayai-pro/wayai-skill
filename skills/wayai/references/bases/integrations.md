@@ -82,7 +82,7 @@ They also round-trip through config-as-code (`sources:` on the record_type file 
 ### What a source declares
 
 - `name` — must equal the record's `external_source`.
-- `auth` — header + value template; the secret inline or a `vault:<name>` reference (`wayai bases secrets create --name <name> --value-stdin`). An **inline** secret is environment-local — promotion never copies it, so set it on the production base directly; a newly promoted source stays unconfigured and requests fail with a clear "no usable credential configured" error until you do. A `vault:<name>` reference travels by reference and needs no extra step.
+- `auth` — header + value template; the secret inline or a `credential:<name>` reference. An **inline** secret is environment-local and promotion never copies it, so a newly promoted source carrying one stays unconfigured until you set it on production — requests fail with a clear "no usable credential configured" error until you do. A `credential:<name>` reference resolves against the credentials of *the base serving the request*; promotion publishes the preview credentials you opted in and reports every referenced credential production will still lack. A preview is created with a copy of its origin's credentials, so cloned integrations keep working. (`vault:<name>` is the deprecated spelling of the same reference and resolves identically.)
 - `field_mapping` — optional; omit for identity passthrough. See [below](#field_mapping-rules).
 - `get` / `list` / `create` / `update` / `delete` — [per-operation endpoints](#per-operation-endpoints), optionally as [named write bindings](#named-write-bindings).
 - [`id_path`](#id_path) — where the `external_id` lives in each raw upstream record.
@@ -245,8 +245,8 @@ The base sources them with a pre-write read through the source's **`get`** endpo
 
 ### Other source options
 
-- `injections` — extra per-request vault secrets placed into a header or body field, for upstreams needing their own credential.
-- `executor_secrets` — named vault credentials an executor pulls at dispatch, for a binary or large per-tenant credential it can't take inline (e.g. an mTLS client certificate). Each `{ name, secret_ref }` declares a `vault:<name>` reference (templating only `{{auth.org_id}}`/`{{auth.base_id}}`); each pull is short-lived, single-use, and scoped to the calling base. See [executors.md](executors.md).
+- `injections` — extra per-request credentials placed into a header or body field, for upstreams needing their own credential.
+- `executor_secrets` — named credentials an executor pulls at dispatch, for a binary or large per-tenant credential it can't take inline (e.g. an mTLS client certificate). Each `{ name, secret_ref }` declares a `credential:<name>` reference; each pull is short-lived, single-use, and resolves against the calling base's own credentials. Placeholders are not allowed in a `credential:` reference — a plain name already means "this base's credential". See [executors.md](executors.md).
 - `cache_ttl` (seconds) + `stale_if_error` — read-through caching, optionally serving the last-known value on a transient upstream failure.
 - `signing` — opt into HMAC request signing when the source points at an executor; omit for third-party APIs. See [Inbound webhooks](#inbound-webhooks) for the scheme (it is the same one in both directions).
 - `timeout_ms` — per-request upstream timeout (default 10s, max 30s); a timeout surfaces as a transient error so `stale_if_error` can serve a cached value.
@@ -263,7 +263,7 @@ A non-REST upstream — all-POST verb paths, a form body, a `{ success, dados }`
 ```json
 {
   "name": "legacy",
-  "auth": { "header": "Authorization", "value_template": "Bearer {{secret}}", "secret_ref": "vault:legacy-key" },
+  "auth": { "header": "Authorization", "value_template": "Bearer {{secret}}", "secret_ref": "credential:legacy-key" },
   "request_encoding": "form",
   "static_body": { "clinica": "35" },
   "success_path": "success",

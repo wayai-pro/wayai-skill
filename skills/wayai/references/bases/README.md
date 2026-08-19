@@ -13,7 +13,7 @@ for the other.
 ## The object model
 
 ```
-Organization                       ← account boundary; base tokens, vault secrets
+Organization                       ← account boundary; base tokens
 └── Base (production | preview)    ← one per app, domain, or tenant
     ├── CONFIG — edit in a PREVIEW, ship with PROMOTE (human-run):
     │     record types (+ their external sources) · relationship types
@@ -54,7 +54,7 @@ relationship**. Files repeat the pattern (**file type → file**).
 | **Toolset** | A curated MCP server composed of Action references (plus relationship/batch/SQL tools), served at `https://data-mcp.wayai.pro/t/<slug>/mcp` | `wayai toolsets` — [toolsets.md](toolsets.md) |
 | **Seed fixture / lease** | Named, reversible records+relationships baseline for hermetic agent evals. Definitions are config; `apply`/`reset`/`clear` are preview-only data operations. An actor-bound lease exclusively resets, owns, and clears fixture state for one eval run | `wayai seed` — [config-as-code.md](config-as-code.md) |
 | **Base API token** | `rec_…` credential: grant-scoped (bases × record types × environments × permissions) or **toolset-bound** (its authorization IS one toolset's tool surface) | `wayai bases tokens` — [toolsets.md](toolsets.md) |
-| **Secret** | Org-level encrypted credential (string or file blob), referenced from source/trigger config as `vault:<name>`, pullable by an executor at dispatch | `wayai bases secrets` — [toolsets.md](toolsets.md) |
+| **Credential** | Encrypted credential held by a base (string or file blob), referenced from that base's source/trigger config as `credential:<name>`, pullable by an executor at dispatch | [toolsets.md](toolsets.md) |
 
 **Identity rules.** Config slugs are permanent ids — the `id` of a base, record type, relationship
 type, Action, and toolset *is* its identity and is **immutable**. There is no rename: to "rename" one
@@ -106,7 +106,7 @@ large or binary content belongs in Files.
 | Give an LLM agent safe, domain-named tools | Actions + toolset + toolset-bound token | [toolsets.md](toolsets.md) |
 | Make a state-dependent write race-free | Action `precondition` (compare-and-set) | [toolsets.md](toolsets.md) |
 | Least-privilege machine/CI access | scoped tokens (`bases tokens create-for-toolset`) | [toolsets.md](toolsets.md) |
-| Store integration credentials | secret vault (`vault:<name>` references) | [toolsets.md](toolsets.md) |
+| Store integration credentials | base credentials (`credential:<name>` references) | [toolsets.md](toolsets.md) |
 | Manage config in git / review in PRs | `wayai pull bases/<base>` / `wayai push bases/<base>` | [config-as-code.md](config-as-code.md) |
 | Deterministic agent evals against known data | a preview with integrations disabled + seed fixtures | [config-as-code.md](config-as-code.md), and [`../evals.md`](../evals.md) for the hub side |
 | Import/export provider tool definitions | provider adapters | [integrations.md](integrations.md) |
