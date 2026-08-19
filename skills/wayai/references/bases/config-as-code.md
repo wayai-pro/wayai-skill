@@ -143,9 +143,10 @@ reference travels by reference instead).
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.
 `--purge` (preview bases only) destroys them permanently, and a purged id is then **retired** — it
-cannot be recreated, so derive a fresh id for the next run. Two things purge does not remove:
-uploaded file contents (only the metadata that indexes them), and the base's analytical rows. Neither
-is reachable once the id is retired, but both still occupy storage.
+cannot be recreated, so derive a fresh id for the next run. Purge also starts a background deletion of
+everything the base leaves outside itself — its analytical rows and its uploaded file contents — so
+those stop occupying storage rather than lingering. Until that deletion finishes, the base's records
+keep counting toward the organization's record limit, because they still exist.
 
 ### Eval mode (`--integrations disabled`)
 
