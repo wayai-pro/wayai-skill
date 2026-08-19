@@ -123,17 +123,31 @@ reports it. There is no second CLI, no second login, and no second workspace.
 wayai bases create <base-id> --name "<Display Name>" [--tags a,b] [--timezone <IANA>]
 ```
 
-`--environment production` is the default and is a **paid-plan capability**; on the free plan create a
-preview instead and do all the work there — record types, records, relationships, triggers and
-toolsets behave identically:
+`--environment production` is the default, and what your plan bounds is **capacity** — records,
+operations, import rows — not which environment you may create.
+
+**Create production first for anything you intend to keep.** The id is immutable and so is the
+environment, so the durable name has to be claimed by the production base at creation; then take a
+linked preview off it for config work and promote from there:
 
 ```bash
-wayai bases create <base-id> --name "<Display Name>" --environment preview
+wayai bases create <base-id> --name "<Display Name>"          # production — claims the durable id
+wayai bases create-preview <base-id> --name "<Display Name> (dev)"
+# …edit record types, triggers, toolsets in the preview…
+wayai bases promote <base-id> --from <preview-id>
 ```
 
-A preview created that way has **no production origin**, so it cannot be promoted directly. After
-upgrading, stand production up beside it and copy the config across — see
-[config-as-code.md](config-as-code.md).
+Create a base **directly** as a preview only when it is ephemeral — an eval run or a throwaway
+sandbox under a derived, unique id:
+
+```bash
+wayai bases create <eval-run-id> --name "Eval run" --environment preview
+```
+
+A preview created that way has **no production origin**, so it cannot be promoted directly — and
+`environment` is immutable, so its id can never become the production base either. That is the trap
+to avoid for a durable base: there is no later step that links it up, only a manual config copy into
+a new id — see [config-as-code.md](config-as-code.md).
 
 Then define the first record type in a preview, write test records, and iterate:
 
