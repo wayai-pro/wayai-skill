@@ -480,31 +480,45 @@ Credential storage behind a base's external sources — API keys, signing secret
 
 **Promotion publishes what you opt in.** Each credential carries a publish flag (on by default): promoting a preview copies its opted-in credentials onto production, overwriting the production credential of the same name. Turn the flag off for anything production owns — a live API key you set there directly — and the promotion leaves it untouched. Credentials linked from an organization credential are never published this way; they are re-linked on production instead. Whatever a promoted source references and production still lacks is listed by name in the promotion result, before and after cutover.
 
-**Managing them, right now:** the base-level credential API (`/v1/{base}/credentials` — create, list metadata, rotate, delete) is the current surface; dedicated CLI and web surfaces land with organization-credential linking. The `wayai bases secrets` commands below still operate the **organization vault**, which is retired: values stored there are no longer what a `credential:`/`vault:` reference resolves, so create a credential on the base that needs it.
+**Two ways a base gets one.** Create it **directly** on the base, with the commands below or in the base's Credentials tab. Or **link an organization credential** into the base: the organization credential stays the one place the secret is entered and rotated, the base gets a mirror of it, and rotating the organization credential reaches every base linked to it at once. Linking applies the same tag and environment rules that gate an organization credential's use anywhere else, and only single-value credential types project — an API key or a bearer token, not a username-and-password pair, because a base substitutes one value.
+
+A linked credential is **unlinked**, never deleted, and never rotated on the base: rotating it there would write a value the organization credential does not know about, which the next organization-level rotation would silently overwrite.
+
+**Linking is done by a person.** Creating or removing an organization link marks a credential as the organization's on someone's behalf, so it requires a signed-in session — the dashboard, or a CLI logged in with `wayai login`. An API token cannot do it. This also means a promotion run from CI cannot re-link: the promotion still applies, and its result names every organization-linked credential production is left without, so someone can link them once from the dashboard.
 
 **Secret values never travel in argv** — there is deliberately no `--value` flag. An argv element is readable from `/proc/<pid>/cmdline` on a default host and lands in shell history and CI job logs. A value arrives from a pipe, a masked prompt, or a file.
 
 ```bash
 # From a pipe (recommended for CI)
-printf '%s' "$STRIPE_KEY" | wayai bases secrets create --name stripe-key --value-stdin --tags billing
+printf '%s' "$STRIPE_KEY" | wayai bases credentials create --base crm --name stripe-key --value-stdin
 
 # From a masked interactive prompt
-wayai bases secrets create --name stripe-key --value-prompt --tags billing
+wayai bases credentials create --base crm --name stripe-key --value-prompt
 
 # A credential file, base64-encoded, with its MIME type and an expiry
-wayai bases secrets create --name partner-cert --file ./partner.p12 \
+wayai bases credentials create --base crm --name partner-cert --file ./partner.p12 \
   --content-type application/x-pkcs12 --expires-at 2027-01-01T00:00:00Z
 
-wayai bases secrets list                          # values masked
-wayai bases secrets list --expiring [--days 30]   # only secrets expiring/expired within the window
-wayai bases secrets get <id>                      # metadata, value masked
-wayai bases secrets rotate <id> --value-stdin [--expires-at <iso>]   # never auto-generates
-wayai bases secrets delete <id> [-y]
+# Production owns this one — do not publish it when this base is promoted
+wayai bases credentials create --base crm --name live-key --value-stdin --no-sync-to-production
+wayai bases credentials set-sync <id> --base crm --no-sync-to-production   # or change it later
+wayai bases credentials set-sync <id> --base crm                            # publish it again
+
+wayai bases credentials list --base crm           # metadata; values are never returned
+wayai bases credentials get <id> --base crm       # metadata for one
+wayai bases credentials rotate <id> --base crm --value-stdin   # never auto-generates
+wayai bases credentials delete <id> --base crm [-y]
+
+# Link an organization credential into this base, and remove that link.
+# Both require a signed-in person — an API token cannot create or remove an organization
+# link, so these two are not available to CI.
+wayai bases credentials link --base crm --org-credential <organization-credential-id> [--name stripe-key]
+wayai bases credentials unlink <id> --base crm --org-credential <organization-credential-id>
 ```
 
-`--file` cannot be combined with `--value-stdin` or `--value-prompt`: with `--file` silently winning, a CI job that piped the new credential and also named a stale file would store the stale one and report success. `delete` requires `--yes` when non-interactive.
+`--file` cannot be combined with `--value-stdin` or `--value-prompt`: with `--file` silently winning, a CI job that piped the new credential and also named a stale file would store the stale one and report success. `delete` requires `--yes` when non-interactive, and refuses a linked credential — use `unlink`.
 
-Set `--expires-at` (ISO-8601) on credentials that lapse — yearly certificates, time-bound tokens — then `wayai bases secrets list --expiring` surfaces what needs renewing before it breaks an integration. Expiry is informational; a secret is never auto-disabled.
+Set `--expires-at` (ISO-8601) on credentials that lapse — yearly certificates, time-bound tokens — so `list` shows what needs renewing before it breaks an integration. Expiry is informational; a credential is never auto-disabled.
 
 An **inline** source credential is not carried over by `wayai bases promote` — set it on production directly. A `credential:<name>` reference resolves against the credentials of the base serving the request, and a promotion publishes the preview credentials you opted in (see above); either way the promote prints every credential production will still lack.
 

@@ -166,10 +166,9 @@ These are exactly the cases the Data backend deliberately does not handle itself
 
 When an upstream requires a client certificate, store it as a **base credential** — held by the base itself, making it a first-class, rotatable, audited credential rather than a file baked into the executor image.
 
-Create it on the base that dispatches to the upstream. Base credentials are managed through the
-base credential API today; dedicated CLI and web surfaces land with organization-credential linking.
-(`wayai bases secrets` is NOT this surface — it writes to the retired organization vault, which no
-`credential:` reference resolves against.)
+Create it on the base that dispatches to the upstream — `wayai bases credentials create`, the base's
+Credentials tab, or the credential API directly. See [`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)
+for the full surface, including linking an organization credential instead of entering the value here.
 
 ```bash
 # The credential value is PIPED, never an argv element: an argument leaks through /proc/<pid>/cmdline

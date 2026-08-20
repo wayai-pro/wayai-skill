@@ -307,7 +307,7 @@ free; each rollback page is metered.
 - Any `--data`, `--schema`, `--sources`, `--operations` or `--filter` flag accepts inline JSON
   (`'{"key":"value"}'`) or a file reference (`@path/to/file.json`).
 - **Confirmation is not one convention — check the command before scripting it.** Three shapes:
-  - `bases secrets delete`, `bases tokens prune` and `bases import rollback` **refuse** without a
+  - `bases credentials delete`, `bases tokens prune` and `bases import rollback` **refuse** without a
     confirmation flag when stdin/stdout are not TTYs, exiting non-zero. Pass it from a script, CI, or
     an agent — but note the spelling differs: the first two take `-y`/`--yes`, while
     **`bases import rollback` accepts only the long `--yes`** (`-y` is rejected as an unknown
