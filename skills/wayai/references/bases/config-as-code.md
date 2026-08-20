@@ -155,6 +155,14 @@ base's rows are still out there and would otherwise be served to the new one —
 once the deletion completes**. The deletion is asynchronous, so a run that needs a base right now
 should derive a fresh id rather than wait for the old one to come back.
 
+A freed id comes back as a **blank slate**: the new base takes its own name, description, settings
+and tags, and it may be created in either environment. That last part is what makes the id worth
+reclaiming rather than replacing — a preview you prototyped on can become the durable production
+base under the same slug, once its data is gone. Nothing about the previous base carries over, so
+state everything the new one needs; in particular, if you want the environment to change, say so
+explicitly, because a recreate that omits it keeps the previous one rather than taking the usual
+default.
+
 Tokens do not survive the recycle. A token scoped to a purged base stops working on that id: when the
 id is later reused, the new base is a different base as far as the token is concerned, and requests
 carrying the old token are answered as though it were not there. Mint a token for the new base after

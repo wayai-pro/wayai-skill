@@ -148,10 +148,12 @@ sandbox under a derived, unique id:
 wayai bases create <eval-run-id> --name "Eval run" --environment preview
 ```
 
-A preview created that way has **no production origin**, so it cannot be promoted directly — and
-`environment` is immutable, so its id can never become the production base either. That is the trap
-to avoid for a durable base: there is no later step that links it up, only a manual config copy into
-a new id — see [config-as-code.md](config-as-code.md).
+A preview created that way has **no production origin**, so it cannot be promoted directly, and
+`environment` cannot be changed on a base that exists. That is the trap to avoid for a durable base:
+there is no later step that links it up. The way back is to destroy the preview's data — delete it
+with purge — and, once that deletion completes, create the same id again as production: a freed id
+is a blank slate and may be created in either environment. Nothing carries over, so it is a fresh
+start on the slug rather than a promotion; see [config-as-code.md](config-as-code.md).
 
 Then define the first record type in a preview, write test records, and iterate:
 
