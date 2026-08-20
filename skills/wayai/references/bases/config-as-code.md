@@ -145,11 +145,20 @@ promotion (including `--dry-run`) reports every referenced credential production
 
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.
-`--purge` (preview bases only) destroys them permanently, and a purged id is then **retired** — it
-cannot be recreated, so derive a fresh id for the next run. Purge also starts a background deletion of
+`--purge` (preview bases only) destroys them permanently, and also starts a background deletion of
 everything the base leaves outside itself — its analytical rows and its uploaded file contents — so
 those stop occupying storage rather than lingering. Until that deletion finishes, the base's records
 keep counting toward the organization's record limit, because they still exist.
+
+A purged id is **retired while that deletion runs** — recreating it is refused, because the previous
+base's rows are still out there and would otherwise be served to the new one — and **frees itself
+once the deletion completes**. The deletion is asynchronous, so a run that needs a base right now
+should derive a fresh id rather than wait for the old one to come back.
+
+Tokens do not survive the recycle. A token scoped to a purged base stops working on that id: when the
+id is later reused, the new base is a different base as far as the token is concerned, and requests
+carrying the old token are answered as though it were not there. Mint a token for the new base after
+creating it — never reuse the previous run's.
 
 ### Eval mode (`--integrations disabled`)
 
