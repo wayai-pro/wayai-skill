@@ -130,9 +130,11 @@ operations, import rows — not which environment you may create.
 under Settings → Organization → Tags. A name that is not in that list is rejected rather than
 created, so tags mean the same thing wherever they appear.
 
-**Create production first for anything you intend to keep.** The id is immutable and so is the
-environment, so the durable name has to be claimed by the production base at creation; then take a
-linked preview off it for config work and promote from there:
+**Create production first for anything you intend to keep.** A base's environment cannot be changed
+while it exists, and there is no step that links an origin-less preview up to production later — so
+the durable name should be claimed by the production base at creation; then take a linked preview off
+it for config work and promote from there. (The slug is recoverable if you get this wrong, but only
+by destroying the preview's data and starting the base over on the same id — see below.)
 
 ```bash
 wayai bases create <base-id> --name "<Display Name>"          # production — claims the durable id
