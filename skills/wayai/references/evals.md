@@ -212,7 +212,7 @@ expected:
 Rules:
 - **`slug` must name an existing `user`-scope state definition on the hub** — `initial_state` seeds a *value*, it does not create the definition. A slug the hub doesn't define, or a `value` its `json_schema` rejects, is **skipped with a warning** (the responder just won't see that seed) rather than failing the run — the same graceful degradation a live agent write hits.
 - **User scope only.** `scope` defaults to `user` and only `user` is accepted; conversation-scope state is already fresh per run (each run is a new conversation), so there's nothing to seed.
-- **Isolated + reverted per run.** Each run seeds a synthetic, state-only user, so runs (and scenarios) never clobber each other; the session's terminal path tears the seeded users down (like the fixture's clear-after). The eval conversation stays userless, so seeding never bills against the org.
+- **Isolated + reverted per run.** Each run seeds a synthetic, state-only user, so runs (and scenarios) never clobber each other; the session's terminal path tears the seeded users down (like the fixture's clear-after). Seeding a run's state does not consume operations.
 - **What it enables:** the returning-patient shortcut, the family gate (more than one patient in state), "I changed plans", and the anti-bias rule (the agent must NOT write `confirmed` before the user says yes — visible to the evaluator as the agent's `update_state` tool call). The agent reads the seed via `<user_state>` and can write it back during the run exactly as in production.
 
 Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per run, so each run can seed a distinct patient.
