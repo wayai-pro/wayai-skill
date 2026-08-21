@@ -165,8 +165,8 @@ wayai record-types upsert <slug> --base <base-id>--dev --name "<Display Name>" -
 wayai records upsert <slug> --base <base-id>--dev --data '{...}'
 ```
 
-Set `WAYAI_BASE=<id>` in the shell to stop passing `--base` on every command. **`wayai bases use` is
-not an alternative** — the worktree binding is a routing tripwire for `pull`/`push` only, and every
+Set `WAYAI_BASE=<id>` in the shell to stop passing `--base` on every command. **`wayai use bases/<id>`
+is not an alternative** — the worktree scope is a routing tripwire for `pull`/`push` only, and every
 other command still resolves its target from `--base` or `WAYAI_BASE` and errors out without one.
 
 When the schema is right, surface the promotion for the user to run:

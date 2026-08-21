@@ -21,7 +21,7 @@ wayai-ws/
 ├── hubs/<hub>/                       # hub config-as-code (a different subtree, a different verb set)
 └── bases/
     └── <base-id>/
-        ├── base.yaml                 # base identity; `wayai bases use <folder>` reads it
+        ├── base.yaml                 # base identity; `wayai use bases/<folder>` reads it
         ├── record-types/<id>.yaml
         ├── relationship-types/<id>.yaml
         ├── inbound-webhooks/<id>.yaml
@@ -35,8 +35,8 @@ wayai-ws/
 wayai pull bases/<base>              # server config → files (also mirrors the linked production, read-only)
 wayai push bases/<base> [--dry-run]  # apply local files to the PREVIEW base (--dry-run shows the diff only)
 wayai push bases/<base> --prune      # also delete entities on the server that your files no longer declare
-wayai bases use <base>               # bind THIS git worktree to a base
-wayai bases unbind                   # clear this worktree's base binding
+wayai use bases/<base>               # scope THIS git worktree to a base (--add widens instead of replacing)
+wayai unbind bases/<base>            # drop that base from this worktree's scope (bare `wayai unbind` clears everything)
 ```
 
 ### `pull` / `push` route by subtree, and refuse a mixed invocation
@@ -81,15 +81,16 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   corrected. Declare `analytics: standard` before the first push if the origin is a preview (whose
   clones default to `local`) and you will want SQL, history or traversal on it
   ([querying.md](querying.md)).
-- **Worktree binding is a routing guard.** Each git checkout can be bound to one base (independently
-  of its hub binding — two files, neither tracked). `pull`/`push` refuse to run against a different
-  base once bound, and the binding is set automatically on the first successful pull/push into an
-  unbound checkout. It is a routing tripwire for those two verbs only — no other command reads it,
-  and `wayai status` reports the **hub** binding, not this one. **If pull/push errors with a binding mismatch, stop and
-  ask the user before doing anything else** — it usually means the prompt was meant for a different
-  worktree. Do not run `wayai bases use` / `wayai bases unbind` without explicit user instruction in
-  the current session; changing a binding is a routing decision, like switching which base the user
-  thinks you are working on.
+- **The worktree scope is a routing guard.** Each git checkout carries one untracked scope file
+  (`<git-dir>/wayai-scope`) holding a set of hubs and a set of bases; the base axis is what applies
+  here. `pull`/`push` refuse to run against a base outside a non-empty set, and the axis is seeded
+  automatically on the first successful pull/push into a checkout that has none. It is a routing
+  tripwire for those two verbs only — no other command reads it. `wayai status` reports both axes.
+  **If pull/push errors with a scope refusal, stop and ask the user before doing anything else** —
+  it usually means the prompt was meant for a different worktree. A worktree legitimately serving
+  several bases widens with `wayai use --add bases/<id>`, but do not run that, `wayai use`, or
+  `wayai unbind` without explicit user instruction in the current session; widening the scope is as
+  much a routing decision as clearing it. Full semantics: SKILL.md § Worktree scope.
 - **Secrets are never written to files.** Inbound-webhook, trigger and external-source secrets are
   stripped on pull. On push, a newly added inbound webhook or trigger gets a fresh secret, printed
   once — save it. Existing secrets are left untouched. Manage inbound-webhook and trigger values with

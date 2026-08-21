@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.72.0
+version: 6.73.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -492,8 +492,8 @@ wayai diff              # Dry-run diff of local files vs preview (read-only); --
 wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
 wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub to target). Renames the local folder. The server-owned way to change preview_label
 wayai publish           # Promote the preview to production (alias: wayai sync). Auto-detects first-publish (clones preview → new production) vs sync (pushes changes to the linked production); shows the preview→production diff and confirms (-y skips). Paid plans only. `wayai push` first — promotes the pushed preview state
-wayai use <hub>         # Bind this worktree to a specific hub (UUID or folder name)
-wayai unbind            # Clear the worktree hub binding
+wayai use <selector>    # Scope this worktree to a hub or base (UUID, folder name, hubs/<n>, bases/<n>, --hub/--base). Replaces that axis; `--add` widens it instead
+wayai unbind [<sel>]    # Drop one entry from the worktree scope; bare, it clears the whole scope (both axes)
 wayai send-message      # Test message to a hub (preview or production). -c <id> continues a conversation
                         # `-f, --file <path>` attaches a file (repeatable, max 20, ~7 MB/request) delivered exactly as a real channel does — this is how image/document behaviour gets exercised in the dev loop. Message text is optional when a file is attached (an attachment-only send mirrors a photo with no caption). Images reach the model as a signed URL, not base64
 wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` 401 here instead of forcing a guess from code. --hub <uuid|name>, --json
@@ -526,8 +526,9 @@ wayai report accept     # Accept a shipped fix (<id>) → addressed
 wayai report contest    # Contest a shipped fix or a dismissal (<id> --reason "...") → back to triage
 
 # Bases — the Data surface. A base is org-level and a separate entity from a hub.
-# `use`/`unbind` are local (this worktree's binding file); every other command
-# below reaches the platform. Full grammar: references/bases/.
+# `use`/`unbind` are local (this worktree's scope file) and DEPRECATED — prefer
+# `wayai use bases/<id>` / `wayai unbind bases/<id>`; every other command below
+# reaches the platform. Full grammar: references/bases/.
 wayai bases list        # List bases (--tag to filter)
 wayai bases get <id>    # Show one base
 wayai bases create <id> --name "<name>"        # Create (--environment preview|production)
@@ -540,8 +541,8 @@ wayai bases list-previews <origin-id>
 wayai bases promote <production-id> --from <preview-id>  # NOT `wayai publish`, which promotes a HUB
 wayai bases rollback <production-id> --promotion <id>
 wayai bases promotions <production-id>
-wayai bases use <base>  # Bind this worktree to a base (see Worktree bindings)
-wayai bases unbind      # Clear this worktree's base binding
+wayai bases use <base>  # Deprecated alias of `wayai use bases/<id>` (see Worktree scope)
+wayai bases unbind      # Deprecated alias — clears only the base axis of the worktree scope
 wayai bases tokens|secrets|sql|import|batch|providers|report ...   # namespaced — each names a concept WayAI already owns
                         # (`wayai report` files a PLATFORM bug; `wayai bases report` files a base one)
 
@@ -550,7 +551,7 @@ wayai records | record-types | relationships | relationship-types | query-relati
 wayai files | file-types | attachments | toolsets | actions | triggers | inbound-webhooks | seed
 ```
 
-`wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` bind a **hub** while `wayai bases use`/`wayai bases unbind` bind a **base**, and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. They are different entities — never substitute one for the other.
+`wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` maintain **one** worktree scope covering both hubs and bases (the selector says which — `wayai use bases/crm` vs `wayai use <hub-uuid>`), so `wayai bases use`/`wayai bases unbind` are deprecated aliases for the base axis alone; and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. Hubs and bases are different entities — never substitute one for the other.
 
 **Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
 moves to `shipped` — you'll get an email, and `wayai login`/`wayai status` remind you once (or find it
@@ -560,15 +561,35 @@ Contests are bounded (a cap, and triage may mark a dismissal final); past those,
 
 Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs live in `wayai-ws/hubs/`.
 
-### Worktree bindings
+### Worktree scope
 
-Each git checkout (main or linked worktree) can be bound to a single hub, and independently to a single base — two files, `<git-dir>/wayai-binding` and `<git-dir>/wayai-base-binding` (per-checkout, never tracked). They are routing tripwires, not concurrency locks — they do not coordinate concurrent edits.
+Each git checkout (main or linked worktree) carries a **scope**: a set of hubs and a set of bases, in one file at `<git-dir>/wayai-scope` (per-checkout, never tracked).
 
-**The hub binding is enforced today:** `wayai push` and `wayai pull` refuse to run against a different hub once bound, and it is auto-set on the first successful pull (or new-hub creation) into an unbound checkout. This catches the common mistake of a prompt being routed to the wrong terminal/worktree.
+```yaml
+hubs: [11111111-1111-1111-1111-111111111111]
+bases: [crm, billing]
+```
 
-**The base binding is enforced the same way:** `wayai pull bases/<base>` and `wayai push bases/<base>` refuse to run against a different base once bound, and it is auto-set on the first successful pull (or new-preview creation) into an unbound checkout. `wayai bases use` sets it manually and `wayai bases unbind` clears it.
+It is a routing tripwire, not a concurrency lock (it does not coordinate concurrent edits) and not authorization (grants are the security boundary). It never *selects* a target either — it only refuses one.
 
-If `push`/`pull` errors with a binding mismatch, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use`, `wayai bases unbind`, `wayai bases use`, or modify either binding file without explicit user instruction in the current session — these are session-routing actions, equivalent to changing which hub or base the user thinks you're working on.
+**How it fills up.** Each axis is seeded independently by the first successful pull/push/create into a checkout whose set for that axis is empty. After that it only grows on purpose: an automatic bind never appends to a non-empty set.
+
+**How it is enforced.** `wayai pull`, `wayai push`, `wayai publish` and `wayai relabel` refuse to run against a hub outside a non-empty `hubs` set; `wayai pull bases/<base>` and `wayai push bases/<base>` refuse a base outside a non-empty `bases` set. Creating a *new* hub or base in a checkout already scoped on that axis is refused the same way.
+
+**Changing it.**
+
+```bash
+wayai use <selector>          # replace that axis with this one target
+wayai use --add <selector>    # widen: add one target to that axis
+wayai unbind <selector>       # drop one entry
+wayai unbind                  # clear the whole scope, both axes
+```
+
+A selector names the axis the same way `pull`/`push` do: a bare UUID is a hub, `bases/<id>` and `--base <id>` are a base, `hubs/<name>` and `--hub <x>` a hub, and a bare folder name is looked up in both subtrees (present in both → refused, never guessed). `wayai status` shows the current scope; `status --json` carries it as `worktree_scope`.
+
+A worktree legitimately scoped to several entities is normal — a base serving several hubs, or delegation wiring hub A to hub B. Widen with `--add` for those; do not clear the tripwire to get past them.
+
+If `push`/`pull` errors with a scope refusal, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use` (with or without `--add`), `wayai bases unbind`, `wayai bases use`, or edit the scope file without explicit user instruction in the current session — widening the scope is as much a session-routing action as clearing it, and both change which hub or base the user thinks you're working on.
 
 ## Repository Structure
 
@@ -591,7 +612,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
 │   └── resources/<slug>/
 ├── bases/                               # One folder per preview base (Data surface) — `wayai pull bases/<base>`
 │   └── <base-id>/
-│       ├── base.yaml                    # Base identity; `wayai bases use <folder>` reads it
+│       ├── base.yaml                    # Base identity; `wayai use bases/<folder>` reads it
 │       ├── record-types/<id>.yaml       # One file per entity, per kind. Secrets are never written
 │       ├── relationship-types/<id>.yaml
 │       ├── inbound-webhooks/<id>.yaml

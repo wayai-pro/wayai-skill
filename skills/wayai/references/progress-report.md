@@ -58,7 +58,7 @@ Ordered steps. Later steps never block on earlier failures — **generation neve
 
 | Step | Source | Yields | On failure |
 |------|--------|--------|------------|
-| 1 | `wayai status --json` | `auth.logged_in`, `active_org.id`/`name` (for deeplinks), `cli.version`, `skill.version`, `worktree_binding.hub_id` | CLI missing/errored → take the org id from `.wayai.yaml`; if still unknown, set `hub.org_id: null` (drops every deeplink) and pipeline edges `unknown` |
+| 1 | `wayai status --json` | `auth.logged_in`, `active_org.id`/`name` (for deeplinks), `cli.version`, `skill.version`, `worktree_binding.hub_id` (the first hub of `worktree_scope.hubs`, or null — read `worktree_scope` itself when the checkout is scoped to several) | CLI missing/errored → take the org id from `.wayai.yaml`; if still unknown, set `hub.org_id: null` (drops every deeplink) and pipeline edges `unknown` |
 | 2 | Read `hub.yaml`, `agents/*.yaml`, `agents/*.md`, `evals/`, `journeys/`, `resources/` | Hub identity fields, all local readiness rules, config counts, and the **per-agent scope facts** — tool count (`tools.*` entries) and eval count (scenarios/journeys whose `agent:` names each agent) | Malformed YAML → mark the affected checks `unknown`, mention it in `narrative.summary` |
 | 3 | Read the hub's `AGENTS.md` | `## Build plan` section (goal, items), `## Agent scope` per-agent responsibilities, decisions, next steps | Missing or still the seed placeholder → `plan.source: "none"`, `scope.*` responsibilities `null`; narrative from session knowledge or minimal |
 | 4 | `wayai diff` | `pipeline.local_to_preview` | Command fails / not logged in → `unknown`; no `hub_id` in hub.yaml → `not_created` |
@@ -318,7 +318,7 @@ The template is copied **mechanically**, not retyped — a shell extraction is b
 |------|-----------|----------|
 | Never-pushed hub | no `hub_id` in `hub.yaml` | Generate anyway — a valid pre-creation snapshot: pipeline `not_created`/`not_published`, `platform.hub_created` fail, all deeplinks omitted |
 | Production mirror folder | bare-slug folder, `hub_environment: production`, read-only marker | **Refuse** to generate there; point at the preview folder |
-| Multi-hub workspace | binding / `--hub` target | One report per hub folder; act on the bound/targeted hub; ambiguous → ask, never fan out unprompted |
+| Multi-hub workspace | worktree scope / `--hub` target | One report per hub folder; act on the scoped/targeted hub — a scope holding several hubs is ambiguous, same as none; ambiguous → ask, never fan out unprompted |
 | Not logged in / CLI missing | `wayai status --json` fails | Generate a partial report (edges `unknown`); tell the user why it's partial |
 | No `AGENTS.md` / no `## Build plan` | file read | `plan.source: "none"` → report shows "No build plan recorded"; offer once to create the plan |
 | Island corruption | a raw `<`-initiated HTML sequence in authored text | Prevented by escaping every `<` as `\u003c` (step 1) and caught by the self-check tag count. A raw `<!--`+`<script` pair would blank the page (parser swallows the renderer) — which is exactly what the self-check exists to stop before you ship |
