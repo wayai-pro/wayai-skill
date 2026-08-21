@@ -175,6 +175,104 @@ missing reference is rejected with an actionable error instead of landing as sil
   reference rejects the whole batch). That ordering helps `external_id`/data keys only.
 - Use foreign keys for **reference data** (patients, plans, products), not high-volume event logs.
 
+### Field constraints
+
+The schema's own keywords are enforced on every write — they are not documentation. Reach for these
+before anything more elaborate:
+
+```jsonc
+"status":  { "type": "string", "enum": ["draft", "sent", "paid"] },
+"email":   { "type": "string", "format": "email" },
+"cpf":     { "type": "string", "pattern": "^\\d{11}$" },
+"title":   { "type": "string", "minLength": 1, "maxLength": 200 },
+"quantity":{ "type": "integer", "minimum": 1 }
+```
+
+`enum`, `pattern`, `minLength`/`maxLength`, `minimum`/`maximum`, and asserted `format` (`email`,
+`uri`, `uuid`, `date`, `date-time`, …) all reject a bad value at write time with an error naming the
+field. `required` at the schema root is what makes a field mandatory.
+
+One bound worth knowing: **`pattern` is only evaluated on values up to 1024 characters.** A longer
+value skips *that* assertion and is written — every other constraint on it still applies. Patterns
+guard short identifier-shaped fields in practice, and the alternative (rejecting long values) would
+start failing writes on data that was legal when it was stored. Don't use `pattern` as a length cap;
+use `maxLength`, which has no such bound.
+
+Keep patterns simple. Nested quantifiers over overlapping alternatives — `^(a+)+$`, `^(\w+\s?)*$`
+and their shape — can take exponentially long to reject a near-miss value, and that time is charged
+to your base's writes. Prefer a flat character-class pattern and move anything more involved into a
+custom field rule below, which runs under a compute budget.
+
+### Custom field rules (`x-validate`)
+
+When a rule can't be written as a constraint keyword — a check digit, a comparison between two
+fields, a value that must never change once set — declare it as `x-validate` on the field it belongs
+to:
+
+```jsonc
+"end_date": {
+  "type": "string", "format": "date",
+  "x-validate": {
+    "code": "({ value, data }) => value >= data.start_date ? { valid: true } : { valid: false, message: 'end_date must be on or after start_date' }"
+  }
+}
+```
+
+The `code` is a JavaScript **function expression** returning `{ valid, message? }`:
+
+| Argument   | What it is |
+|------------|------------|
+| `value`    | This field's value. `undefined` when the field is absent (use `required` to make it mandatory). |
+| `data`     | The whole record as it will be stored — after a partial update is merged. Cross-field rules read this. |
+| `previous` | The record's data before this write; `null` when creating. Immutable-once-set rules read this. |
+
+```jsonc
+// check digit — the case `pattern` cannot express
+"cpf": {
+  "type": "string", "pattern": "^\\d{11}$",
+  "x-validate": { "code": "({ value }) => { const d = String(value).replace(/\\D/g, ''); const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += Number(d[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; }; return d.length === 11 && !/^(\\d)\\1{10}$/.test(d) && dv(9) === Number(d[9]) && dv(10) === Number(d[10]) ? { valid: true } : { valid: false, message: 'cpf check digits are invalid' }; }" }
+}
+
+// conditional requirement
+"cnpj": { "type": "string", "x-validate": { "code": "({ value, data }) => data.person_type !== 'company' || value ? { valid: true } : { valid: false, message: 'cnpj is required when person_type is company' }" } }
+
+// immutable once set
+"invoice_number": { "type": "string", "x-validate": { "code": "({ value, previous }) => !previous || previous.invoice_number === undefined || previous.invoice_number === value ? { valid: true } : { valid: false, message: 'invoice_number cannot be changed once issued' }" } }
+```
+
+Rules of the road:
+
+- **Your `message` is the error the caller sees**, so write it as an instruction: say what is wrong
+  and what a correct value looks like. That string is how an agent corrects itself on the retry.
+- **Return `{ valid: true }` explicitly.** Anything else — throwing, returning nothing, returning a
+  non-object — rejects the write. The rule fails closed on purpose: a validator that quietly stops
+  asserting is worse than one you never wrote.
+- **Keep it a pure function of its three inputs.** It runs in a secure sandbox with no network, no
+  storage, and no access to other records — and with strict time and memory budgets. A rule that runs
+  long or allocates heavily is stopped and the write is rejected, naming the field and the budget.
+  Cross-record checks belong in `x-fk`; anything needing a lookup or a call out belongs in a trigger.
+- **Determinism matters.** Every write re-runs every rule, and promoting a config replays the new
+  rules against a sample of existing production records. A rule whose answer changes over time — one
+  comparing a stored date against "today", say — will eventually block a promotion or start failing
+  writes on records nobody touched. Compare fields to each other, not to the clock.
+- Declare rules on **root-level fields only** — a nested declaration is rejected at config write —
+  at most 16 per record type, each up to 32 KB of code. Note that 16 is a cap on how many rules a
+  type may declare, not a compute allowance: a record write also has a **combined** budget across all
+  of its rules, so 16 individually-expensive rules can still be rejected together. Ordinary rules
+  cost a tiny fraction of it.
+- The code is parsed when you write the config, so a syntax error is rejected at
+  `record-types upsert` rather than on the first record write.
+- Rules run on **every** write — create, full upsert, partial update, batch, bulk import, seed
+  fixtures, and writes made by triggers. One request's rules share a single compute budget, including
+  the writes its triggers cascade into; if a large batch is rejected for exceeding it, send fewer
+  operations per request.
+- A **seed fixture** restore is the one exception to `previous`: it is putting a record *back*, so
+  rules see `previous` as `null`. Value and cross-field rules still apply; an immutable-once-set rule
+  does not block a `seed reset`.
+- A record type backed by **external sources** is validated by the upstream system, so `x-validate`
+  (like the rest of the schema) does not run against writes that go there.
+- Relationship types accept the same declarations in their `data_schema`, with the same contract.
+
 ## Relationship types
 
 A relationship type defines a `rel_type` — its **id is the type**, and there is no separate name.
