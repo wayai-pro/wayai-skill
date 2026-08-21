@@ -16,8 +16,9 @@ entity, so changes review cleanly in a pull request.
 
 ```
 wayai-ws/
-├── wayai.yaml                        # OPTIONAL repo defaults — declare AT MOST ONE of
-│                                     #   default_hub: / default_base:
+├── wayai.yaml                        # Workspace manifest: the repo's organization_id:,
+│                                     #   plus OPTIONAL repo defaults — declare AT MOST
+│                                     #   ONE of default_hub: / default_base:
 ├── hubs/<hub>/                       # hub config-as-code (a different subtree, a different verb set)
 └── bases/
     └── <base-id>/

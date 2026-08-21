@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.73.0
+version: 6.74.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -396,7 +396,8 @@ The user's entry point is `wayai.pro/docs/get-started`, which routes the agent t
 | 2 | `auth.logged_in: false` | Agent runs `wayai login` (opens browser). User handoff: "Open the page that just opened. Sign in or sign up. Tell me when done." |
 | 3 | `auth.logged_in: true`, `orgs: []` | Ask once: "What should we name your organization? (usually your company name)". Then agent runs `wayai org create "<name>"` and re-runs `status --json` to pick up the new org. (Manual fallback only if the CLI create errors: open `https://app.wayai.pro/settings/organizations/new`.) |
 | 3b | `git rev-parse --show-toplevel` fails (cwd is not in a git repo) | The CLI requires git for workspace detection. **Before acting, surface the resolved cwd and confirm with the user** — handoff: "I'll initialize a git repo at `<cwd>`. Confirm or pick a different folder." This prevents accidentally initializing a repo in `~` or another unintended directory. After confirmation, agent runs `git init` in cwd. Then checks `git config --global user.name` and `git config --global user.email`; if either is empty, asks the user once for their name and email and runs `git config --global user.name "<name>"` / `git config --global user.email "<email>"`. A GitHub remote is not required for the onboarding flow — only set one up later if the user wants the GitOps/CI loop. |
-| 4 | `workspace.scoped: false` | Agent runs `wayai init --org <active_org.id>`. |
+| 4 | `workspace.scoped: false` and `repo_scope_blocker: null` | Agent runs `wayai init --org <active_org.id>` — writes the org binding into `wayai-ws/wayai.yaml`, the repo's one committed workspace manifest. |
+| 4b | `workspace.scoped: false` and `repo_scope_blocker` is set | **Do NOT run `wayai init`** — it rewrites `wayai-ws/wayai.yaml` and cannot fix a repo whose two config files disagree. For `kind: "conflict"`, tell the user both organization ids and ask which one this repo belongs to, then delete or correct the root `.wayai.yaml`. For `kind: "invalid"`, show the named file and its `detail` and ask the user to fix it. Re-run `status --json` afterwards. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
 | 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
 | 7 | Hub needs an OAuth connection (WhatsApp / Instagram / MCP OAuth) | Apply the **OAuth connection handoff** (Connections & Credentials → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
@@ -475,8 +476,8 @@ wayai org push          # Org-as-code: apply local org resources to the platform
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret). Works on preview + production (the sanctioned production-credential write)
-wayai init              # Set up .wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
-wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/
+wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
+wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/, and copy a root .wayai.yaml org binding into wayai-ws/wayai.yaml (the root file is KEPT — older CLIs still need it)
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back). Auto-creates a lone new folder; a multi-hub workspace needs --hub or `wayai create`
 # `pull`/`push` are ONE verb each, routing by workspace subtree: `hubs/<hub>` (above) or `bases/<base>` (the Data surface).
@@ -594,7 +595,10 @@ If `push`/`pull` errors with a scope refusal, **stop and ask the user before doi
 ## Repository Structure
 
 ```
-.wayai.yaml                              # Repo config — organization scope (init-only)
+.wayai.yaml                              # DEPRECATED org binding — read as a fallback, never written.
+                                         #   `wayai migrate` copies it into wayai-ws/wayai.yaml and
+                                         #   KEEPS it (older CLIs still require it). Delete it only
+                                         #   once every environment running this repo is current.
 AGENTS.md                                # Session bootstrap — seeded by the CLI (init/pull/push), reconciled against references/agents-md-template.md; yours to edit
 CLAUDE.md                                # Root Claude Code shim — `@AGENTS.md` (seeded if absent, NOT overwritten)
 .claude/skills/wayai/                    # Claude Code skill install (provisioned by `npx skills add wayai-pro/wayai-skill -y`)
@@ -603,10 +607,15 @@ CLAUDE.md                                # Root Claude Code shim — `@AGENTS.md
 .opencode/skills/wayai/                  # OpenCode skill install (same provisioner; same SKILL.md + references/ layout)
 .agents/skills/wayai/                    # Neutral skill install (same provisioner; same SKILL.md + references/ layout)
 wayai-ws/                                # All WayAI config-as-code (init creates wayai-ws/hubs/)
-├── wayai.yaml                           # OPTIONAL repo defaults — `default_hub:` / `default_base:`
-│                                        #   Which subtree a bare `wayai pull`/`push` targets. Declare
-│                                        #   AT MOST ONE: declaring both is a mixed invocation and is
-│                                        #   refused. Not created by any command — write it yourself.
+├── wayai.yaml                           # Workspace manifest — the repo's ONE committed config file
+│                                        #   `organization_id:` / `organization_name:` — which org this
+│                                        #   repo is scoped to. Written by `wayai init`; required.
+│                                        #   `default_hub:` / `default_base:` — OPTIONAL, which subtree a
+│                                        #   bare `wayai pull`/`push` targets. Declare AT MOST ONE:
+│                                        #   declaring both is a mixed invocation and is refused.
+│                                        #   Write these two by hand — no command creates them.
+│                                        #   `wayai init` keeps their VALUES when it rewrites the file,
+│                                        #   but YAML comments in it are not preserved.
 ├── org/                                 # Org-as-code — shared resources (wayai org pull/push)
 │   ├── resources.yaml
 │   └── resources/<slug>/
