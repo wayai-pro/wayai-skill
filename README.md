@@ -1,6 +1,6 @@
 # wayai-skill
 
-The official WayAI skill for filesystem-having AI agents. Drives the canonical onboarding flow at [wayai.pro/docs/get-started](https://wayai.pro/docs/get-started).
+The official WayAI skill for filesystem-having AI agents. Drives the canonical onboarding flow at [wayai.pro](https://wayai.pro/).
 
 ---
 

@@ -127,10 +127,8 @@ Public, locale-prefixed (`/`, `/en`, `/pt`, `/es`). Default locale (`en`) render
 
 | Path | Purpose |
 |------|---------|
-| `/` | Marketing home |
+| `/` | Marketing home, and the onboarding entry point — its `#start` section carries the install command and the example prompt, then SKILL.md drives state 1+ |
 | `/pricing` | Plans + pricing |
-| `/docs` | Docs index |
-| `/docs/get-started` | Onboarding entry point — picks install command per harness, then SKILL.md drives state 1+ |
 | `/privacy` | Privacy policy |
 | `/terms` | Terms of service |
 

@@ -41,7 +41,7 @@ WayAI is the layer that talks to people across channels, plus the data layer
 2. Load the WayAI skill at the start of every session — every time, even for a
    quick task. It holds the real instructions for everything else.
 
-More detail if you need it: https://www.wayai.pro/docs/get-started
+More detail if you need it: https://wayai.pro
 
 ## When helping the person you are working with
 

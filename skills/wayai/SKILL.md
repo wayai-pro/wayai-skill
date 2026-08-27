@@ -373,7 +373,7 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 
 ## First-time setup (cold start)
 
-The user's entry point is `wayai.pro/docs/get-started`, which routes the agent to the install command for its harness. Once the skill loads (here), this section drives everything from "skill loaded" to "hub responding to test messages." The agent must self-bootstrap from this section alone — returning users (second hub, new project) skip the page.
+The user's entry point is `wayai.pro`, whose onboarding section carries the install command and the example prompt. Once the skill loads (here), this section drives everything from "skill loaded" to "hub responding to test messages." The agent must self-bootstrap from this section alone — returning users (second hub, new project) skip the page.
 
 **Always start by running `wayai status --json`.** It returns a single state snapshot. Branch from the result; re-run between steps to confirm progress before moving on (idempotent).
 
