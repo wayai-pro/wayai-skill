@@ -4,26 +4,15 @@ The official WayAI skill for filesystem-having AI agents. Drives the canonical o
 
 ---
 
-## 1. Install the WayAI skill
+## Copy one prompt into your AI
 
-One command, works across Claude Code, Codex, Cursor, OpenCode, Cline, GitHub Copilot, and 48 more.
-
-```
-mkdir -p .claude && npx skills add wayai-pro/wayai-skill -y
-```
-
-Installs the skill for whichever AI agent you have set up on this machine. The `mkdir -p .claude` lets Claude Code pick up the skill (harmless on other agents); the `-y` skips prompts so it runs unattended. If your agent is already running, ask it to run the command — it will pick up the skill on its next turn.
-
-## 2. Tell your agent what you want
-
-After install, just ask. The skill walks you through CLI install, login, organization, credentials, OAuth, and your first hub.
+Both lines, into Claude Code, Codex, Cursor, OpenCode, Cline, GitHub Copilot, or any of 48 more. The first line says what you want; the second installs this skill, which handles the rest — CLI install, login, organization, credentials, OAuth, and your first hub.
 
 ```
-Set up a WayAI hub for customer support over WhatsApp.
+Set up a WayAI agent for customer support over WhatsApp.
+Install the skill first: mkdir -p .claude && npx skills add wayai-pro/wayai-skill -y
 ```
 
-## 3. Don't have an account yet?
+`mkdir -p .claude` lets Claude Code pick up the skill (harmless on other agents); `-y` skips prompts so it runs unattended. If your agent is already running, ask it to run the install command — it will pick up the skill on its next turn.
 
-Free plan includes 3,000 operations per month. No credit card required.
-
-[Create a free account](https://app.wayai.pro/login)
+No account yet? The free plan includes 3,000 operations per month, no credit card required — the skill walks you through signup, or [create one first](https://app.wayai.pro/login).
