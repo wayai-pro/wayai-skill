@@ -1,57 +1,19 @@
-# `AGENTS.md` templates
+# `AGENTS.md` memory files
 
-The WayAI CLI seeds two kinds of agent-context file, each **absence-guarded** — a
-file you already have is never overwritten:
+A workspace folder's `AGENTS.md` is **memory** — the context its config files
+can't capture. Two of them, same shape, different owner:
 
-- **Repo-root `AGENTS.md`** (+ a one-line `CLAUDE.md` that imports it) — a session
-  *bootstrap*, seeded on `wayai init` / `wayai pull` / `wayai push`. Canonical
-  content in the block below.
-- **Per-hub `wayai-ws/hubs/<hub>/AGENTS.md`** (+ `CLAUDE.md`) — hub-specific
-  *memory*, seeded as a scaffold on pull/push. See
+- **Per-hub `wayai-ws/hubs/<hub>/AGENTS.md`** (+ a one-line `CLAUDE.md` that
+  imports it) — seeded as a scaffold on `wayai pull` / `wayai push`, and
+  **absence-guarded**: a file you already have is never overwritten. See
   [Hub-Folder Memory](../SKILL.md#hub-folder-memory) for what belongs in it.
+- **Per-base `wayai-ws/bases/<base>/AGENTS.md`** — the same pattern, yours to
+  create. See [Base folders](#base-folders) below.
 
-A third file follows the same pattern but is **yours to create**: a base folder's
-`AGENTS.md`. See [Base folders](#base-folders) below.
-
-## Keep the root file fresh
-
-The block below is the source of truth for the repo-root `AGENTS.md`. **At the
-start of a session, if the repo-root `AGENTS.md` is missing or has drifted from
-this block, (re)write it to match.** The CLI seed is a bootstrap, not a frozen
-artifact — this reconcile step is what stops it going stale (the failure mode
-that got the original auto-write removed).
-
-One skill and one CLI cover everything — hubs, agents, channels **and** bases.
-An older repo may still carry a root `AGENTS.md` that installs a second skill and
-tells you to load both every session; that is the drift this reconcile removes.
-Base work loads [`references/bases/`](bases/README.md) on demand instead.
-
-<!-- BEGIN root-agents-md — drift-guarded byte-for-byte against ROOT_AGENTS_MD in apps/cli/src/lib/workspace-files.ts -->
-```text
-# Working with WayAI
-
-WayAI is the layer that talks to people across channels, plus the data layer
-(Bases) behind it. One CLI, one skill, one login.
-
-## At the start of every session
-
-1. Check for updates first, and update whatever is not current:
-   - Skill: `wayai status` → if newer, `mkdir -p .claude && npx skills add wayai-pro/wayai-skill -y`
-   - CLI: `wayai update`
-2. Load the WayAI skill at the start of every session — every time, even for a
-   quick task. It holds the real instructions for everything else.
-
-More detail if you need it: https://wayai.pro
-
-## When helping the person you are working with
-
-- They may be new to WayAI — use plain language, not jargon.
-- Don't explain things they didn't ask about. Only if they seem stuck or ask
-  what something means, give a one-line answer, then move on — don't turn
-  replies into tutorials.
-- Keep answers short and to the point.
-```
-<!-- END root-agents-md -->
+Neither is ever synced to the platform. A **repo-root** `AGENTS.md` is a
+different thing and is not part of this pattern — if one is present it is an
+older CLI's bootstrap; see
+[Retiring the old root `AGENTS.md`](../SKILL.md#retiring-the-old-root-agentsmd).
 
 ## Base folders
 

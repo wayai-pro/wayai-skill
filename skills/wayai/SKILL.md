@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.75.0
+version: 6.76.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -29,6 +29,8 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 
 ## Agent Guidelines
 
+- **At the start of every session, before anything else, get current** — every time, even for a quick task: update the CLI, then check whether this skill is stale and refresh it if so. A stale CLI or skill is the most common cause of a step below not working. Run the procedure as written in [Workflow → Existing hub](#existing-hub) steps 1–2 (cold start: [State machine](#state-machine) rows 1–1c), and take the skill-install command from row 1b rather than retyping it — its `mkdir -p .claude` prefix is load-bearing for Claude Code, and row 1c carries what to do when the install fails
+- **Talk like a person, not a manual:** the user may be new to WayAI — plain language, no jargon. Keep answers short and to the point; don't explain what they didn't ask about. If they seem stuck or ask what something means, give a one-line answer and move on — don't turn a reply into a tutorial
 - **Interface:** if you have filesystem/shell access (code-harness agents — Claude Code, Codex, Cursor, OpenCode), drive WayAI through the **`wayai` CLI and workspace files**, and do not call any `mcp__wayai__*` tools that may also be in your toolset. If you do **not** have filesystem/shell access (app-harness agents — Claude Desktop, etc.), use the `mcp__wayai__*` tools — they are your interaction surface for everything below
 - Only provide information from this skill, tool descriptions, or reference documentation
 - Do not invent URLs, paths, or steps
@@ -284,7 +286,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
 - **Connecting a hub:** today via an ordinary MCP Server connection pointed at a toolset, or as an eval `target_base:`. Hub-local `resources/` files are a *different* surface and stay hub-local
 
-**Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from. Before the first base task in a repo, also reconcile the repo-root `AGENTS.md` against [`references/agents-md-template.md`](references/agents-md-template.md) (step 4 of the existing-hub workflow does this too) — an older repo's copy bootstraps a second skill that no longer exists.
+**Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
 
 ## Evals
 
@@ -426,7 +428,7 @@ The user's entry point is `wayai.pro`, whose onboarding section carries the inst
 1. **Update CLI** — `wayai update` (always run before any operation; if the CLI isn't installed yet, bootstrap with `npm i -g @wayai/cli@latest`)
 2. **Update skill if stale** — run `wayai status --json`; if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue. (Cold-start onboarding runs the same check as state-machine row 1c.)
 3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
-4. **Read context** — first ensure the repo-root `AGENTS.md` matches [`references/agents-md-template.md`](references/agents-md-template.md) (write it if missing or drifted — it's the session bootstrap the CLI seeds), then read `wayai-ws/hubs/<hub>/AGENTS.md` for this hub's notes (purpose, decisions, ongoing work). AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load `AGENTS.md` natively
+4. **Read context** — read `wayai-ws/hubs/<hub>/AGENTS.md` for this hub's notes (purpose, decisions, ongoing work); if you're also working a base, read `wayai-ws/bases/<base>/AGENTS.md` too. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load `AGENTS.md` natively. **Retire an obsolete root bootstrap while you're here** — see [Retiring the old root `AGENTS.md`](#retiring-the-old-root-agentsmd)
 5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
 6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
 7. **Test** — `wayai send-message "Hello"`
@@ -458,6 +460,28 @@ After the hub exists, follow the existing-hub workflow.
 - Examples: `references/business-rules.md`, `references/integrations.md`, `references/glossary.md`, `references/<api-name>-spec.md`, `references/<persona>-tone.md`
 - Keep `AGENTS.md` as the always-on entry point with a short pointer to each reference file: e.g., "Detailed pricing rules: `references/pricing-rules.md`"
 - Hub-folder `references/` are **not synced** to the platform — they're for agent context only, just like `AGENTS.md`
+
+### Retiring the old root `AGENTS.md`
+
+Older CLIs seeded a **repo-root** `AGENTS.md` (plus a `CLAUDE.md` holding `@AGENTS.md`) as a session bootstrap: get current, then load this skill. Nothing writes or refreshes it any more, so what it says is frozen at whatever release seeded it while the real procedure keeps moving — a copy that still names an install command or a startup step this skill has since changed will quietly send you down the wrong one. Its content is also entirely redundant now: everything in it is stated here. Retire it the first time you work in a repo that still has one — this is about the **repo root** only; hub- and base-folder `AGENTS.md` are memory and stay.
+
+Identify it: the seeded file is titled `# Working with WayAI`, and its whole body is a "check for updates, then load the WayAI skill" bootstrap plus a few lines on talking to the user — no project-specific content. (A copy from an older release may instead describe **two** skills to install and load; the WayAI and Data surfaces merged into this one skill, so that one is doubly out of date.) Then:
+
+**First, check whether that file is how you got here.** Harnesses differ, and this decides the action:
+
+- **You load skills from your own skills directory** (Claude Code → `.claude/skills/`, OpenCode → `.opencode/skills/`) → the root file is doing nothing for you. **Delete it**, and delete `CLAUDE.md` too if it is the one-line `@AGENTS.md` shim.
+- **You auto-load `AGENTS.md` instead** (Codex, Cursor, Aider) → that root file may be the only thing that pointed you at this skill, and deleting it would leave the next session with no entry point. **Keep the file and replace the stale bootstrap with a pointer**, so nothing is frozen but the hop survives:
+
+  ```text
+  # Working with WayAI
+
+  Load the WayAI skill at the start of every session, before anything else:
+  `.agents/skills/wayai/SKILL.md`. It holds the real instructions.
+  ```
+
+Either way, if the file also carries **your own notes**, keep those — replace or delete only the seeded bootstrap part. A root `AGENTS.md` that is entirely your own content was never the CLI's; leave it alone.
+
+Everything the bootstrap used to say now lives in this skill: the update discipline is in [Agent Guidelines](#agent-guidelines), the procedure in [Workflow → Existing hub](#existing-hub).
 
 ## Common CLI Commands
 
@@ -595,8 +619,11 @@ If `push`/`pull` errors with a scope refusal, **stop and ask the user before doi
                                          #   `wayai migrate` copies it into wayai-ws/wayai.yaml and
                                          #   KEEPS it (older CLIs still require it). Delete it only
                                          #   once every environment running this repo is current.
-AGENTS.md                                # Session bootstrap — seeded by the CLI (init/pull/push), reconciled against references/agents-md-template.md; yours to edit
-CLAUDE.md                                # Root Claude Code shim — `@AGENTS.md` (seeded if absent, NOT overwritten)
+AGENTS.md / CLAUDE.md                    # STALE if present — an older CLI's root bootstrap; nothing
+                                         #   writes or refreshes these now. Delete it, or (on a harness
+                                         #   that auto-loads AGENTS.md) replace its body with a pointer
+                                         #   to the skill — see "Retiring the old root AGENTS.md".
+                                         #   Hub- and base-folder AGENTS.md are memory and are unaffected.
 .claude/skills/wayai/                    # Claude Code skill install (provisioned by `npx skills add wayai-pro/wayai-skill -y`)
 ├── SKILL.md
 └── references/                          # On-demand deep-dive references (see index below)
@@ -855,4 +882,4 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
-| **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | Canonical repo-root `AGENTS.md` bootstrap (reconcile a stale copy against it at session start) + the per-hub / per-base memory pattern |
+| **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | The per-hub / per-base folder memory pattern — what belongs in an `AGENTS.md`, and which of the two the CLI seeds |
