@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.76.0
+version: 6.77.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -31,7 +31,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 
 - **At the start of every session, before anything else, get current** — every time, even for a quick task: update the CLI, then check whether this skill is stale and refresh it if so. A stale CLI or skill is the most common cause of a step below not working. Run the procedure as written in [Workflow → Existing hub](#existing-hub) steps 1–2 (cold start: [State machine](#state-machine) rows 1–1c), and take the skill-install command from row 1b rather than retyping it — its `mkdir -p .claude` prefix is load-bearing for Claude Code, and row 1c carries what to do when the install fails
 - **Talk like a person, not a manual:** the user may be new to WayAI — plain language, no jargon. Keep answers short and to the point; don't explain what they didn't ask about. If they seem stuck or ask what something means, give a one-line answer and move on — don't turn a reply into a tutorial
-- **Interface:** if you have filesystem/shell access (code-harness agents — Claude Code, Codex, Cursor, OpenCode), drive WayAI through the **`wayai` CLI and workspace files**, and do not call any `mcp__wayai__*` tools that may also be in your toolset. If you do **not** have filesystem/shell access (app-harness agents — Claude Desktop, etc.), use the `mcp__wayai__*` tools — they are your interaction surface for everything below
+- **Interface:** setup runs on the **`wayai` CLI and workspace files** — the only automation surface, and it needs filesystem/shell access (code-harness agents — Claude Code, Codex, Cursor, OpenCode). Drive everything below through it. If you do **not** have shell access (app-harness agents — Claude Desktop, ChatGPT, etc.), you cannot configure WayAI yourself — hand the work to the person, the same shape as the **OAuth connection handoff** below (one URL, one action, one return signal): "Open `https://app.wayai.pro`. Set it up there, or run this with a shell-having agent — the one-prompt install is on `https://wayai.pro`. Tell me when done." Then keep answering from this skill, and never report config you didn't make
 - Only provide information from this skill, tool descriptions, or reference documentation
 - Do not invent URLs, paths, or steps
 - Hub config flows through files + the `wayai` CLI; one-time setup (orgs, OAuth) goes through the platform UI. Publishing preview → production is now CLI-capable (`wayai publish`) or UI

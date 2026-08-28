@@ -116,8 +116,7 @@ Reached via the avatar menu (bottom of sidebar) → User Settings, or the ACCOUN
 |------|---------|
 | `/settings/account` | Default account tab (redirects to profile) |
 | `/settings/account/profile` | Name, email, avatar, theme, language |
-| `/settings/account/authorized-apps` | OAuth-authorized apps (MCP clients, third parties) |
-| `/settings/account/api-tokens` | Personal `way_` API tokens for CLI / MCP / direct API |
+| `/settings/account/api-tokens` | Personal `way_` API tokens for the `wayai` CLI and direct API calls |
 
 Legacy `/user/*` paths 308-redirect to the equivalent `/settings/account/*` URL — bookmarks and external links stay valid for one release cycle.
 
