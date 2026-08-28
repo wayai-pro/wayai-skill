@@ -350,7 +350,7 @@ flag_conditions:
     value: negative
 ```
 
-New hubs seed the two defaults above onto the evaluator agent automatically. Omit the key to leave the current value untouched; set `flag_conditions: []` to clear it. Configurable from the UI in the evaluator agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the evaluator agent.)
+New hubs seed the two defaults above onto the evaluator agent automatically. Omit the key to leave the current value untouched; set `flag_conditions: []` to clear it. Configurable from the UI in the evaluator agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the evaluator agent.)
 
 ---
 
@@ -366,7 +366,7 @@ connection: anthropic
 summarization_threshold_tokens: 120000   # lower for testing, raise for very long conversations
 ```
 
-New hubs seed the default onto the summarizer agent automatically. Omit the key to leave the current value untouched; an empty value (`summarization_threshold_tokens:`) clears it back to the 120000 default. Configurable from the UI in the summarizer agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the summarizer agent.)
+New hubs seed the default onto the summarizer agent automatically. Omit the key to leave the current value untouched; an empty value (`summarization_threshold_tokens:`) clears it back to the 120000 default. Configurable from the UI in the summarizer agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the summarizer agent.)
 
 ---
 
@@ -406,7 +406,7 @@ Ignored on background roles (`monitor`, `conversation_evaluator`, `message_evalu
 
 Rows age out with the hub's retention settings — a conversation past the hub's retention cutoff is dropped from the frozen block and erased from the stored snapshot, so the context does not outlive the window the operator configured. Pruning is best-effort per turn: if the platform retention config can't be read on a given turn it is skipped rather than guessed at (guessing short would erase rows that are still live, which nothing can undo) and retried on the next turn.
 
-Configurable from the UI in the agent's detail view (Agents tab), via the MCP `create_agent` / `update_agent` tools, and through `wayai pull` / `wayai push`.
+Configurable from the UI in the agent's detail view (Agents tab) and through `wayai pull` / `wayai push`.
 
 **Not the same as `{{previous_conversations(N)}}`.** That placeholder resolves the same rows but renders wherever you put it, re-resolving every turn. Prefer this setting; see [instructions.md](instructions.md) for the placeholder.
 
@@ -429,7 +429,7 @@ monitor_config:
       value: negative
 ```
 
-Omit the key to leave the current value untouched; set `monitor_config: null` to clear it. Configurable from the UI in the monitor agent's detail view (Agents tab) and via the MCP `update_agent` tool. (Previously a hub-level Overview setting — relocated to the monitor agent.)
+Omit the key to leave the current value untouched; set `monitor_config: null` to clear it. Configurable from the UI in the monitor agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the monitor agent.)
 
 ---
 

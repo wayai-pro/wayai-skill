@@ -8,7 +8,7 @@ Reference for WayAI analytics via the CLI: `wayai analytics` (summary), `wayai a
 - [Variable Types](#variable-types)
 - [Filter Operations](#filter-operations)
 - [Time Analysis](#time-analysis)
-- [Analytics Tools](#analytics-tools)
+- [Analytics Variables](#analytics-variables)
 - [CLI Access](#cli-access)
 - [Raw SQL & Cost Analysis](#raw-sql--cost-analysis)
 - [Common Workflows](#common-workflows)
@@ -25,10 +25,10 @@ WayAI Analytics provides insights into hub conversations and agent performance. 
 ### Quick Start
 
 ```
-1. get_analytics_variables(hub_id)    → Discover available metrics
-2. get_analytics_data(hub_id, ...)    → Query aggregated data
-3. get_conversations_list(hub_id, ...)→ Find specific conversations
-4. get_conversation_messages(...)     → View message details
+1. wayai analytics --list-metrics         → Discover available metrics
+2. wayai analytics --period 7d            → Summary block (add --metric for aggregates)
+3. wayai conversations --json             → Find specific conversations and their ids
+4. wayai conversations <id> observability → Per-turn detail for one conversation
 ```
 
 ---
@@ -193,27 +193,16 @@ With trend: [
 
 ---
 
-## Analytics Tools
-
-### get_analytics_variables
-
-Discover all available analytics variables for a hub, organized by category.
-
-```
-get_analytics_variables(hub_id)
-```
-
-**Parameters:**
-- `hub_id` (required): Hub ID to query
-
-**Returns:**
-- Variables grouped by category
-- Each variable includes: id, name, description, type, origin
-
-**Example output:**
-```
 ## Analytics Variables
 
+Every variable a hub tracks is discoverable from the CLI: `wayai analytics --list-metrics`
+names them, and `wayai analytics --metric <name>[,<name>]` aggregates them. A variable
+carries an id, name, description, type and origin, and belongs to one of the categories
+above. (`wayai analytics query` is a different surface — it takes raw ClickHouse column
+paths, as `--metric "col=data.system.tokens_total,agg=avg,alias=avg_tokens"`, never variable
+names; see [Quick Reference](#quick-reference).)
+
+```
 ### Conversation Metrics (5)
 - **message_count** (numeric)
   - ID: `cv_abc123`
@@ -224,127 +213,11 @@ get_analytics_variables(hub_id)
   - Description: Average response time in seconds
 ```
 
----
-
-### get_analytics_data
-
-Query analytics data with aggregations and optional trend analysis.
-
-```
-get_analytics_data(
-  hub_id,           # Required
-  variable_ids,     # Required: list of variable IDs
-  start_date,       # Required: YYYY-MM-DD
-  end_date,         # Required: YYYY-MM-DD
-  periodicity,      # Optional: daily|weekly|monthly|yearly (default: daily)
-  include_trend,    # Optional: true for time series data (default: false)
-  include_summary,  # Optional: true for conversation summary (default: true)
-  filters           # Optional: list of filter conditions
-)
-```
-
-**Returns:**
-- Summary statistics (total conversations, AI-only rate, response times)
-- Aggregated metrics per variable
-- Trend data if requested
-
-**Example:**
-```
-get_analytics_data(
-  hub_id="abc123",
-  variable_ids=["cv_message_count", "cv_response_time"],
-  start_date="2024-01-01",
-  end_date="2024-01-31",
-  periodicity="weekly",
-  include_trend=true
-)
-```
+Pinning a variable for quick access is a UI action (Analytics tab); it changes presentation
+only and has no CLI or config-as-code equivalent.
 
 ---
 
-### get_conversations_list
-
-List conversations in a hub with optional filtering and pagination.
-
-```
-get_conversations_list(
-  hub_id,       # Required
-  start_date,   # Optional: filter by date range
-  end_date,     # Optional
-  limit,        # Optional: max results (default: 50)
-  offset,       # Optional: pagination offset (default: 0)
-  filters       # Optional: variable filters
-)
-```
-
-**Returns:**
-- List of conversations with:
-  - conversation_id
-  - participant info
-  - message count
-  - last updated timestamp
-
-**Example:**
-```
-get_conversations_list(
-  hub_id="abc123",
-  start_date="2024-01-01",
-  end_date="2024-01-31",
-  limit=20,
-  filters=[
-    { variable_id: "cv_message_count", filter_type: "gte", filter_value: 10 }
-  ]
-)
-```
-
----
-
-### get_conversation_messages
-
-Get full message history for a specific conversation.
-
-```
-get_conversation_messages(
-  hub_id,           # Required (for access verification)
-  conversation_id,  # Required
-  limit,            # Optional: max messages (default: 100)
-  offset            # Optional: pagination (default: 0)
-)
-```
-
-**Returns:**
-- Conversation metadata
-- List of messages with:
-  - sender type (user, assistant, support)
-  - message text
-  - timestamp
-
-**Example:**
-```
-get_conversation_messages(
-  hub_id="abc123",
-  conversation_id="conv_xyz789",
-  limit=50
-)
-```
-
----
-
-### pin_analytics_variable
-
-Pin or unpin a variable for quick access in the UI.
-
-```
-pin_analytics_variable(
-  hub_id,       # Required
-  variable_id,  # Required
-  pinned        # Required: true to pin, false to unpin
-)
-```
-
-**Note:** Requires write access to the hub.
-
----
 
 ## CLI Access
 
@@ -448,23 +321,29 @@ wayai analytics sql "SELECT toString(c.data.meta.kanban_status) AS status, sum(t
 ```
 User: "How did our support hub perform yesterday?"
 
-1. get_analytics_variables(hub_id) → Find relevant variables
-2. get_analytics_data(hub_id, variables, yesterday, today, include_summary=true)
-   → Get summary stats and key metrics
+wayai analytics --period 24h
+  → summary stats only: conversations, AI-only rate, response times
+
+wayai analytics --period 24h --metric first_response_time,tokens_total
+  → the same summary plus a per-metric aggregate block
 ```
+
+A bare invocation selects no variables, so only the Summary block prints — pass `--metric`
+(names from `--list-metrics`) to get aggregates. `--period` takes `<n><h|d|w|m|y>` (`24h`,
+`7d`, `4w`, `3m`, `1y`); for an explicit window use `--from`/`--to` instead.
 
 ### Workflow 2: Investigate Response Times
 
 ```
 User: "Which conversations had slow response times last week?"
 
-1. get_analytics_variables(hub_id) → Find response_time variable ID
-2. get_conversations_list(hub_id, last_week, today, filters=[
-     { variable_id: "response_time", filter_type: "gt", filter_value: 300 }
-   ])
-   → List conversations with >5min response time
-3. get_conversation_messages(hub_id, conversation_id)
-   → Review specific slow conversations
+1. wayai analytics --period 7d --metric first_response_time \
+     --filter "first_response_time gt 300"
+     → the slow slice (filters are "<name> <op> <value>", AND'd by repeating --filter)
+2. wayai conversations --json
+     → find the conversation ids in that slice
+3. wayai conversations <id> observability
+     → per-turn latency, prompt, tool calls for one slow conversation
 ```
 
 ### Workflow 3: Trend Analysis
@@ -472,11 +351,21 @@ User: "Which conversations had slow response times last week?"
 ```
 User: "Show me how escalation rates changed over the last 3 months"
 
-1. get_analytics_variables(hub_id) → Find escalation_rate variable
-2. get_analytics_data(hub_id, [escalation_rate_id],
-     start_date="2024-01-01", end_date="2024-03-31",
-     periodicity="weekly", include_trend=true)
-   → Get weekly trend data
+wayai analytics --metric escalation_rate --from 2024-01-01 --to 2024-03-31
+  → the aggregate over the window
+
+# Correlate it against another column — `query` takes raw column paths, not metric
+# names, and `agg=corr` requires `corr_with`:
+wayai analytics query \
+  --metric "col=data.variables.escalation_rate,agg=corr,corr_with=data.system.avg_agent_response_time,alias=esc_resp" \
+  --from 2024-01-01 --to 2024-03-31
+
+# To GROUP BY a `data.*` path, use sql — it is the surface that lets you apply the
+# required cast (see Raw SQL & Cost Analysis). Bound the window yourself: the server's
+# rewrite scopes the hub, not the time range (see Raw SQL & Cost Analysis). Rule 6's
+# "bound message.created_at, and only that one" is about the message table in a join —
+# this is a conversation-only query, so the bound belongs here:
+wayai analytics sql "SELECT toString(data.meta.kanban_status), avg(toFloat64OrNull(toString(data.variables.escalation_rate))) FROM conversation WHERE created_at >= '2024-01-01' AND created_at < '2024-04-01' GROUP BY 1"
 ```
 
 ### Workflow 4: Find High-Value Conversations
@@ -484,23 +373,27 @@ User: "Show me how escalation rates changed over the last 3 months"
 ```
 User: "Show me conversations with positive feedback"
 
-1. get_analytics_variables(hub_id) → Find satisfaction/feedback variables
-2. get_conversations_list(hub_id, filters=[
-     { variable_id: "sentiment", filter_type: "is", filter_value: "positive" }
-   ])
-   → List conversations with positive sentiment
-3. get_conversation_messages(hub_id, conversation_id)
-   → Learn from successful interactions
+1. wayai analytics --filter "user_sentiment is positive"
+     → the positive slice and its size
+2. wayai conversations <id> observability
+     → read what the agent actually received on a successful interaction
 ```
+
+For cost and per-message spend, and for anything these fixed shapes cannot express, drop to
+`wayai analytics sql` — see [Raw SQL & Cost Analysis](#raw-sql--cost-analysis).
 
 ---
 
 ## Quick Reference
 
-| Tool | Purpose |
-|------|---------|
-| `get_analytics_variables` | Discover available metrics |
-| `get_analytics_data` | Query aggregated analytics |
-| `get_conversations_list` | List/filter conversations |
-| `get_conversation_messages` | View message history |
-| `pin_analytics_variable` | Pin variables for quick access |
+| Command | Purpose |
+|---------|---------|
+| `wayai analytics` | Summary block; add `--metric` (names from `--list-metrics`) for per-metric aggregates. Also `--filter`, `--period`/`--from`/`--to` |
+| `wayai analytics query` | Structured query over raw column paths: `--metric "col=…,agg=…"`, `--order-by`, correlations. `--group-by` on a `data.*` path is rejected uncast — group with `analytics sql` instead |
+| `wayai analytics sql` | Raw single-SELECT over `conversation` and `message` — the cost surface |
+| `wayai analytics sql --schema` | Both table catalogs + the message-grain casting rules |
+| `wayai conversations` | List/inspect conversations (`--json` to get ids) |
+| `wayai conversations <id> observability` | Per-turn record: prompt, completion, tool calls, tokens |
+| `wayai conversations <id> annotate` | Record a post-hoc business outcome as a dimension |
+
+Flags and full syntax live in SKILL.md → Common CLI Commands.

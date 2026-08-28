@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.77.0
+version: 6.78.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -125,7 +125,7 @@ A **conversation** is the runtime session between an end user and the hub (confi
 - `conversation_status`: `agent` (AI handles it) | `team` (human team handles it) | `ended` (closed + archived)
 - Status selects the active agent **track**: status `agent` → **Pilot** track replies to the end user through the channel; status `team` (with `copilot`/`pilot+copilot` mode) → **Copilot** track drafts suggestions the team sees in `/support`
 - Track switches: the `transfer_to_team` tool (agent → team) or a team handback in the support UI (team → agent). `transfer_to_agent`/`consult_agent` move between agents *within* a track
-- Close paths: the agent's `close_conversation` tool, transitioning into an `isTerminalStatus` kanban status (any surface — agent tool, team drag-drop, REST/MCP), the team UI, or the hub's `auto_close_inactive_days`. Ended conversations are archived and listed in the Ended tab; within `conversation_retention_days` they still accept post-hoc `wayai conversations <id> annotate`
+- Close paths: the agent's `close_conversation` tool, transitioning into an `isTerminalStatus` kanban status (any surface — agent or harness tool, team drag-drop, REST), the team UI, or the hub's `auto_close_inactive_days`. Ended conversations are archived and listed in the Ended tab; within `conversation_retention_days` they still accept post-hoc `wayai conversations <id> annotate`
 - An agent's reply text is delivered automatically — **there is no send-message tool**; tools exist for actions beyond replying
 
 Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom slugs like `qualified`), not who is responding.
