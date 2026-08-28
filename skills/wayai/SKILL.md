@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.78.0
+version: 6.79.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -336,7 +336,6 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 - **Hub Team User** — support team member handling conversations in `/support`; grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
-- **MCP access** — whether external MCP clients reach the hub's tools: `mcp_access` (see Hub Settings; UI-only)
 
 ## Hub Environments
 
@@ -371,7 +370,6 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 | `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` before cleanup (archival still happens at close) |
 | `ended_index_retention_days` | `1`–`730` | `365` | Days an ended conversation stays listed in the hub index. Bounds the Ended tab and how far back `{{previous_conversations(N)}}` reaches |
 | `eval_retention_days` | `0`–`3650`, or `null` | platform default (90) | Days a finished eval session (its runs, results and eval conversations) is kept before retirement. `0` keeps sessions forever. **Omitting the field leaves the current value unchanged** — write `eval_retention_days: null` to clear an override and go back to the platform default. Retirement deletes transcripts permanently — eval scores in Analytics survive |
-| `mcp_access` | `disabled`, `read_only`, `read_write` | `read_only` | Whether external MCP clients can reach this hub's tools. **UI only** (Hub → Users tab) — not settable via `hub.yaml`; `read_write` downgrades to `read_only` when published to production |
 
 ## First-time setup (cold start)
 
