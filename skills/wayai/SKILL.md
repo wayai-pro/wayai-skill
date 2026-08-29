@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.79.3
+version: 6.80.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -517,6 +517,8 @@ wayai send-message      # Test message to a hub (preview or production). -c <id>
                         # `-f, --file <path>` attaches a file (repeatable, max 20, ~7 MB/request) delivered exactly as a real channel does — this is how image/document behaviour gets exercised in the dev loop. Message text is optional when a file is attached (an attachment-only send mirrors a photo with no caption). Images reach the model as a signed URL, not base64
 wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` 401 here instead of forcing a guess from code. --hub <uuid|name>, --json
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
+                        # `--status <agent|team|ended>` combines with `--period 7d` / `--from` / `--to`, which bound LAST ACTIVITY: `--status team --to <date>` is the idle human-queue check ("waiting on a person, nothing since <date>"). Without `--status` AND without `--org`/`--all`, a bare `--period`/`--from`/`--to` reads the analytics history instead, which bounds conversation START and covers ended conversations only
+                        # `--org <organization_id>` / `--all` list across the hubs `wayai list` enumerates plus the production hubs those name as parents — one command instead of a loop. These always read the live listing (open + ended, windowed on LAST ACTIVITY), with or without `--status`. A production PARENT you cannot read is named as skipped and does not fail the run. A production hub whose PREVIEW you cannot see is not enumerable anywhere, so it is NOT covered and NOT reported at all — reach it with `--hub <id>`. `--limit`/`--offset` are per hub; a hub in scope that refuses is named and the command exits non-zero rather than reporting a smaller queue, and an empty scope is reported as such, never as an empty queue
                         # `wayai conversations <id> observability` — list LLM turns with message_id, latency, tool_calls (assistant turns only)
                         # `wayai conversations <id> observability --message-id <id>` — full record for one turn (prompt, completion, tool calls, tokens; --json for raw)
                         # `wayai conversations <id> annotate --set key=value [--type numeric|categorical|text]` — set a post-hoc business outcome (e.g. customer_purchased=true) on an ended conversation as an analytics dimension; repeat --set for multiple keys (needs the hub within its conversation_retention_days window)
