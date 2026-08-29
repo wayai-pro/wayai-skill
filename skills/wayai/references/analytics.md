@@ -360,11 +360,21 @@ wayai analytics query \
   --metric "col=data.variables.escalation_rate,agg=corr,corr_with=data.system.avg_agent_response_time,alias=esc_resp" \
   --from 2024-01-01 --to 2024-03-31
 
-# To GROUP BY a `data.*` path, use sql — it is the surface that lets you apply the
-# required cast (see Raw SQL & Cost Analysis). Bound the window yourself: the server's
-# rewrite scopes the hub, not the time range (see Raw SQL & Cost Analysis). Rule 6's
-# "bound message.created_at, and only that one" is about the message table in a join —
-# this is a conversation-only query, so the bound belongs here:
+# Break it down by a `data.*` path — `--group-by` casts the grouping key for you, so
+# pass the bare path. The grouped column comes back under the underscored form of that
+# path (`data_meta_kanban_status`), and `--order-by` takes either a metric alias or a
+# grouped path:
+wayai analytics query \
+  --metric "col=data.variables.escalation_rate,agg=avg,alias=avg_escalation" \
+  --group-by data.meta.kanban_status \
+  --order-by avg_escalation:desc \
+  --from 2024-01-01 --to 2024-03-31
+
+# Drop to sql when the shape above cannot express it — a join, a computed key, several
+# grains at once (see Raw SQL & Cost Analysis). There you apply the cast yourself, and
+# you bound the window yourself: the server's rewrite scopes the hub, not the time range.
+# Rule 6's "bound message.created_at, and only that one" is about the message table in a
+# join — this is a conversation-only query, so the bound belongs here:
 wayai analytics sql "SELECT toString(data.meta.kanban_status), avg(toFloat64OrNull(toString(data.variables.escalation_rate))) FROM conversation WHERE created_at >= '2024-01-01' AND created_at < '2024-04-01' GROUP BY 1"
 ```
 
@@ -389,7 +399,7 @@ For cost and per-message spend, and for anything these fixed shapes cannot expre
 | Command | Purpose |
 |---------|---------|
 | `wayai analytics` | Summary block; add `--metric` (names from `--list-metrics`) for per-metric aggregates. Also `--filter`, `--period`/`--from`/`--to` |
-| `wayai analytics query` | Structured query over raw column paths: `--metric "col=…,agg=…"`, `--order-by`, correlations. `--group-by` on a `data.*` path is rejected uncast — group with `analytics sql` instead |
+| `wayai analytics query` | Structured query over raw column paths: `--metric "col=…,agg=…"`, `--group-by`, `--order-by`, correlations. `--metric`, `--group-by` and `--order-by` take `data.*` paths bare — this surface casts those for you, unlike `analytics sql`. `--filter` does **not** cast, so a numeric comparison on a `data.*` path errors; filter on one with `analytics sql`. A grouped column comes back under the underscored form of its path (`data_meta_kanban_status`) |
 | `wayai analytics sql` | Raw single-SELECT over `conversation` and `message` — the cost surface |
 | `wayai analytics sql --schema` | Both table catalogs + the message-grain casting rules |
 | `wayai conversations` | List/inspect conversations (`--json` to get ids) |
