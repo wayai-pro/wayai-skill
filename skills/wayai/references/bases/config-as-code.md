@@ -80,7 +80,7 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   analytics tier, so that branch is the *only* place you can choose it — and it is a one-shot choice:
   the tier is fixed at creation, and a base minted on the wrong one can only be replaced, never
   corrected. Declare `analytics: standard` before the first push if the origin is a preview (whose
-  clones default to `local`) and you will want SQL, history or traversal on it
+  clones default to `local`) and you will want SQL or change history on it
   ([querying.md](querying.md)).
 - **The worktree scope is a routing guard.** Each git checkout carries one untracked scope file
   (`<git-dir>/wayai-scope`) holding a set of hubs and a set of bases; the base axis is what applies
