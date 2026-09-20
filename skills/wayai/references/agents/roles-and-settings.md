@@ -343,7 +343,7 @@ role: conversation_evaluator
 connection: anthropic
 flag_conditions:
   - variable: goal_achieved      # system metric or evaluation-variable name
-    operator: "="                # "=" | "!="
+    operator: "="                # "=" | "!=" | ">=" | "<=" | ">" | "<"
     value: no
   - variable: user_sentiment
     operator: "="
@@ -351,6 +351,20 @@ flag_conditions:
 ```
 
 New hubs seed the two defaults above onto the evaluator agent automatically. Omit the key to leave the current value untouched; set `flag_conditions: []` to clear it. Configurable from the UI in the evaluator agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the evaluator agent.)
+
+**Operators.** `=` and `!=` compare the value as written. `>=`, `<=`, `>` and `<` are how
+you threshold a numeric evaluation variable:
+
+```yaml
+  - variable: satisfaction_score
+    operator: "<"
+    value: 3
+```
+
+They compare numerically when both the variable's value and the condition's `value` are
+numbers (a number written as a string counts); when neither side is a number they compare
+as text, and when only one side is a number the condition does not match. Any operator
+outside this list is refused when you save, on every path.
 
 ---
 
@@ -425,7 +439,7 @@ monitor_config:
   delay_seconds: 300            # inactivity wait before re-evaluation; >= 10
   flag_conditions:
     - variable: user_sentiment  # system metric or evaluation-variable name
-      operator: "="             # "=" | "!="
+      operator: "="             # same operators as the evaluator's flag_conditions
       value: negative
 ```
 
