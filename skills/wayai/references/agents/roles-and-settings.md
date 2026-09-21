@@ -428,7 +428,7 @@ Configurable from the UI in the agent's detail view (Agents tab) and through `wa
 
 ## Monitor Configuration (`monitor` only)
 
-`monitor_config` is a setting on the **`monitor` agent** — it controls when the background monitor re-evaluates an active conversation and which conditions flag it. `delay_seconds` is the user-inactivity wait (in seconds, minimum 10) before the monitor runs; `flag_conditions` use OR semantics (any match flags the conversation). Unlike the evaluator/summarizer, the monitor is **not** auto-provisioned — create it explicitly. Round-trips via `wayai pull` / `wayai push` as a top-level key on the monitor agent:
+`monitor_config` is a setting on the **`monitor` agent** — it controls **when** the monitor evaluates a conversation and which conditions flag it. `flag_conditions` use OR semantics (any match flags the conversation). Unlike the evaluator/summarizer, the monitor is **not** auto-provisioned — create it explicitly. Round-trips via `wayai pull` / `wayai push` as a top-level key on the monitor agent:
 
 ```yaml
 # agents/monitor.yaml
@@ -436,12 +436,26 @@ name: Monitor
 role: monitor
 connection: anthropic
 monitor_config:
-  delay_seconds: 300            # inactivity wait before re-evaluation; >= 10
+  trigger: idle                 # when this monitor runs; defaults to idle
+  delay_seconds: 300            # idle only: inactivity wait before it runs; >= 10
   flag_conditions:
     - variable: user_sentiment  # system metric or evaluation-variable name
       operator: "="             # same operators as the evaluator's flag_conditions
       value: negative
 ```
+
+### `trigger`
+
+| Value | When the monitor runs |
+|---|---|
+| `idle` (default) | After the conversation has been quiet for `delay_seconds`. This is what a monitor does when `trigger` is omitted. |
+| `user_message` | Reserved for the synchronous point right after the customer's message. |
+| `assistant_reply` | Reserved for the synchronous point after a reply is drafted. |
+| `manual` | Never on its own — reserved for a monitor another monitor calls. |
+
+**Only `idle` runs today.** The other three values are accepted and round-trip, but nothing invokes them yet: a monitor set to one of them simply stops being scheduled. Leave `trigger` at `idle` — or omit it — unless you intend the monitor to stop running for now.
+
+**`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
 
 Omit the key to leave the current value untouched; set `monitor_config: null` to clear it. Configurable from the UI in the monitor agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the monitor agent.)
 
