@@ -41,7 +41,7 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `copilot_specialist` | Multiple | Yes (full transfer) | No | Copilot-track specialist |
 | `pilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Receives `consult_agent`; runs once and returns |
 | `copilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Copilot-track advisor |
-| `monitor` | 1 | No (silent observer) | n/a | Excluded from message routing |
+| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each of `idle`, `user_message` and `assistant_reply`; any number on `manual` — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 | `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
@@ -463,7 +463,21 @@ A `user_message` monitor runs **inside** the customer's turn rather than as a tu
 
 **Only the model call is abandoned.** Reading the conversation and resolving the monitor's own instructions happen first and are not. Placeholders in a monitor's instructions are resolved for a `user_message` monitor exactly as they are for an `idle` one — so a monitor whose instructions pull in file or resource content (`{{file_content(…)}}`, `{{files()}}`, `{{previous_conversations(N)}}`) fetches that content on every customer message, before its model is called. Prefer a monitor that judges the conversation it is handed; move one that needs to look things up to `idle`.
 
-**A hub runs at most one monitor per trigger.** If more than one is enabled on the same trigger, the first one runs.
+### One enabled monitor per trigger
+
+**A hub runs at most one enabled monitor on each of `idle`, `user_message` and `assistant_reply`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called.
+
+What each surface does with the rule:
+
+| Surface | Behaviour |
+|---|---|
+| The agent editor, and `POST`/`PATCH` on the agents API | Refuses a save that would put a second enabled monitor on a trigger another enabled monitor holds, naming the agent in the way. Only a save that changes the monitor's trigger, its `enabled` flag or its role is judged — renaming one, editing its conditions or uploading instructions is not. |
+| `wayai push` and `wayai diff` | Judged on the configuration the push would produce, not one agent at a time — so two monitors can SWAP triggers in a single push, and a push that replaces a monitor with another on the same trigger lands. A push that would leave two enabled monitors sharing a trigger is refused, with no agent change applied; `wayai diff` reports the same refusal before you push. |
+| Publishing a preview to production, and syncing preview → production | Not re-checked. These copy a configuration that was already accepted where it was authored. |
+
+**A monitor with no `monitor_config` holds `idle`.** An absent `trigger` *is* `idle`, and that is true of a monitor carrying no `monitor_config` at all — so such a monitor takes the hub's idle slot, and having no `delay_seconds` to run on, it schedules nothing there. It counts for this rule: a second `idle` monitor beside it is refused naming it. Give it a `delay_seconds` and it becomes the hub's working idle monitor; otherwise move it to another trigger, disable it, or delete it.
+
+**A hub that already has two.** Nothing limited monitors before this rule, so a hub can still hold a pair — most often a monitor that predates `monitor_config` sitting beside a working one. The rule never blocks a save or a push that does not make it worse, including the one that repairs it by disabling or moving one of them. Until then only the first of the pair is reachable, and if that one is the monitor with no `monitor_config`, nothing runs on that trigger at all. `wayai pull` lists them.
 
 ### `history_messages` and `include_tool_results`
 
