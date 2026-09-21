@@ -212,10 +212,10 @@ A conversation's **earlier** files are announced to every agent as a text annota
 
 | Setting | What it still does |
 |---|---|
-| `file_handling_mode` | No longer changes what the model receives. `metadata_only` still auto-enables `read_file` for the agent — the one way, besides assigning the tool, to let it open a path it was told about. |
+| `file_handling_mode` | No longer changes what the model receives. `metadata_only` still auto-enables `read_file` for the agent — the one way, besides assigning the tool, to let it open a path it was told about. Not on a `user_message` monitor, which is offered no tools at all (see `trigger`). |
 | `max_attachment_size_mb` | Nothing. There is no attachment to cap. |
 
-Which agents see the annotations: the pilot/copilot track, `monitor`, and `conversation_evaluator` — the roles whose context is assembled from turn history. Three roles are not, so instructions that key on `[Attached files: …]` never match for them: `message_evaluator` (dispatched with a single synthesized instruction message), `summarizer` (reads its own synthesized message list), and `consultant` (its customer transcript is rendered by hand, text-only, into a `<customer_conversation>` frame). Any of them can still hold `read_file`: the auto-append gate is the per-agent `metadata_only` setting and carries no role check, so an evaluator configured that way gets the tool even though nothing in its context names a path.
+Which agents see the annotations: the pilot/copilot track, `monitor`, and `conversation_evaluator` — the roles whose context is assembled from turn history. Three roles are not, so instructions that key on `[Attached files: …]` never match for them: `message_evaluator` (dispatched with a single synthesized instruction message), `summarizer` (reads its own synthesized message list), and `consultant` (its customer transcript is rendered by hand, text-only, into a `<customer_conversation>` frame). Any of them can still hold `read_file`: the auto-append gate is the per-agent `metadata_only` setting and carries no role check, so an evaluator configured that way gets the tool even though nothing in its context names a path. One exception to holding it and being able to USE it: a monitor on the `user_message` trigger is offered no tools, so the tool is on the agent and never reaches the model.
 
 ### Pre-tool preamble delivery (all LLM connectors)
 
@@ -449,11 +449,30 @@ monitor_config:
 | Value | When the monitor runs |
 |---|---|
 | `idle` (default) | After the conversation has been quiet for `delay_seconds`. This is what a monitor does when `trigger` is omitted. |
-| `user_message` | Reserved for the synchronous point right after the customer's message. |
-| `assistant_reply` | Reserved for the synchronous point after a reply is drafted. |
+| `user_message` | Right after the customer's message, before the answering agent replies. The customer waits for it, so it is meant for a fast, closed-set monitor. |
+| `assistant_reply` | Reserved for the point after a reply is drafted. |
 | `manual` | Never on its own — reserved for a monitor another monitor calls. |
 
-**Only `idle` runs today.** The other three values are accepted and round-trip, but nothing invokes them yet: a monitor set to one of them simply stops being scheduled. Leave `trigger` at `idle` — or omit it — unless you intend the monitor to stop running for now.
+**`idle` and `user_message` run today.** `assistant_reply` and `manual` are accepted and round-trip, but nothing invokes them yet: a monitor set to one of them simply stops being scheduled.
+
+A `user_message` monitor runs **inside** the customer's turn rather than as a turn of its own. Its `flag_conditions` are evaluated and the conversation flagged exactly as an idle monitor's are, and it writes no message of its own.
+
+**It is offered no tools.** A monitor judges the window it is given: whatever tools it holds — assigned, or `read_file` auto-enabled by `metadata_only` — are not offered to the model on this trigger, so it cannot look anything up mid-judgement. The same agent on `idle` does run its tools, because that is a turn of its own. A monitor that needs a tool to reach its verdict belongs on `idle`.
+
+**It adds its own latency to every reply.** The customer waits for it, so keep it on a fast model and a small window. It cannot change the reply or stop it being sent. If its model is misconfigured, fails, or returns nothing usable, the monitor is skipped and the turn proceeds without it; if the model is merely slow, its call is abandoned after a few seconds and the turn proceeds without waiting for it.
+
+**Only the model call is abandoned.** Reading the conversation and resolving the monitor's own instructions happen first and are not. Placeholders in a monitor's instructions are resolved for a `user_message` monitor exactly as they are for an `idle` one — so a monitor whose instructions pull in file or resource content (`{{file_content(…)}}`, `{{files()}}`, `{{previous_conversations(N)}}`) fetches that content on every customer message, before its model is called. Prefer a monitor that judges the conversation it is handed; move one that needs to look things up to `idle`.
+
+**A hub runs at most one monitor per trigger.** If more than one is enabled on the same trigger, the first one runs.
+
+### `history_messages` and `include_tool_results`
+
+These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window.
+
+| Key | Meaning |
+|---|---|
+| `history_messages` | How many of the newest messages the monitor sees. Default 10, maximum 100. Keep it small — a closed-set monitor's accuracy falls as unrelated content grows. |
+| `include_tool_results` | `false` by default: the monitor sees that a tool ran, but not what it returned. Set `true` only when the monitor's judgement depends on the tool's output. |
 
 **`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
 
