@@ -450,10 +450,10 @@ monitor_config:
 |---|---|
 | `idle` (default) | After the conversation has been quiet for `delay_seconds`. This is what a monitor does when `trigger` is omitted. |
 | `user_message` | Right after the customer's message, before the answering agent replies. The customer waits for it, so it is meant for a fast, closed-set monitor. |
-| `assistant_reply` | Reserved for the point after a reply is drafted. |
+| `assistant_reply` | After the answering agent has drafted its reply, before any of it is sent — the **reply gate**. See [The reply gate](#the-reply-gate--assistant_reply). |
 | `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
 
-**`idle`, `user_message` and `manual` run today.** `assistant_reply` is accepted and round-trips, but nothing invokes it yet: a monitor set to it simply stops being scheduled.
+**All four run.**
 
 A `user_message` monitor runs **inside** the customer's turn rather than as a turn of its own. Its `flag_conditions` are evaluated and the conversation flagged exactly as an idle monitor's are, and it writes no message of its own.
 
@@ -492,7 +492,7 @@ These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, 
 
 ### `rules` and `fallback`
 
-A `user_message` monitor can act on what it found, and so can a `manual` one when another monitor runs it. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on `idle` and `assistant_reply`, which have nothing to interpret them.
+A `user_message` monitor can act on what it found, and so can an `assistant_reply` one (the reply gate) and a `manual` one when another monitor runs it. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on `idle`, which has nothing to interpret them.
 
 ```yaml
 monitor_config:
@@ -524,7 +524,7 @@ monitor_config:
 
 **The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
 
-**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding or rewriting a reply belongs to the reply gate, not here, and is refused on this trigger.
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply belongs to the reply gate (`assistant_reply`) and is refused on every other trigger.
 
 **What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
 
@@ -697,3 +697,52 @@ Use this when:
 Skip this for agents where temporal context is irrelevant — the extra tokens add up over long histories.
 
 **`include_message_timestamps` vs `{{now()}}` — pick by granularity.** This setting is the **per-message** way to give temporal context (a `[timestamp, weekday, daypart]` on *every* user message). The other way is `{{now()}}` in `additional_context_template` — a **single per-turn "now"** (see [`instructions.md`](instructions.md#additional-context-cache-friendly)). Both are cache-safe (neither touches the cached system-prompt prefix) and both resolve into eval replay, so the choice is purely granularity: reach for `{{now()}}` when the agent only needs the current time, and this setting when it must reason about *when each* message arrived. They compose — you can set both — but don't enable per-message timestamps just to answer "what time is it now?"; that's `{{now()}}`'s job and it's leaner.
+
+### The reply gate — `assistant_reply`
+
+A monitor on `trigger: assistant_reply` reads the reply the answering agent has just drafted — **before any of it is sent** — and decides what happens to it.
+
+```yaml
+monitor_config:
+  trigger: assistant_reply
+  rules:
+    - when: [{ variable: tone, operator: "=", value: inappropriate }]
+      action: { kind: hold }
+    - when: [{ variable: promises_refund, operator: "=", value: true }]
+      action:
+        kind: call_tool
+        tool_name: notify_ops
+        args: { note: { const: "AI promised a refund" } }
+```
+
+**What it judges.** The same window a `user_message` monitor reads, plus the draft, labelled as the reply not yet sent. A callee it runs with `run_monitor` is shown the draft too.
+
+**Actions.**
+
+| Action | What happens |
+|---|---|
+| `none` | The reply is sent as drafted. |
+| `call_tool` | The tool runs, then the reply is sent as drafted. |
+| `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
+
+`rewrite` is not available yet and is refused when you save it.
+
+**What a gate's rule can call.** Everything a `user_message` rule can, except two, because the reply already exists when the gate runs:
+
+- `transfer_to_agent` — it would have another agent answer the same message a second time. Refused when you save it and again when it fires.
+- `insert_note` — there is no agent left to brief. Refused when you save it; a `manual` monitor the gate runs has its note refused when it fires, and the reason is recorded.
+
+`transfer_to_team` is allowed: the reply is sent, and the conversation then belongs to the team. Nothing a gate's rule calls makes the AI answer again on this message.
+
+**It judges every reply that would reach the customer** — including the reply of an agent a transfer just handed the conversation to, a retried reply, a scheduled follow-up, and replies in an evaluation run. It never judges a Copilot suggestion or any other reply written for your team, which the customer never sees anyway.
+
+**What changes for a hub with a gate.**
+
+- **No token streaming, no mid-reply updates.** On a streaming app, the reply appears whole once the gate has passed it, instead of word by word. Text the agent would otherwise send while it works ("Let me check that for you…") is not sent. Neither can be taken back once shown, and the gate has not judged them yet.
+- **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered.
+- **Cost.** The gate starts no turn of its own; the time it adds is part of the same turn, and a turn is billed for how long it runs.
+
+**What a gate does not cover.** Anything the answering agent's own **tools** send while it works — `send_files` and the message it carries, or an external tool that messages the customer — goes out before any reply exists, so the gate never sees it. Assign such tools with that in mind. Replies from a harness-backed agent are not gated yet.
+
+**One enabled gate per hub**, like the other firing triggers.
+
