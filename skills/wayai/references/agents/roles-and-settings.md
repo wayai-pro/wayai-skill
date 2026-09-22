@@ -457,7 +457,7 @@ monitor_config:
 
 A `user_message` monitor runs **inside** the customer's turn rather than as a turn of its own. Its `flag_conditions` are evaluated and the conversation flagged exactly as an idle monitor's are, and it writes no message of its own.
 
-**It is offered no tools.** A monitor judges the window it is given: whatever tools it holds — assigned, or `read_file` auto-enabled by `metadata_only` — are not offered to the model on this trigger, so it cannot look anything up mid-judgement. The same agent on `idle` does run its tools, because that is a turn of its own. A monitor that needs a tool to reach its verdict belongs on `idle`.
+**The model is offered no tools.** A monitor judges the window it is given: whatever tools it holds — assigned, or `read_file` auto-enabled by `metadata_only` — are not offered to the model on this trigger, so it cannot look anything up mid-judgement. The same agent on `idle` does run its tools, because that is a turn of its own. A monitor that needs a tool to reach its verdict belongs on `idle`. Its `rules` can still CALL a tool once the verdict is in — see [`rules` and `fallback`](#rules-and-fallback) — and that is a different thing: the model chooses values, and your configuration chooses what they mean.
 
 **It adds its own latency to every reply.** The customer waits for it, so keep it on a fast model and a small window. It cannot change the reply or stop it being sent. If its model is misconfigured, fails, or returns nothing usable, the monitor is skipped and the turn proceeds without it; if the model is merely slow, its call is abandoned after a few seconds and the turn proceeds without waiting for it.
 
@@ -489,6 +489,65 @@ These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, 
 | `include_tool_results` | `false` by default: the monitor sees that a tool ran, but not what it returned. Set `true` only when the monitor's judgement depends on the tool's output. |
 
 **`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
+
+### `rules` and `fallback`
+
+A `user_message` monitor can act on what it found. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on the other three triggers, which have nothing to interpret them.
+
+```yaml
+monitor_config:
+  trigger: user_message
+  history_messages: 10
+  rules:
+    - when:                                   # every condition must hold (AND)
+        - variable: urgency
+          operator: "="
+          value: high
+        - variable: urgency_confidence        # only on a decisions model
+          operator: ">="
+          value: 0.8
+      action:
+        kind: call_tool
+        tool_name: notify_ops                 # an external tool assigned to THIS monitor
+        args:
+          level: { from_variable: urgency }   # a value the monitor produced
+          note:  { const: escalate }          # a value you wrote
+  fallback:
+    kind: none                                # the default: do nothing
+```
+
+**Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting, and those variables exist only on a model that returns calibrated confidence.
+
+**The model never names a tool or an argument.** It produces values. Your rule decides which tool runs and which argument each value fills — either `from_variable` (something the monitor decided) or `const` (something you wrote). A value coming back as text is passed to the tool as a value and nothing else; it is validated by that tool's own schema exactly as the answering agent's tool calls are.
+
+**One call per message.** First match wins; later rules are not tried, and a monitor makes at most one tool call per customer message.
+
+**The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
+
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding or rewriting a reply belongs to the reply gate, not here, and is refused on this trigger.
+
+**What a rule can call.** `update_state`, `schedule_followup`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
+
+Why the others are not on it. Some change who is answering, whether a human has taken over, or whether the conversation is still open — `transfer_to_agent`, `transfer_to_team`, `close_conversation`, `update_kanban_status` (a move to a status you marked terminal ends the conversation) — and this turn settled all of that before the monitor ran, so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
+
+**An argument that is not a plain value.** A rule's arguments are text, numbers and true/false. A tool that expects an object or a list still works — write the value as JSON in a constant and it is read back as the shape the tool declares:
+
+```yaml
+      action:
+        kind: call_tool
+        tool_name: update_state
+        args:
+          state_slug: { const: triage }
+          updates:    { const: '{"urgency":"high"}' }
+```
+
+**A tool's own follow-on actions do not run from a rule.** If you have configured a tool with composed actions — a chain that fires after it succeeds — that chain is skipped when a rule calls it. It still runs normally when the answering agent calls the same tool. Without that, a chain ending in "close the conversation" would reach from a rule the very thing the list above excludes.
+
+**Telling the answering agent what the monitor found.** Not on this turn. The agent's instructions and its state block are both assembled before the monitor runs, so a state a rule writes is read on the customer's NEXT message. A rule is for acting — writing state, notifying a system, scheduling a follow-up — not for briefing the reply the customer is waiting for.
+
+**It never changes the reply.** Whatever the rule does — the tool succeeds, fails, or is refused — the customer is answered by the agent this turn had already chosen, and answered once. What it does cost is time: a rule's tool call adds its own wait to that reply, bounded at a few seconds, after which the call is abandoned and the turn goes on without it.
+
+**Where to see what happened.** A run records which rule matched, which tool it named, and whether the call was refused or failed, beside the monitor's own output.
 
 Omit the key to leave the current value untouched; set `monitor_config: null` to clear it. Configurable from the UI in the monitor agent's detail view (Agents tab) and through `wayai pull` / `wayai push`. (Previously a hub-level Overview setting — relocated to the monitor agent.)
 
