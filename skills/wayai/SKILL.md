@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.84.0
+version: 6.85.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -138,7 +138,7 @@ Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom s
 | `copilot` | Copilot | 1 | Suggests responses to the support team |
 | `pilot_specialist` / `copilot_specialist` | Both | Multiple | Delegation target — full transfer via `transfer_to_agent` |
 | `pilot_advisor` / `copilot_advisor` | Both | 1 each | Advisory input via `consult_agent`; returns control |
-| `monitor` | Background | 1 per firing trigger | Observes silently, and on `user_message` its rules may act — briefing the answering agent with a note you wrote, or handing the conversation to another agent or to a human team, all taking effect on that same message. At most one enabled monitor on each of `idle`, `user_message` and `assistant_reply`; any number on `manual` |
+| `monitor` | Background | 1 per firing trigger | Observes silently, and on `user_message` its rules may act — briefing the answering agent with a note you wrote, running another monitor for a closer look, or handing the conversation to another agent or to a human team, all taking effect on that same message. At most one enabled monitor on each of `idle`, `user_message` and `assistant_reply`; any number on `manual`, which run only when another monitor calls them |
 | `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing. Their `evaluation_variables` feed Analytics; the `message_evaluator` also scores eval runs |
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
 | `consultant` | Track-independent (on-demand) | Multiple | Consulted by people (and agents) in visible consult threads. Never a pilot/copilot responder, never auto-fired, and never a transfer/advisor target. *An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.* Consult turns bill as normal foreground operations. Configurable today; consult dispatch (tagging a consultant from the support composer) ships in a follow-up |

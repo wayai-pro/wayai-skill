@@ -168,9 +168,21 @@ Schedule a custom manual followup at an exact future time. The receiver is deter
 | `scheduled_time` | string | Yes | ISO 8601 datetime with timezone; must be in the future |
 | `message` | string | Yes | The followup message. May embed AI instructions in brackets: `"Text [AI Context: instructions]"` |
 
+### run_monitor
+
+Run another monitor on this hub, and let it act on its own rules. Selected by a monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
+
+**Only a `monitor` agent can hold this tool**, and **no model is ever offered it**. The monitor it names must be one whose trigger is `manual`, so that nothing else ever fires it.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `monitor_name` | string | Yes | The name of the monitor to run. Must be a `const` you write — it chooses which monitor runs, so it cannot come from a variable. The named monitor must be on this hub, enabled, and have `trigger: manual`. |
+
 ### insert_note
 
-Brief the agent that is about to reply, with a note **you** write. Selected by a `user_message` monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
+Brief the agent that is about to reply, with a note **you** write. Selected by a monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
+
+A `manual` monitor can insert one too, when the cascade that reached it started on a customer's message. If it started anywhere else there is no reply left to brief, so the note is skipped and the reason recorded.
 
 **Only a `monitor` agent can hold this tool**, and **no model is ever offered it**: a rule selects it, and the note is inserted into the answering agent's context for that one reply. It is the only tool in this file that works that way, so the usual "assign it and the model may call it" reading does not apply.
 
@@ -459,7 +471,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 
 | Module | Tools |
 |--------|-------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only) |
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only), `run_monitor` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Resource & File | `list_files`, `read_file`, `send_files`, `download_file`, `upload_file` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
 | Skill | `read_skill`, `read_skill_file` |

@@ -451,9 +451,9 @@ monitor_config:
 | `idle` (default) | After the conversation has been quiet for `delay_seconds`. This is what a monitor does when `trigger` is omitted. |
 | `user_message` | Right after the customer's message, before the answering agent replies. The customer waits for it, so it is meant for a fast, closed-set monitor. |
 | `assistant_reply` | Reserved for the point after a reply is drafted. |
-| `manual` | Never on its own — reserved for a monitor another monitor calls. |
+| `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
 
-**`idle` and `user_message` run today.** `assistant_reply` and `manual` are accepted and round-trip, but nothing invokes them yet: a monitor set to one of them simply stops being scheduled.
+**`idle`, `user_message` and `manual` run today.** `assistant_reply` is accepted and round-trips, but nothing invokes it yet: a monitor set to it simply stops being scheduled.
 
 A `user_message` monitor runs **inside** the customer's turn rather than as a turn of its own. Its `flag_conditions` are evaluated and the conversation flagged exactly as an idle monitor's are, and it writes no message of its own.
 
@@ -492,7 +492,7 @@ These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, 
 
 ### `rules` and `fallback`
 
-A `user_message` monitor can act on what it found. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on the other three triggers, which have nothing to interpret them.
+A `user_message` monitor can act on what it found, and so can a `manual` one when another monitor runs it. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on `idle` and `assistant_reply`, which have nothing to interpret them.
 
 ```yaml
 monitor_config:
@@ -526,7 +526,7 @@ monitor_config:
 
 **Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding or rewriting a reply belongs to the reply gate, not here, and is refused on this trigger.
 
-**What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
+**What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
 
 Why the others are not on it. `close_conversation` and `update_kanban_status` (a move to a status you marked terminal ends the conversation) decide whether the conversation is still open, which this turn settled before the monitor ran — so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
 
@@ -560,6 +560,47 @@ tools:
 **One note per message**, like every rule action: the first matching rule wins. A variable the monitor did not produce this run comes out as nothing rather than cancelling the note, and the names it could not fill are recorded with the run. A very long note is shortened.
 
 **Unlike every other tool a rule can call, this one costs nothing to run** — no waiting, no external call, and no operation on your bill. It does make the answering agent's prompt slightly longer.
+
+#### Chaining monitors — `run_monitor`
+
+One monitor can run another. The caller judges every message cheaply; on the rare path its rule calls `run_monitor`, and a second monitor — one you keep on `trigger: manual` — takes a closer look and acts on **its own** rules.
+
+```yaml
+# the caller, on every customer message
+monitor_config:
+  trigger: user_message
+  rules:
+    - when: [{ variable: urgency, operator: "=", value: high }]
+      action:
+        kind: call_tool
+        tool_name: run_monitor
+        args:
+          monitor_name: { const: Refund Judge }   # ← a manual monitor on this hub
+
+# the callee
+monitor_config:
+  trigger: manual
+  rules:
+    - when: [{ variable: refund_risk, operator: ">=", value: 4 }]
+      action:
+        kind: call_tool
+        tool_name: transfer_to_team
+        args: { team_name: { const: Tier 2 Support } }
+```
+
+**The callee acts on its own rules, and tells the caller nothing.** What it found is recorded against the callee, not returned to the caller — so a cascade cannot be used to let a caller do something its own rules may not. The callee's rules go through the same list of what a rule can call.
+
+**The callee must be `manual`.** That is what keeps it from also running on its own, and it is checked when you save the rule *and* again each time the rule fires — because a monitor can be renamed, disabled, deleted, re-roled or moved to another trigger long after the rule was written. When any of that has happened the run is skipped and the reason is recorded; the customer is answered exactly as if no rule had matched.
+
+**`monitor_name` names a monitor, and must be a `const` you write.** It chooses which monitor runs, so it cannot come from a variable. It is a *name*, not an id, which is why a cascade keeps working after `wayai push`, `wayai pull`, publishing a preview, syncing, or replicating a hub — the name means the same thing on the far side. Rename the callee and you must update the rule, exactly as you would after renaming a tool a rule calls.
+
+**Limits, so one message cannot spend an unbounded amount of work.** A chain may be **three** callees deep, and a monitor already in the current chain cannot be called again — so a loop is refused rather than run. Those two bound it completely: a monitor takes at most one action per run, so a cascade is a single chain and never branches. Each limit records which one stopped it.
+
+**Each run is recorded separately.** Every monitor in the chain writes its own entry, carrying its depth and which run invoked it, so you can read the whole cascade back afterwards.
+
+**The callee is told what the caller found.** The caller's variables are passed to it as context, so the callee can look closer at a judgement already made rather than re-deriving it. It still produces its **own** variables, and its rules read those — not the caller's.
+
+**What it costs.** Each callee is another model call inside the same customer's wait — a cascade of two monitors is two calls before the reply begins. No callee starts a turn of its own, so none of them adds a *turn* to your bill — but the time they add is part of the same turn, and a turn is billed for how long it runs as well as for starting. A cascade that makes a reply take noticeably longer costs noticeably more. Prefer a cheap closed-set caller that only cascades on the rare path.
 
 **Handing the conversation over is the one thing a rule can change about who writes this reply.** The two transfer tools are on the list precisely because changing who responds is what they are for, and a rule's transfer takes effect on the SAME message rather than the next one:
 
