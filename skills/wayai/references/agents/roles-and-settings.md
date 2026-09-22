@@ -526,9 +526,51 @@ monitor_config:
 
 **Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding or rewriting a reply belongs to the reply gate, not here, and is refused on this trigger.
 
-**What a rule can call.** `update_state`, `schedule_followup`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
+**What a rule can call.** `update_state`, `schedule_followup`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
 
-Why the others are not on it. Some change who is answering, whether a human has taken over, or whether the conversation is still open — `transfer_to_agent`, `transfer_to_team`, `close_conversation`, `update_kanban_status` (a move to a status you marked terminal ends the conversation) — and this turn settled all of that before the monitor ran, so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
+Why the others are not on it. `close_conversation` and `update_kanban_status` (a move to a status you marked terminal ends the conversation) decide whether the conversation is still open, which this turn settled before the monitor ran — so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
+
+**Handing the conversation over is the one thing a rule can change about this reply.** The two transfer tools are on the list precisely because changing who responds is what they are for, and a rule's transfer takes effect on the SAME message rather than the next one:
+
+- `transfer_to_team` — the conversation becomes a person's, and the AI says nothing at all on this message. This is the escalation judge: your monitor reads the customer's message, decides it needs a human, and no AI reply is sent.
+- `transfer_to_agent` — the AI you named answers instead of the one that would have. It answers from its own instructions, its own context and its own tools, not the original agent's.
+
+Both are declared under `tools.delegation` and assigned to the monitor — that is the only place these two tools can be declared, for a monitor exactly as for a pilot. **Where each one gets its destination differs, and it is the same difference a pilot sees:**
+
+- `transfer_to_team` goes to the team you pinned as the delegation's `target`. The rule must still pass `team_name` — the tool requires it — but that value does not choose the team; it is what the handoff note records. **Write the same name you pinned**, or the note will say one team and the conversation will go to the queue of another. Declare one delegation per destination team and let the rule pick which one to call.
+- `transfer_to_agent` goes to the agent the CALL names, not to the delegation's `target`. So `agent_name` is what decides, and the rule must supply it.
+
+```yaml
+# on the monitor agent
+tools:
+  delegation:
+    - type: team
+      tool: transfer_to_team
+      target: Tier 2 Support          # ← this is where a transfer_to_team rule goes
+    - type: agent
+      tool: transfer_to_agent
+      target: Refunds Specialist
+
+# in the monitor's rules
+      action:
+        kind: call_tool
+        tool_name: transfer_to_team
+        args:
+          team_name: { const: Tier 2 Support }        # ← matches the target above
+      action:
+        kind: call_tool
+        tool_name: transfer_to_agent
+        args:
+          agent_name: { const: Refunds Specialist }   # ← this is what routes it
+```
+
+A team handoff puts the conversation in the team's queue, unclaimed — a member picks it up in the support UI, exactly as for a handoff from a pilot.
+
+> **On an account-mode hub, neither the pinned target nor `team_name` chooses the team.** When the hub's `support_model` is `account`, every `transfer_to_team` — from a rule or from a pilot — goes to the customer's own assigned team, falling back to the hub's default team, and fails if the hub has neither. Set the customer's team (or a hub default) rather than expecting the delegation's `target` to route the escalation.
+
+A transfer that cannot be carried out — an agent that is disabled, on the other track, or named by something that resolves to nothing — is recorded as a failed call and changes nothing: the original agent answers as it would have. The usual transfer rules still apply; a rule is simply another caller.
+
+**What a transfer costs.** The customer waits for two replies' worth of work rather than one: the monitor's own call, then the incoming agent's. A team handoff has no second model call — nothing answers. Neither adds an operation of its own to your bill; what they add is the time the conversation spends being handled, which is metered as one continuous stretch rather than twice over. And the monitor judges once per customer message — it does not run again on the message it handed over.
 
 **An argument that is not a plain value.** A rule's arguments are text, numbers and true/false. A tool that expects an object or a list still works — write the value as JSON in a constant and it is read back as the shape the tool declares:
 
@@ -543,9 +585,9 @@ Why the others are not on it. Some change who is answering, whether a human has 
 
 **A tool's own follow-on actions do not run from a rule.** If you have configured a tool with composed actions — a chain that fires after it succeeds — that chain is skipped when a rule calls it. It still runs normally when the answering agent calls the same tool. Without that, a chain ending in "close the conversation" would reach from a rule the very thing the list above excludes.
 
-**Telling the answering agent what the monitor found.** Not on this turn. The agent's instructions and its state block are both assembled before the monitor runs, so a state a rule writes is read on the customer's NEXT message. A rule is for acting — writing state, notifying a system, scheduling a follow-up — not for briefing the reply the customer is waiting for.
+**Telling the answering agent what the monitor found.** Not on this turn. The agent's instructions and its state block are both assembled before the monitor runs, so a state a rule writes is read on the customer's NEXT message. A rule is for acting — writing state, notifying a system, scheduling a follow-up, handing the conversation over — not for briefing the reply the customer is waiting for. (A transfer is the exception that proves it: the incoming agent assembles its own instructions and state from scratch, so it sees what the rule wrote.)
 
-**It never changes the reply.** Whatever the rule does — the tool succeeds, fails, or is refused — the customer is answered by the agent this turn had already chosen, and answered once. What it does cost is time: a rule's tool call adds its own wait to that reply, bounded at a few seconds, after which the call is abandoned and the turn goes on without it.
+**One reply per message, from whoever owns the conversation.** Every rule but a transfer leaves the reply exactly as it was: the tool succeeds, fails or is refused, and the customer is answered once, by the agent this turn had already chosen. A transfer changes WHO answers, never HOW MANY times — after a handoff to an agent the customer gets one reply, from the new agent; after a handoff to a team, none. What every rule costs is time: its tool call adds its own wait to the reply, bounded at a few seconds, after which the call is abandoned and the turn goes on without it — and a transfer abandoned that way is treated as not having happened, so the original agent still answers.
 
 **Where to see what happened.** A run records which rule matched, which tool it named, and whether the call was refused or failed, beside the monitor's own output.
 
