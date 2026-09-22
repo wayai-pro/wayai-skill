@@ -524,7 +524,7 @@ monitor_config:
 
 **The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
 
-**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply belongs to the reply gate (`assistant_reply`) and is refused on every other trigger.
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger.
 
 **What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
 
@@ -724,8 +724,15 @@ monitor_config:
 | `none` | The reply is sent as drafted. |
 | `call_tool` | The tool runs, then the reply is sent as drafted. |
 | `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
+| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only — it is offered no tools, so nothing it did while answering runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
 
-`rewrite` is not available yet and is refused when you save it.
+```yaml
+      action:
+        kind: rewrite
+        note: "Remove the discount — only a manager can offer one."   # your words; required
+```
+
+**A rewrite never sends text the gate has not passed.** There is one revision per reply, never a loop. If the revision cannot be made (the agent's model fails, is too slow, or returns nothing), or the gate cannot judge the revision, the reply is held rather than sent. The note is yours: it is shown to the answering agent as guidance for that one revision, and not kept in the conversation.
 
 **What a gate's rule can call.** Everything a `user_message` rule can, except two, because the reply already exists when the gate runs:
 
@@ -739,7 +746,8 @@ monitor_config:
 **What changes for a hub with a gate.**
 
 - **No token streaming, no mid-reply updates.** On a streaming app, the reply appears whole once the gate has passed it, instead of word by word. Text the agent would otherwise send while it works ("Let me check that for you…") is not sent. Neither can be taken back once shown, and the gate has not judged them yet.
-- **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered.
+- **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered. (A revision the gate cannot judge is the exception: the gate already objected to the original, so it is held.)
+- **A rewrite adds a second answering-agent call and a second gate judgement** to that reply, all inside the customer's wait.
 - **Cost.** The gate starts no turn of its own; the time it adds is part of the same turn, and a turn is billed for how long it runs.
 
 **What a gate does not cover.** Anything the answering agent's own **tools** send while it works — `send_files` and the message it carries, or an external tool that messages the customer — goes out before any reply exists, so the gate never sees it. Assign such tools with that in mind. Replies from a harness-backed agent are not gated yet.
