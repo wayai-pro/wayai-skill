@@ -526,11 +526,42 @@ monitor_config:
 
 **Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding or rewriting a reply belongs to the reply gate, not here, and is refused on this trigger.
 
-**What a rule can call.** `update_state`, `schedule_followup`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
+**What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
 
 Why the others are not on it. `close_conversation` and `update_kanban_status` (a move to a status you marked terminal ends the conversation) decide whether the conversation is still open, which this turn settled before the monitor ran — so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
 
-**Handing the conversation over is the one thing a rule can change about this reply.** The two transfer tools are on the list precisely because changing who responds is what they are for, and a rule's transfer takes effect on the SAME message rather than the next one:
+#### Briefing the answering agent — `insert_note`
+
+A monitor judges the customer's message before the answering agent replies. `insert_note` is how it passes what it found forward: **you** write the sentence, the monitor's variables are filled into it, and the answering agent reads it as context for that one reply.
+
+```yaml
+# on the monitor agent
+tools:
+  native:
+    - insert_note
+
+# in the monitor's rules
+      action:
+        kind: call_tool
+        tool_name: insert_note
+        args:
+          template:
+            const: "This customer is {{urgency}} urgency and sounds {{sentiment}}. Lead with an apology and skip the upsell."
+```
+
+**You write the note, not the model.** `template` must be a constant you wrote — it cannot come from a variable. The answering agent reads the note as guidance, so its sentences have to be yours; a note whose whole text came from a model would be instructions written by whoever sent the message being judged. Variables go *inside* your sentence as `{{variable_name}}`, where they arrive as data. A rule whose template comes from a variable is refused when you save it, and refused again at run time.
+
+**It reaches this reply only.** The note is gone once the reply is written — it is not part of the conversation and the agent never sees it again. That is what makes it safe to say something true only of this message. To leave something durable instead, use `update_state`, which the answering agent reads through `{{state(slug)}}` from the customer's *next* message onward.
+
+**Keep a copy for your team.** Add `keep_in_history: { const: true }` and the note is also recorded in the conversation for the support team to read. **The customer never receives it or sees it**, on any channel or in any app view. It still does not come back to the agent on later replies.
+
+**Only a monitor can hold this tool.** Assigning `insert_note` to a pilot, a specialist or any other agent is refused — in the editor, in `wayai push`, and through the API. Nothing else has a reply to brief.
+
+**One note per message**, like every rule action: the first matching rule wins. A variable the monitor did not produce this run comes out as nothing rather than cancelling the note, and the names it could not fill are recorded with the run. A very long note is shortened.
+
+**Unlike every other tool a rule can call, this one costs nothing to run** — no waiting, no external call, and no operation on your bill. It does make the answering agent's prompt slightly longer.
+
+**Handing the conversation over is the one thing a rule can change about who writes this reply.** The two transfer tools are on the list precisely because changing who responds is what they are for, and a rule's transfer takes effect on the SAME message rather than the next one:
 
 - `transfer_to_team` — the conversation becomes a person's, and the AI says nothing at all on this message. This is the escalation judge: your monitor reads the customer's message, decides it needs a human, and no AI reply is sent.
 - `transfer_to_agent` — the AI you named answers instead of the one that would have. It answers from its own instructions, its own context and its own tools, not the original agent's.

@@ -168,6 +168,17 @@ Schedule a custom manual followup at an exact future time. The receiver is deter
 | `scheduled_time` | string | Yes | ISO 8601 datetime with timezone; must be in the future |
 | `message` | string | Yes | The followup message. May embed AI instructions in brackets: `"Text [AI Context: instructions]"` |
 
+### insert_note
+
+Brief the agent that is about to reply, with a note **you** write. Selected by a `user_message` monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
+
+**Only a `monitor` agent can hold this tool**, and **no model is ever offered it**: a rule selects it, and the note is inserted into the answering agent's context for that one reply. It is the only tool in this file that works that way, so the usual "assign it and the model may call it" reading does not apply.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `template` | string | Yes | The note text. Must be a `const` you write — it cannot come from a variable. Write `{{variable_name}}` inside it to substitute the monitor's own variables. |
+| `keep_in_history` | boolean | No | Default `false` — the note briefs this reply and is stored nowhere. `true` also records it as an internal message the support team can read and the customer never receives. |
+
 ---
 
 ## State Tools
@@ -448,7 +459,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 
 | Module | Tools |
 |--------|-------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup` |
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Resource & File | `list_files`, `read_file`, `send_files`, `download_file`, `upload_file` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
 | Skill | `read_skill`, `read_skill_file` |
