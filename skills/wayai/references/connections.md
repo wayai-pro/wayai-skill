@@ -105,7 +105,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 - Tool / mcp variant (MCP Server — Bearer Token auth)
 - Tool / native variant (External Resources)
 - STT (Groq STT, OpenAI STT, ElevenLabs STT)
-- TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS)
+- TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS)
 
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
@@ -246,7 +246,7 @@ When a hub misbehaves at runtime — audio/TTS not delivered, the agent goes sil
 wayai alerts [--hub <uuid|name>]   # active connection/credential alerts for the hub
 ```
 
-A rejected key (HTTP 401/403) shows as `connection_auth` (e.g. `OpenAI TTS · 401`); a rate/quota limit (402/429) as `connection_quota`; an expired channel token as `channel_token`. A **request/config rejection** (HTTP 400 — e.g. an unsupported `response_format` on the model) shows as `connection_config`: the credential is fine, so re-entering it won't help — fix the connection's model or settings instead (the alert carries a `detail` like `invalid_request_error · response_format`). **Run this FIRST** — before reading source or filing `wayai report create`. For the credential categories the fix is to re-enter the credential (`wayai set-connection-credential`, or the UI), which auto-resolves the alert.
+The **category**, not the HTTP status, says what to fix. A rejected key shows as `connection_auth`, usually at HTTP 401/403 (e.g. `OpenAI TTS · 401`); Google answers an invalid Google AI Studio TTS key with HTTP 400, which is still filed `connection_auth` (`Google AI Studio TTS · 400`). A rate/quota limit (402/429) shows as `connection_quota`; an expired channel token as `channel_token`. A **request/config rejection** (HTTP 400 — e.g. an unsupported `response_format` on the model) shows as `connection_config`: the credential is fine, so re-entering it won't help — fix the connection's model or settings instead (the alert carries a `detail` like `invalid_request_error · response_format`). **Run this FIRST** — before reading source or filing `wayai report create`. For the credential categories the fix is to re-enter the credential (`wayai set-connection-credential`, or the UI), which auto-resolves the alert.
 
 ---
 
@@ -258,7 +258,7 @@ A rejected key (HTTP 401/403) shows as `connection_auth` (e.g. `OpenAI TTS · 40
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
-| `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS) |
+| `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS) |
 
 ---
 
@@ -670,6 +670,7 @@ Text-to-speech services for generating voice responses.
 | OpenAI TTS | `b2c3d4e5-f6a7-4b89-c012-3456789abcdf` | API Key | Text-to-speech synthesis using OpenAI voices. |
 | Groq TTS | `d7e8f9a0-1b2c-4d3e-8f40-5a6b7c8d9e0f` | API Key | Expressive text-to-speech using Canopy Labs Orpheus models via Groq (Preview). |
 | ElevenLabs TTS | `a1b2c3d4-e5f6-4789-a012-3456789abcde` | API Key | High-quality text-to-speech with custom voice cloning. |
+| Google AI Studio TTS | `54448ab4-7457-436d-ae1a-4d7713130cb9` | API Key | Expressive text-to-speech with Gemini TTS models (30 voices, style prompts, 100+ languages). |
 
 ### OpenAI TTS
 
@@ -721,6 +722,28 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 
 **Usage:** High-quality voice synthesis with custom voices.
 
+### Google AI Studio TTS
+
+Text-to-speech with Google's Gemini TTS models.
+
+**Prerequisites:** Google AI Studio API key from [aistudio.google.com](https://aistudio.google.com) — the same kind of key a Google AI Studio agent connection uses.
+
+**Setup:**
+1. Settings → Organizations → Hub → Connections
+2. In the **TTS** group, click the **Google AI Studio TTS** card
+3. Fill the form:
+   - **Connection Name** (required): A name to identify this connection
+   - **API Key** (required): Your Google AI Studio API key
+4. Click Save
+
+**Settings** (`settings:` in `hub.yaml`, or the connection form): `voice_reply_enabled` (see the TTS-group note above), `model`, `voice`, `instructions`.
+
+**Models:** `gemini-3.8-flash-lite-tts` (default — fast and low-cost, for everyday speech in major languages; 101 languages), `gemini-3.8-flash-tts` (highest fidelity and expressiveness; 130 languages). The language is detected from the reply text.
+
+**Voices:** `Achernar`, `Achird`, `Algenib`, `Algieba`, `Alnilam`, `Aoede`, `Autonoe`, `Callirrhoe`, `Charon`, `Despina`, `Enceladus`, `Erinome`, `Fenrir`, `Gacrux`, `Iapetus`, `Kore` (default), `Laomedeia`, `Leda`, `Orus`, `Pulcherrima`, `Puck`, `Rasalgethi`, `Sadachbia`, `Sadaltager`, `Schedar`, `Sulafat`, `Umbriel`, `Vindemiatrix`, `Zephyr`, `Zubenelgenubi`. `voice` also takes the ID of a voice from Google's Extended Voice Library or one you designed in Google AI Studio.
+
+**`instructions`:** the speaking style applied to every reply — emotion, delivery, pacing, volume (e.g. `warm and unhurried, like a friendly receptionist`). The reply text itself is always spoken verbatim.
+
 ---
 
 ## Quick Reference
@@ -746,3 +769,4 @@ Expressive text-to-speech via Groq using Canopy Labs Orpheus models. **Preview**
 | OpenAI TTS | `b2c3d4e5-f6a7-4b89-c012-3456789abcdf` | TTS | API Key |
 | Groq TTS | `d7e8f9a0-1b2c-4d3e-8f40-5a6b7c8d9e0f` | TTS | API Key |
 | ElevenLabs TTS | `a1b2c3d4-e5f6-4789-a012-3456789abcde` | TTS | API Key |
+| Google AI Studio TTS | `54448ab4-7457-436d-ae1a-4d7713130cb9` | TTS | API Key |

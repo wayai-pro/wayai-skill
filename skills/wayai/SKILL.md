@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.88.0
+version: 6.89.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -53,7 +53,7 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Bases — schemas, records, relationships, files, toolsets (the Data surface) | CLI (`wayai bases`, `wayai records`, `wayai record-types`, …; config-as-code via `wayai pull`/`push bases/<base>`) — open [`references/bases/README.md`](references/bases/README.md) first |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
-| Diagnose why a hub misbehaves (audio/TTS not delivered, agent silent, a tool failing) — check connection/credential health FIRST | CLI (`wayai alerts`) — surfaces active Status & Notices alerts (e.g. an invalid provider key shows as `connection_auth` 401). Run this before reading code or filing a report |
+| Diagnose why a hub misbehaves (audio/TTS not delivered, agent silent, a tool failing) — check connection/credential health FIRST | CLI (`wayai alerts`) — surfaces active Status & Notices alerts (e.g. an invalid provider key shows as `connection_auth`, usually at 401). Run this before reading code or filing a report |
 | Diagnose an inexplicable agent reply (wrong date, ignored rule, hallucinated value) — don't reason from the transcript; read what the agent actually received (resolved prompt, rendered context, injected timestamps, tool calls) | CLI (`wayai conversations <id> observability [--message-id <id>]`) — run this before editing instructions |
 | Record a post-hoc business outcome on an ended conversation (e.g. customer purchased) as an analytics dimension | CLI (`wayai conversations <id> annotate --set key=value [--type ...]`) |
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
@@ -170,7 +170,7 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 | **Tool — Native** | Wayai (auto-created), External Resources (API Key) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
 | **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
-| **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs), each at the same loudness |
+| **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs, Google), each at the same loudness |
 
 **Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
 
@@ -515,7 +515,7 @@ wayai use <selector>    # Scope this worktree to a hub or base (UUID, folder nam
 wayai unbind [<sel>]    # Drop one entry from the worktree scope; bare, it clears the whole scope (both axes)
 wayai send-message      # Test message to a hub (preview or production). -c <id> continues a conversation
                         # `-f, --file <path>` attaches a file (repeatable, max 20, ~7 MB/request) delivered exactly as a real channel does — this is how image/document behaviour gets exercised in the dev loop. Message text is optional when a file is attached (an attachment-only send mirrors a photo with no caption). Images reach the model as a signed URL, not base64
-wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` 401 here instead of forcing a guess from code. --hub <uuid|name>, --json
+wayai alerts            # Active connection/credential alerts for a hub (Status & Notices). RUN THIS FIRST when a hub misbehaves (audio/TTS not delivered, agent not replying, a tool failing) — an invalid/expired provider key shows as `connection_auth` (usually 401) here instead of forcing a guess from code. --hub <uuid|name>, --json
 wayai conversations     # List or inspect conversations (default text view omits message_id — use --json or `observability` to discover ids)
                         # `--status <agent|team|ended>` combines with `--period 7d` / `--from` / `--to`, which bound LAST ACTIVITY: `--status team --to <date>` is the idle human-queue check ("waiting on a person, nothing since <date>"). Without `--status` AND without `--org`/`--all`, a bare `--period`/`--from`/`--to` reads the analytics history instead, which bounds conversation START and covers ended conversations only
                         # `--org <organization_id>` / `--all` list across the hubs `wayai list` enumerates plus the production hubs those name as parents — one command instead of a loop. These always read the live listing (open + ended, windowed on LAST ACTIVITY), with or without `--status`. A production PARENT you cannot read is named as skipped and does not fail the run. A production hub whose PREVIEW you cannot see is not enumerable anywhere, so it is NOT covered and NOT reported at all — reach it with `--hub <id>`. `--limit`/`--offset` are per hub; a hub in scope that refuses is named and the command exits non-zero rather than reporting a smaller queue, and an empty scope is reported as such, never as an empty queue
