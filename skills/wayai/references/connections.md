@@ -661,6 +661,8 @@ Text-to-speech services for generating voice responses.
 
 **Spoken replies (all TTS connectors):** `voice_reply_enabled` (toggle, default **on**) controls whether the agent replies with synthesized audio when a user sends a **voice message**. On by default; turn it off to always reply in text — no audio is generated and no TTS operation is billed. Audio is only ever delivered on channels that support it (WhatsApp, Instagram, Telegram, the app); replies to text messages are always text. Rides `settings:` in `hub.yaml` like the other connector settings.
 
+**Consistent voice (all TTS connectors, always on):** every spoken reply is a separate generation, so the same voice could otherwise come out louder or quieter from one reply to the next. Each reply is normalized to the same loudness (-16 LUFS) before it is sent, whatever the provider and channel. With ElevenLabs, each reply is also generated with the conversation's previous spoken reply as context, so tone and pacing carry over — on the `eleven_flash_v2_5`, `eleven_turbo_v2_5` and `eleven_multilingual_v2` models (and their v2 variants); not on `eleven_v3` or a custom model id. Neither needs configuration; the voice settings you choose (e.g. ElevenLabs **Stability** — higher is steadier) still apply to every reply.
+
 ### Available Connectors
 
 | Connector | connector_id | Auth | Description |
