@@ -223,11 +223,11 @@ Models often write a short user-facing message *before* calling tools ("Let me c
 
 | Setting | Values | Default | Effect |
 |---|---|---|---|
-| `deliver_preamble` | boolean | `true` | Deliver the pre-tool text immediately as its own message — the user sees/hears it during the tool-execution wait, then the final reply arrives as a separate message. `false` = only the final reply is delivered; the pre-tool text is discarded (from the user AND from the model's context, so the final answer is always self-contained). |
+| `deliver_preamble` | boolean | `true` | Deliver the pre-tool text immediately as its own message — the user sees/hears it during the tool-execution wait, then the final reply arrives as a separate message. `false` = only the final reply is delivered; the pre-tool text is discarded (from the user AND from the model's context, so the final answer is always self-contained — except on Claude Fable / Opus 5.5, whose progress update stays in the model's context; see below). |
 
 Notes:
 - Applies to **every** tool-loop round — a multi-step turn can deliver several progress messages before the final answer.
-- **Claude Fable and Opus 5.5 currently deliver no preambles**: these models return their between-tool narration in a form the Anthropic connector doesn't surface yet, so only the final reply arrives. Pick another model if the agent must narrate progress.
+- **Claude Fable and Opus 5.5** write their pre-tool narration as a short progress update. The Anthropic connector delivers it as the preamble; other connectors serving these models (OpenRouter, the Claude harness) don't yet. The update is part of the model's own reasoning, so it stays in the model's context even when not delivered.
 - **Email is exempt**: each preamble would be a separate email, so the setting is ignored on email channels (pre-tool text is discarded there).
 - **Voice conversations**: each delivered preamble is synthesized as its own TTS audio clip — the "preamble technique" that avoids dead air while tools run — **when spoken replies are enabled** (the TTS connector's `voice_reply_enabled`, on by default; see Connections › TTS). With it off, preambles deliver as text only.
 - Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns when spoken replies are enabled).
