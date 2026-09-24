@@ -45,7 +45,7 @@ wayai-ws/hubs/<hub>/resources/
 
 Folder name = slugified resource name. Subfolders inside a resource are preserved (relative paths kept on push).
 
-A resource directory and every path component leading to it must be a **real directory, not a symlink**. If `resources/`, the hub folder, or any folder above them is a symlink, `wayai pull` stops with an error and writes or prunes nothing. Below `resources/`, it skips writing/pruning one resource (with a warning) if that resource's folder or a subfolder is a symlink — even one pointing elsewhere inside the workspace — so a pre-planted link can't redirect writes outside the resource folder.
+A resource directory, every path component leading to it, and every file and subfolder inside it must be **real, not a symlink**, even one pointing elsewhere inside the workspace. If the hub folder or `resources/` itself is a symlink, every `wayai pull` and `wayai push` stops with an error. The same goes for a symlinked resource folder, subfolder, or file inside `resources/`: `wayai push` (and `diff`/`publish`) stops with an error, and so does `wayai pull` into an existing preview hub folder, which reads the folder first to show the diff. Where pull writes without reading first (a production mirror, or overwriting a folder it could not parse), it skips that entry with a warning instead. Either way a pre-planted link can't redirect a write outside the resource folder or send an outside file to the platform.
 
 ---
 
