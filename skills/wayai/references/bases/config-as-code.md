@@ -113,8 +113,7 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
 - **Push prints advisory tool-design warnings** for the toolsets it applies (see
   [toolsets.md](toolsets.md)). They go to stderr and never block a push.
 - **Record base context in `AGENTS.md`.** The CLI does **not** seed one for a base folder — create
-  `wayai-ws/bases/<base>/AGENTS.md` (plus a one-line `CLAUDE.md` holding `@AGENTS.md`) yourself and
-  keep it current. See [`../agents-md-template.md`](../agents-md-template.md).
+  `wayai-ws/bases/<base>/AGENTS.md` yourself and keep it current. See [`../agents-md-template.md`](../agents-md-template.md).
 
 ## Environments: preview, production, promote
 

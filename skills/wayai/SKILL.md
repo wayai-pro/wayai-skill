@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.90.0
+version: 6.90.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -426,7 +426,7 @@ The user's entry point is `wayai.pro`, whose onboarding section carries the inst
 1. **Update CLI** — `wayai update` (always run before any operation; if the CLI isn't installed yet, bootstrap with `npm i -g @wayai/cli@latest`)
 2. **Update skill if stale** — run `wayai status --json`; if `skill.latest` is set and newer than `skill.version`, run `npx skills add wayai-pro/wayai-skill -y` and exit (the refreshed skill loads on the next turn). Otherwise continue. (Cold-start onboarding runs the same check as state-machine row 1c.)
 3. **Pull** — `wayai pull -y` (sync local files from platform; catches out-of-band changes)
-4. **Read context** — read `wayai-ws/hubs/<hub>/AGENTS.md` for this hub's notes (purpose, decisions, ongoing work); if you're also working a base, read `wayai-ws/bases/<base>/AGENTS.md` too. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load `AGENTS.md` natively. **Retire an obsolete root bootstrap while you're here** — see [Retiring the old root `AGENTS.md`](#retiring-the-old-root-agentsmd)
+4. **Read context** — read `wayai-ws/hubs/<hub>/AGENTS.md` for this hub's notes (purpose, decisions, ongoing work); if you're also working a base, read `wayai-ws/bases/<base>/AGENTS.md` too. AGENTS.md-aware harnesses (Claude Code, Codex, Cursor, OpenCode, Aider) auto-load `AGENTS.md` natively, but don't rely on it — see [Hub-Folder Memory](#hub-folder-memory). **Retire an obsolete root bootstrap while you're here** — see [Retiring the old root `AGENTS.md`](#retiring-the-old-root-agentsmd)
 5. **Edit** — modify `hub.yaml`, `agents/*.yaml`, `agents/*.md`
 6. **Push** — `wayai push -y` (apply to preview hub; auto-pulls server-assigned IDs back)
 7. **Test** — `wayai send-message "Hello"`
@@ -444,14 +444,14 @@ After the hub exists, follow the existing-hub workflow.
 
 ### Hub-Folder Memory
 
-`wayai-ws/hubs/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — the contextual information the config files (`hub.yaml`, `agents/`) can't capture: purpose, key decisions and *why*, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. `wayai pull`/`push` seed a placeholder `AGENTS.md` (+ a `CLAUDE.md` shim) if the folder has none, absence-guarded. AGENTS.md-aware harnesses (Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder.
+`wayai-ws/hubs/<hub>/AGENTS.md` is the **hub-specific memory** for this hub — the contextual information the config files (`hub.yaml`, `agents/`) can't capture: purpose, key decisions and *why*, ongoing work, business rules that only apply here, terminology, integration quirks. Read it at the start of every hub-related task. `wayai pull`/`push` seed a placeholder `AGENTS.md` if the folder has none, absence-guarded. AGENTS.md-aware harnesses (Claude Code, Codex, Cursor, OpenCode, Aider) auto-load it natively when the agent's cwd is inside the hub folder — but whether Claude Code does depends on its version, its settings, and any `CLAUDE.md`-family file in that folder or above it ([Claude Code docs](https://code.claude.com/docs/en/memory#agents-md)). So don't rely on the auto-load: if the hub's `AGENTS.md` is not already among your loaded instructions, read it yourself. Older CLIs also seeded a one-line `CLAUDE.md` holding `@AGENTS.md` beside it; it is harmless, so leave it.
 
 **Maintain it actively:**
 - After significant changes (new agent, new tool, business rule update), update `AGENTS.md` so future sessions inherit the context
 - If a hub folder has no `AGENTS.md` (or only the seeded placeholder), fill it with what you know — purpose, current agents, recent decisions — and ask the user to confirm or enrich
 - Keep it focused on *why* decisions were made and *what* makes this hub different. Don't restate platform mechanics — those live in this skill
 - Record agreed scope in an optional `## Build plan` section — that exact heading, an optional `Goal: <one sentence>` under it, then GitHub task-list items (`- [ ]` / `- [x]`), nested at most one level. Keep it under ~30 items; past that, split into phases and archive completed ones into prose above the list. Tick items as they land — an item is done when it's pushed and working, not when the YAML exists. Like the rest of `AGENTS.md`, it is never synced to the platform
-- **Bases get the same treatment.** If you're also working with a base, record the context its settings can't capture in the base folder's `AGENTS.md` under `wayai-ws/bases/<base-id>/` (create it + a `CLAUDE.md` shim if missing)
+- **Bases get the same treatment.** If you're also working with a base, record the context its settings can't capture in the base folder's `AGENTS.md` under `wayai-ws/bases/<base-id>/` (create it if missing)
 
 **Overflow content goes into `wayai-ws/hubs/<hub>/references/`:**
 - When `AGENTS.md` grows past ~200 lines or starts mixing topics, extract the deeper material into focused files under `wayai-ws/hubs/<hub>/references/`
@@ -666,7 +666,6 @@ wayai-ws/                                # All WayAI config-as-code (init create
         ├── attachments/                 # Eval/journey turn attachment files (synced; hub-root, shared by evals + journeys)
         ├── resources/                   # Knowledge & skill resource files (synced)
         ├── AGENTS.md                    # Hub-specific memory — scaffold seeded on pull/push (NOT synced; fill it in)
-        ├── CLAUDE.md                    # Per-hub Claude Code shim — `@AGENTS.md` (seeded if absent, NOT synced)
         └── references/                  # Hub-specific supporting files (NOT synced)
     └── <hub-slug>/                      # Linked production hub: READ-ONLY mirror (bare slug, no --label). Refreshed each pull; never pushed
 ```
