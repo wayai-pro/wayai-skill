@@ -147,22 +147,22 @@ settings:
   max_tokens: 4096
   # temperature only on Opus 4.6 / Sonnet 4.6 & older — Sonnet 5 / Opus 4.7+ / Fable strip it (see below)
   thinking_enabled: true        # extended thinking on/off (Claude 4+) — WayAI toggle mapping to the Anthropic `thinking` param; default false (off)
-  effort: high                  # reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Sonnet 5/Fable 5)
+  effort: high                  # reasoning effort: low|medium|high|xhigh|max (Opus 4.5+/Sonnet 4.6+/Sonnet 5/Fable)
 ```
 
 **OpenAI** (service: OpenAI):
 ```yaml
 settings:
-  model: gpt-5.6-sol
+  model: gpt-6-sol
   max_tokens: 4096
-  # temperature omitted — gpt-5.6 Sol is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
-  reasoning_effort: medium      # reasoning models: low|medium|high|xhigh|max|none (xhigh needs gpt-5.2+, max needs gpt-5.6+; minimal is legacy gpt-5/5.1 only)
+  # temperature omitted — GPT-6 Sol is a reasoning model and strips it (set temperature only on non-reasoning OpenAI models)
+  reasoning_effort: medium      # reasoning models: low|medium|high|xhigh|max|none (xhigh needs gpt-5.2+, max needs gpt-5.6+; GPT-6 Astra has no none; minimal is legacy gpt-5/5.1 only)
 ```
 
 **Google AI Studio** (service: Google AI Studio):
 ```yaml
 settings:
-  model: gemini-3.1-pro
+  model: gemini-3.8-flash
   temperature: 0.7
   max_tokens: 4096
   reasoning_level: high         # dynamic|low|medium|high
@@ -171,7 +171,7 @@ settings:
 **OpenRouter** (service: OpenRouter):
 ```yaml
 settings:
-  model: openai/gpt-5.6-sol
+  model: openai/gpt-6-sol
   temperature: 0.7
   max_tokens: 4096
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
@@ -180,7 +180,7 @@ settings:
 **xAI** (service: Xai):
 ```yaml
 settings:
-  model: grok-4.5
+  model: grok-4.7
   temperature: 0.7
   max_tokens: 4096
   reasoning_effort: none        # low|medium|high|none (none omits the param; direct Grok, not via OpenRouter)
@@ -192,19 +192,19 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 
 | Connector | Setting | Values | Maps to |
 |---|---|---|---|
-| Anthropic | `thinking_enabled` (boolean, default `false`) | `true` / `false` | WayAI's on/off toggle for the Anthropic `thinking` param. `true` → adaptive thinking (Claude 4.6+) or a fixed budget (Sonnet 4.5 / Haiku 4.5 / Opus 4.5). `false` → thinking off — sent as an explicit disable on models that reason by default (Sonnet 5), so "off" always means off. Temperature/top_p are ignored when on. **Fable 5 always thinks** — the toggle is hidden there and can't turn thinking off (depth is still shaped by `effort`). |
-| Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable 5). `xhigh` = Opus 4.7+/Sonnet 5/Fable 5; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
-| OpenAI | `reasoning_effort` | `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning. `xhigh` needs gpt-5.2+ (clamped to `high` below); `max` needs gpt-5.6+ (clamped to `xhigh` below). `minimal` is a legacy level only gpt-5 / gpt-5.1 accept — kept as a deprecated value but clamped to `low` on gpt-5.2 and newer. |
+| Anthropic | `thinking_enabled` (boolean, default `false`) | `true` / `false` | WayAI's on/off toggle for the Anthropic `thinking` param. `true` → adaptive thinking (Claude 4.6+) or a fixed budget (Sonnet 4.5 / Haiku 4.5 / Opus 4.5). `false` → thinking off — sent as an explicit disable on models that reason by default (Sonnet 5), so "off" always means off. Temperature/top_p are ignored when on. **Fable and Opus 5.5 always think** — the toggle is hidden there and can't turn thinking off (depth is still shaped by `effort`). |
+| Anthropic | `effort` | `low` / `medium` / `high` / `xhigh` / `max` | `output_config.effort` (Opus 4.5+, Sonnet 4.6+, Fable). `xhigh` = Opus 4.7+/Sonnet 5/Fable; `max` excludes Opus 4.5; Sonnet 4.5/Haiku 4.5 reject it. Levels the model can't use clamp down. |
+| OpenAI | `reasoning_effort` | `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort` (pairs with `verbosity`). `none` = no reasoning (GPT-6 Astra has no `none` level — it runs at `low`). `xhigh` needs gpt-5.2+ (clamped to `high` below); `max` needs gpt-5.6+ (clamped to `xhigh` below). `minimal` is a legacy level only gpt-5 / gpt-5.1 accept — kept as a deprecated value but clamped to `low` on gpt-5.2 and newer. |
 | Google Gemini | `reasoning_level` | `dynamic` / `low` / `medium` / `high` | `thinkingLevel` (Gemini 3.x) or `thinkingBudget` (Gemini 2.5). `dynamic` = model default. |
 | OpenRouter | `reasoning_effort` | `minimal` / `low` / `medium` / `high` / `xhigh` / `max` / `none` | `reasoning.effort`. `none` disables the override. OpenRouter maps the level to the nearest one each model supports. |
 | xAI | `reasoning_effort` | `low` / `medium` / `high` / `none` | Top-level `reasoning_effort` (OpenAI-standard chat-completions form). `none` omits the param. Models without reasoning control ignore/reject a non-none value. |
 
-**Temperature on newer Anthropic models.** `temperature` is the only sampling knob the Anthropic connector exposes (no `top_p`/`top_k`). Sonnet 5, Opus 4.7+, and Fable 5 **strip a non-default `temperature`** before the call (silently ignored, not an error) — set it only on Opus 4.6 / Sonnet 4.6 / Sonnet 4.5 / Opus 4.5 / Haiku 4.5. It's also ignored on any model whenever `thinking_enabled` is on.
+**Temperature on newer Anthropic models.** `temperature` is the only sampling knob the Anthropic connector exposes (no `top_p`/`top_k`). Sonnet 5, Opus 4.7+, and Fable **strip a non-default `temperature`** before the call (silently ignored, not an error) — set it only on Opus 4.6 / Sonnet 4.6 / Sonnet 4.5 / Opus 4.5 / Haiku 4.5. It's also ignored on any model whenever `thinking_enabled` is on.
 
-**Choosing thinking & effort (Anthropic).** Thinking is **off by default** (`thinking_enabled: false`) on every controllable model — including Sonnet 5, which won't reason unless you set `thinking_enabled: true` (despite reasoning by default at the raw API). When setting up an agent:
+**Choosing thinking & effort (Anthropic).** Thinking is **off by default** (`thinking_enabled: false`) on every controllable model — including Sonnet 5, which won't reason unless you set `thinking_enabled: true` (despite reasoning by default at the raw API). **Fable and Opus 5.5 always think** and have no toggle: thinking tokens bill as output, so for simple agents on them lower `effort` rather than looking for an off switch — or pick Sonnet 5 / Haiku 4.5. When setting up an agent:
 - **Simple agents** (FAQ, routing, intent classification, short replies) — leave thinking off; optionally set `effort: low`/`medium` to trim tokens.
 - **Reasoning-heavy agents** (multi-step problem solving, complex tool orchestration, evaluators) — set `thinking_enabled: true` and/or raise `effort` to `high`/`xhigh`.
-- `effort` shapes total token spend (text + tool calls) with or without thinking, so it's the lever even when thinking is off (and the only one on Fable 5).
+- `effort` shapes total token spend (text + tool calls) with or without thinking, so it's the lever even when thinking is off (and the only one on Fable and Opus 5.5).
 
 ### File handling (all LLM connectors)
 
@@ -227,6 +227,7 @@ Models often write a short user-facing message *before* calling tools ("Let me c
 
 Notes:
 - Applies to **every** tool-loop round — a multi-step turn can deliver several progress messages before the final answer.
+- **Claude Fable and Opus 5.5 currently deliver no preambles**: these models return their between-tool narration in a form the Anthropic connector doesn't surface yet, so only the final reply arrives. Pick another model if the agent must narrate progress.
 - **Email is exempt**: each preamble would be a separate email, so the setting is ignored on email channels (pre-tool text is discarded there).
 - **Voice conversations**: each delivered preamble is synthesized as its own TTS audio clip — the "preamble technique" that avoids dead air while tools run — **when spoken replies are enabled** (the TTS connector's `voice_reply_enabled`, on by default; see Connections › TTS). With it off, preambles deliver as text only.
 - Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns when spoken replies are enabled).

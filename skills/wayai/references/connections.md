@@ -336,7 +336,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
    - **API Key** (required): Your xAI API key
 4. Click Save
 
-Direct access to Grok models (grok-4.5 default). Reaches xAI's API without the OpenRouter hop; Grok is also available via the OpenRouter connector (`x-ai/grok-*`).
+Direct access to Grok models (grok-4.7 default). Reaches xAI's API without the OpenRouter hop; Grok is also available via the OpenRouter connector (`x-ai/grok-*`).
 
 ---
 
