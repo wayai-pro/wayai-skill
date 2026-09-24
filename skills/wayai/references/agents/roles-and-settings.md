@@ -523,6 +523,13 @@ monitor_config:
     kind: none                                # the default: do nothing
 ```
 
+**Rules need structured output, on every trigger.** A rule reads variables, and a variable comes only from a structured answer — so a monitor with `rules` must set a [`response_format`](#response-format-structured-output) whose schema carries the variables its rules read (`urgency` and `urgency_confidence` above), each declared in its `evaluation_variables`. The examples in this section show only `monitor_config`. On text output no rule could ever match: a `user_message` or `manual` monitor would never run a rule's action, and a reply gate would send every reply unjudged. The settings view shows the response format read-only, so set it with `wayai push`. A `fallback` alone needs none.
+
+- **Creating such a monitor, or turning one into it, is refused** — in the agent editor, on the agents API, and by `wayai push`. That includes adding rules to a monitor on text output, dropping the `response_format` of a monitor with rules, and moving a text-output monitor with rules onto another trigger.
+- **A monitor saved before this rule still saves** in the editor and on the agents API, on the trigger it was saved on — renamed, disabled or otherwise edited — and publishing or replicating its hub copies it as it is. The editor flags it beside its rules, and each run whose rules could not decide is recorded as unjudged; a reply gate also logs each reply it lets through that way.
+- **`wayai push` refuses its declaration** until the YAML sets a `response_format` or drops the rules, and nothing else in that push is applied until it does. `wayai pull` of such a hub gives you exactly that YAML, so fix it before your next push.
+- **A rule on a variable nothing declares** (a typo, or one deactivated since) can never match, and is not reported as unjudged — declare it.
+
 **Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting, and those variables exist only on a model that returns calibrated confidence.
 
 **The model never names a tool or an argument.** It produces values. Your rule decides which tool runs and which argument each value fills — either `from_variable` (something the monitor decided) or `const` (something you wrote). A value coming back as text is passed to the tool as a value and nothing else; it is validated by that tool's own schema exactly as the answering agent's tool calls are.
@@ -722,12 +729,7 @@ monitor_config:
         args: { note: { const: "AI promised a refund" } }
 ```
 
-**A gate with rules needs structured output.** Its rules read variables, and a variable comes only from a structured answer — so a gate with `rules` must set a [`response_format`](#response-format-structured-output) whose schema carries the variables they read (`tone` and `promises_refund` above), each declared in its `evaluation_variables`. On text output no rule could ever match, and every reply would be sent unjudged. The settings view shows the response format read-only, so set it with `wayai push`. A `fallback` alone needs none.
-
-- **Creating such a gate, or turning a gate into one, is refused** — in the agent editor, on the agents API, and by `wayai push`.
-- **A gate saved before this rule still saves** in the editor and on the agents API — renamed, disabled or otherwise edited — and publishing or replicating its hub copies it as it is. The editor flags it beside its rules, and each reply it lets through is logged as sent unjudged.
-- **`wayai push` refuses its declaration** until the YAML sets a `response_format` or drops the rules, and nothing else in that push is applied until it does. `wayai pull` of such a hub gives you exactly that YAML, so fix it before your next push.
-- **A rule on a variable nothing declares** (a typo, or one deactivated since) can never match, and is not reported as unjudged — declare it.
+**A gate with rules needs structured output**, as every monitor with rules does — here, a schema carrying `tone` and `promises_refund`. See [`rules` and `fallback`](#rules-and-fallback).
 
 **What it judges.** The same window a `user_message` monitor reads, plus the draft, labelled as the reply not yet sent. A callee it runs with `run_monitor` is shown the draft too.
 
