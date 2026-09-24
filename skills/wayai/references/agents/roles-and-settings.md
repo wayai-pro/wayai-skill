@@ -722,6 +722,13 @@ monitor_config:
         args: { note: { const: "AI promised a refund" } }
 ```
 
+**A gate with rules needs structured output.** Its rules read variables, and a variable comes only from a structured answer — so a gate with `rules` must set a [`response_format`](#response-format-structured-output) whose schema carries the variables they read (`tone` and `promises_refund` above), each declared in its `evaluation_variables`. On text output no rule could ever match, and every reply would be sent unjudged. The settings view shows the response format read-only, so set it with `wayai push`. A `fallback` alone needs none.
+
+- **Creating such a gate, or turning a gate into one, is refused** — in the agent editor, on the agents API, and by `wayai push`.
+- **A gate saved before this rule still saves** in the editor and on the agents API — renamed, disabled or otherwise edited — and publishing or replicating its hub copies it as it is. The editor flags it beside its rules, and each reply it lets through is logged as sent unjudged.
+- **`wayai push` refuses its declaration** until the YAML sets a `response_format` or drops the rules, and nothing else in that push is applied until it does. `wayai pull` of such a hub gives you exactly that YAML, so fix it before your next push.
+- **A rule on a variable nothing declares** (a typo, or one deactivated since) can never match, and is not reported as unjudged — declare it.
+
 **What it judges.** The same window a `user_message` monitor reads, plus the draft, labelled as the reply not yet sent. A callee it runs with `run_monitor` is shown the draft too.
 
 **Actions.**
@@ -753,7 +760,7 @@ monitor_config:
 **What changes for a hub with a gate.**
 
 - **No token streaming, no mid-reply updates.** On a streaming app, the reply appears whole once the gate has passed it, instead of word by word. Text the agent would otherwise send while it works ("Let me check that for you…") is not sent. Neither can be taken back once shown, and the gate has not judged them yet.
-- **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered. (A revision the gate cannot judge is the exception: the gate already objected to the original, so it is held.)
+- **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable, answers without a variable its rules read, or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered. (A revision the gate cannot judge is the exception: the gate already objected to the original, so it is held.)
 - **A rewrite adds a second answering-agent call and a second gate judgement** to that reply, all inside the customer's wait.
 - **Cost.** The gate starts no turn of its own; the time it adds is part of the same turn, and a turn is billed for how long it runs.
 
