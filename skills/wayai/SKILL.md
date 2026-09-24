@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.89.0
+version: 6.90.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).
@@ -819,7 +819,7 @@ resources:
 
 For full agent options (settings per connector, `additional_context_template`, `response_format`, file handling, native tool params, custom tool fields, `composed_tools`, placeholders), see [`references/agents/`](references/agents/).
 
-**Evaluation variables** — `conversation_evaluator` / `message_evaluator` agents carry an `evaluation_variables` list (the structured fields they emit per conversation/message, which become `data.variables.*` in Analytics), round-tripped via pull/push. See [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md#evaluation-variables).
+**Evaluation variables** — `conversation_evaluator` / `message_evaluator` agents carry an `evaluation_variables` list (the structured fields they emit per conversation/message, which become `data.variables.*` in Analytics), round-tripped via pull/push. See [`references/agents/roles-and-settings.md`](references/agents/roles-and-settings.md#evaluation-variables). A `monitor` declares the fields its `flag_conditions` and `rules` read in the same list; those feed its conditions only, never Analytics ([Monitor Configuration](references/agents/roles-and-settings.md#monitor-configuration-monitor-only)).
 
 ## Key Rules
 

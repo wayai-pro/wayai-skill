@@ -292,7 +292,7 @@ Agents with `response_format` set behave like API endpoints — the response is 
 
 ## Evaluation Variables
 
-`conversation_evaluator` and `message_evaluator` agents emit structured fields per conversation/message — their **evaluation variables** (stored as agent parameters, surfaced as Analytics columns). They round-trip via `wayai pull` / `wayai push` under an `evaluation_variables` list on the agent:
+`conversation_evaluator`, `message_evaluator` and `monitor` agents declare the structured fields they emit — their **evaluation variables** (stored as agent parameters). An evaluator's are surfaced as Analytics columns; a monitor's feed only its own `flag_conditions` and `rules` (see [Monitor Configuration](#monitor-configuration-monitor-only)), so `label`, `category` and `is_summary` do nothing on a monitor. They round-trip via `wayai pull` / `wayai push` under an `evaluation_variables` list on the agent:
 
 ```yaml
 # agents/conversation-evaluator.yaml
@@ -322,10 +322,10 @@ evaluation_variables:
 | `name` | string | required | Variable name the agent writes — unique per agent |
 | `type` | enum | `string` | `string` \| `number` \| `boolean` \| `integer` \| `enum` |
 | `description` | string | `""` | What the variable measures (guides the evaluator) |
-| `label` | string | omitted | Display label (Analytics columns, UI) |
+| `label` | string | omitted | Display label (Analytics columns, UI) — evaluators only |
 | `enum` | string[] | omitted | Allowed values — required when `type: enum`, ignored otherwise |
 | `required` | boolean | `true` | Whether the evaluator must populate it |
-| `category` | string | omitted | Analytics grouping: `quality` \| `satisfaction` \| `compliance` \| `categorization` |
+| `category` | string | omitted | Analytics grouping: `quality` \| `satisfaction` \| `compliance` \| `categorization` — evaluators only |
 | `is_summary` | boolean | `false` | Marks the rolling conversation-summary field; honored only for `type: string` |
 
 **Replace semantics:** the list is authoritative. Omit the `evaluation_variables` key to leave the agent's current variables untouched; include it (even as `[]`) and `push` makes the platform match it exactly — added entries are created, missing ones deleted. Default-valued fields are omitted on pull, so a pulled-then-pushed file is a no-op.
@@ -439,10 +439,16 @@ monitor_config:
   trigger: idle                 # when this monitor runs; defaults to idle
   delay_seconds: 300            # idle only: inactivity wait before it runs; >= 10
   flag_conditions:
-    - variable: user_sentiment  # system metric or evaluation-variable name
+    - variable: user_sentiment  # a field this monitor declares below
       operator: "="             # same operators as the evaluator's flag_conditions
       value: negative
+evaluation_variables:           # the fields of this monitor's own answer its conditions read
+  - name: user_sentiment
+    type: enum
+    enum: [positive, neutral, negative]
 ```
+
+**What a condition can read.** A monitor's `flag_conditions` and `rules` read the monitor's OWN answer — never another agent's — through the fields it declares in its `evaluation_variables`: the same list, with the same types, an evaluator carries (see [Evaluation Variables](#evaluation-variables)). Declare every field a condition names, including a `{field}_confidence` one (`type: number`) on a decisions model. A monitor's declarations are read up to about two million characters of names and enum values in all; any past that are left out. A `boolean` field compares as `true` or `false`. A monitor's variables feed its own conditions only; they are not Analytics columns.
 
 ### `trigger`
 
