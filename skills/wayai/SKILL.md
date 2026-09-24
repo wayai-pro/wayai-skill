@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.90.3
+version: 6.90.4
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets).

@@ -493,7 +493,7 @@ These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, 
 | Key | Meaning |
 |---|---|
 | `history_messages` | How many of the newest messages the monitor sees. Default 10, maximum 100. Keep it small — a closed-set monitor's accuracy falls as unrelated content grows. |
-| `include_tool_results` | `false` by default: the monitor sees that a tool ran, but not what it returned. Set `true` only when the monitor's judgement depends on the tool's output. |
+| `include_tool_results` | `false` by default: the monitor's window shows that a tool ran, but not what it returned — and only for a tool that keeps its calls in history (its `keep_in_history`). `true` also shows what those tools returned; on a reply gate it shows what the tools returned while the draft was written, up to the 50 most recent results (see [the reply gate](#the-reply-gate--assistant_reply)). Set `true` only when the monitor's judgement depends on a tool's output. |
 
 **`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
 
@@ -731,6 +731,8 @@ monitor_config:
 
 **What it judges.** The same window a `user_message` monitor reads, plus the draft, labelled as the reply not yet sent. A callee it runs with `run_monitor` is shown the draft too.
 
+With [`include_tool_results: true`](#history_messages-and-include_tool_results), a gate is also shown what the answering agent's tools returned while it wrote the draft — up to the 50 most recent results, whether or not a tool keeps its calls in history, and however small `history_messages` is — so a rule that asks whether a figure has a source can find it. A callee with the option on is shown them too. **What the agent took from its own instructions is not shown**: a price written in its prompt looks unsourced to the gate, so keep facts a gate must verify in files or tools the agent reads.
+
 **Actions.**
 
 | Action | What happens |
@@ -738,7 +740,7 @@ monitor_config:
 | `none` | The reply is sent as drafted. |
 | `call_tool` | The tool runs, then the reply is sent as drafted. |
 | `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
-| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered, and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
+| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered (up to the 50 most recent results), and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
 
 ```yaml
       action:
