@@ -730,7 +730,7 @@ monitor_config:
 | `none` | The reply is sent as drafted. |
 | `call_tool` | The tool runs, then the reply is sent as drafted. |
 | `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
-| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only — it is offered no tools, so nothing it did while answering runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
+| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered, and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
 
 ```yaml
       action:
@@ -738,7 +738,7 @@ monitor_config:
         note: "Remove the discount — only a manager can offer one."   # your words; required
 ```
 
-**A rewrite never sends text the gate has not passed.** There is one revision per reply, never a loop. If the revision cannot be made (the agent's model fails, is too slow, or returns nothing), or the gate cannot judge the revision, the reply is held rather than sent. The note is yours: it is shown to the answering agent as guidance for that one revision, and not kept in the conversation.
+**A rewrite never sends text the gate has not passed.** There is one revision per reply, never a loop. If the revision cannot be made (the agent's model fails, is too slow, returns nothing, or tries to call a tool instead of replying — the call is not run), or the gate cannot judge the revision, the reply is held rather than sent. The note is yours: it is shown to the answering agent as guidance for that one revision, and not kept in the conversation.
 
 **What a gate's rule can call.** Everything a `user_message` rule can, except two, because the reply already exists when the gate runs:
 
