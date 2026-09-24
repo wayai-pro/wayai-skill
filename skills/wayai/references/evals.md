@@ -94,7 +94,7 @@ input:
 - **Caps:** ≤20 files per turn, ≤10 MB each, ≤1,000 distinct attachment files per push, and a bounded total attachment payload per push. A push carries every referenced file's bytes, so it can't be split to get under the total — reduce the attachment set (fewer/smaller files, or drop attachments from some scenarios) if a push exceeds it.
 - **Delivery:** the trigger turn's files reach the responder as a signed URL exactly as a live channel delivers them (images as a URL, never inline base64). Historical turns replay as a `[Attachment: <name>]` placeholder — the responder learns a file was present, not its contents. The **evaluator** sees presence markers, not the image, so assert on the agent's *response* (did it read the plan name correctly?), not on the evaluator inspecting the file.
 - **Lifecycle:** bytes are stored per hub and deleted with the hub; deleting a scenario does not delete shared bytes.
-- **No symlinks.** `attachments/` and every path component leading to it must be a real directory. `wayai pull` skips attachment sync (with a warning) if `attachments/` — or an ancestor — is a symlink, even one pointing back inside the hub, so a pre-planted link can't redirect writes.
+- **No symlinks.** `attachments/` and every path component leading to it must be a real directory. If `attachments/`, the hub folder, or any folder above them is a symlink — even one pointing back inside the hub — `wayai pull` stops with an error and writes or prunes nothing, so a pre-planted link can't redirect writes.
 
 ### Per-run variables (`{{var()}}`) — parallelize mutating evals
 
