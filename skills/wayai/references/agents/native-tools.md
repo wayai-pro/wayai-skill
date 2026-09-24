@@ -285,19 +285,19 @@ Browse what the agent can reach, by path. Discovery is a drill-down: no `path` l
 
 **Response.** `{ path, entries, total, limit, offset }`, where `path` is the resolved location and `total` is the count the page was drawn from. Each entry is a `mount`, `folder`, or `file` row carrying its own `path`; `folder` rows carry the folder's `description`, and `file` rows carry `file_id` alongside the path, because `download_file` / `upload_file` still address by id.
 
-**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `resources/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which resources a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a resource is named in a `resource_id` parameter (`read_file`'s, and the deprecated listing tools'), and there it reads the same for an unlinked resource and one that does not exist. **Admin note:** if an agent reports "no such path" for a resource you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
+**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `resources/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which resources a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a resource is named in a `resource_id` parameter (`read_file`'s, `upload_file`'s, and the deprecated listing tools'), and there it reads the same for an unlinked resource and one that does not exist. `read_file` and `upload_file` take a linked resource's id or slug there; the deprecated listing tools take only its id. **Admin note:** if an agent reports "no such path" for a resource you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
 
 ### list_resource_files *(deprecated — use `list_files`)*
 
 Still works and still round-trips through `wayai push` / `pull`, but hidden from the Platform UI's Add grid: it addresses files by a `resource_id` a publish re-mints, and it cannot see conversation attachments at all. (The id itself is discoverable — the linked ids are still injected into its `resource_id` description at turn time — but an id written into instructions breaks at preview → production, which a path does not.) Nothing migrates an existing assignment — swap it deliberately.
 
-Parameters: `resource_id` (required), `folder_id`, `search_query`, `tags`, `limit`, `offset`, and `metadata_filter` *(accepted but never read — a filtered call returns the UNFILTERED page; use `list_files`, where the filter is real)*. Each row carries `path`, `file_id`, `title`, `file_name`, `mime_type`, `file_size`, `tags`, `metadata`, `folder_id`, `folder_name`, `resource_id`, `resource_name`.
+Parameters: `resource_id` (required — one of the ids listed in its description; a slug is refused as "not linked" even for a linked resource, since this tool's behavior is frozen: pass the id, or use `list_files` with `resources/<slug>`), `folder_id`, `search_query`, `tags`, `limit`, `offset`, and `metadata_filter` *(accepted but never read — a filtered call returns the UNFILTERED page; use `list_files`, where the filter is real)*. Each row carries `path`, `file_id`, `title`, `file_name`, `mime_type`, `file_size`, `tags`, `metadata`, `folder_id`, `folder_name`, `resource_id`, `resource_name`.
 
 ### list_resource_folders *(deprecated — use `list_files`)*
 
 Deprecated on the same terms. Lists folders in a resource with `parent_folder_id` for hierarchy reconstruction; `list_files` returns the same folders already arranged as paths.
 
-Parameters: `resource_id` (required), `search_query`, and `metadata_filter` *(accepted but never read, exactly as on `list_resource_files`)*.
+Parameters: `resource_id` (required, an id — a slug is refused, exactly as on `list_resource_files`), `search_query`, and `metadata_filter` *(accepted but never read, exactly as on `list_resource_files`)*.
 
 ### read_file
 
@@ -337,9 +337,11 @@ Persist a sandbox file back to the resource library. Two modes: **UPDATE** (pass
 |-----------|------|----------|-------------|
 | `sandbox_file_id` | string | Yes | Provider-specific ID of the file inside the sandbox |
 | `file_id` | string | UPDATE mode | Existing resource file to overwrite |
-| `resource_id` | string | CREATE mode | Resource the new file belongs to |
+| `resource_id` | string | CREATE mode | Resource the new file belongs to, named by its id or its slug (`product-docs`, or `resources/product-docs`) |
 | `filename` | string | CREATE mode | Filename (MIME inferred from extension; text only) |
 | `folder_id` | string | No | CREATE mode: target folder (omit for root) |
+
+In CREATE mode, a `resource_id` naming no resource the agent is linked to is refused as "Access denied: resource is not linked to the current agent", whether or not that resource exists; "Write access denied" then means only that the link lacks "Allow editing".
 
 ---
 
