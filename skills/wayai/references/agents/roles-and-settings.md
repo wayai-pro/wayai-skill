@@ -742,7 +742,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 | `none` | The reply is sent as drafted. |
 | `call_tool` | The tool runs, then the reply is sent as drafted. |
 | `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
-| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered (up to the 50 most recent results), and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
+| `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered (up to the 50 most recent results) and the files it was shown — the customer's attachments on the message it answered, and any image or PDF it opened while answering — and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
 
 ```yaml
       action:
@@ -765,7 +765,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 
 - **No token streaming, no mid-reply updates.** On a streaming app, the reply appears whole once the gate has passed it, instead of word by word. Text the agent would otherwise send while it works ("Let me check that for you…") is not sent. Neither can be taken back once shown, and the gate has not judged them yet.
 - **It adds its own latency to every reply**, as a `user_message` monitor does — keep it on a fast model. If its model fails, is misconfigured, returns nothing usable, answers without a variable its rules read, or is too slow, the gate is skipped and **the reply is sent**: a gate that could not judge never leaves the customer unanswered. (A revision the gate cannot judge is the exception: the gate already objected to the original, so it is held.)
-- **A rewrite adds a second answering-agent call and a second gate judgement** to that reply, all inside the customer's wait.
+- **A rewrite adds a second answering-agent call and a second gate judgement** to that reply, all inside the customer's wait. The files the answering agent was shown are sent to the revision again, so the model's tokens for them are spent a second time.
 - **Cost.** The gate starts no turn of its own; the time it adds is part of the same turn, and a turn is billed for how long it runs.
 
 **What a gate does not cover.** Anything the answering agent's own **tools** send while it works — `send_files` and the message it carries, or an external tool that messages the customer — goes out before any reply exists, so the gate never sees it. Assign such tools with that in mind. Replies from a harness-backed agent are not gated yet.
