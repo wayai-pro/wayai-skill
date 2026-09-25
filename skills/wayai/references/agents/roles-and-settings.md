@@ -492,8 +492,8 @@ These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, 
 
 | Key | Meaning |
 |---|---|
-| `history_messages` | How many of the newest messages the monitor sees. Default 10, maximum 100. Keep it small — a closed-set monitor's accuracy falls as unrelated content grows. |
-| `include_tool_results` | `false` by default: the monitor's window shows that a tool ran, but not what it returned — and only for a tool that keeps its calls in history (its `keep_in_history`). `true` also shows what those tools returned; on a reply gate it shows what the tools returned while the draft was written, up to the 50 most recent results (see [the reply gate](#the-reply-gate--assistant_reply)). Set `true` only when the monitor's judgement depends on a tool's output. |
+| `history_messages` | How many of the newest messages the monitor sees. Default 10, maximum 100. Tool calls and their results do not count toward it: the ones made among those messages come along, up to the 50 most recent calls with their results. Keep it small — a closed-set monitor's accuracy falls as unrelated content grows. |
+| `include_tool_results` | `false` by default: the monitor's window shows each tool call — that a tool ran, and with what — but not what it returned (a harness-backed agent's tool activity is not shown). `true` also shows what a tool that keeps its calls in history (its `keep_in_history`) returned; on a reply gate it shows what every tool returned while the draft was written, up to the 50 most recent results (see [the reply gate](#the-reply-gate--assistant_reply)). Set `true` only when the monitor's judgement depends on a tool's output. |
 
 **`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
 
