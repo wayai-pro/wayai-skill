@@ -753,7 +753,7 @@ Text-to-speech with Google's Gemini TTS models.
 
 The voice of live AI voice calls ([calls.md](calls.md)). **Private preview:** WayAI enables voice calls per organization, and until it has, the connector is not offered when adding a connection, and creating a Realtime connection or turning one on is refused (`Voice calls are not enabled for this organization, so a Realtime connection cannot be created or turned on`). `wayai push` refuses a new one before writing anything, and `wayai diff` reports it; turning an existing one back on is refused only when the push applies it, after its other changes. What stays allowed, and why: [calls.md → Private Preview](calls.md#private-preview).
 
-A Realtime connection is not an LLM connection: no turn runs on it, and it binds only a `pilot_voice` agent, which binds only a Realtime connection ([roles-and-settings.md → Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only)). The voice's settings — its voice, language and call limits — are that agent's, not the connection's; the connection has no `settings:`.
+A Realtime connection is not an LLM connection: no turn runs on it, and it binds only a `pilot_voice` agent, which binds only a Realtime connection ([roles-and-settings.md → Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only)). The voice's settings are that agent's, not the connection's; the connection has no `settings:`.
 
 ### Available Connectors
 

@@ -12,6 +12,7 @@ Live AI voice calls on a hub: an end user presses a call button in the hub's cha
 - [During a Call](#during-a-call)
 - [How Calls End](#how-calls-end)
 - [What the Team Sees](#what-the-team-sees)
+- [Recording Calls](#recording-calls)
 - [Billing](#billing)
 - [Limits](#limits)
 
@@ -53,7 +54,7 @@ If you see that refusal, stop and tell the user: voice calls must be enabled for
 | `ai_mode: pilot` or `pilot+copilot` | The hub's pilot answers every question on the call |
 | An enabled `pilot` agent on an LLM connection | It answers the questions the voice hands over. A harness-backed pilot cannot answer calls |
 | A **Realtime** connection (OpenAI GPT-Live) with an OpenAI project API key | The voice runs on it — see [connections.md → Realtime](connections.md#realtime) |
-| An enabled `pilot_voice` agent on that connection | The voice itself: its voice, language, call limits and instructions — see [Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only) |
+| An enabled `pilot_voice` agent on that connection | The voice itself: its settings and instructions — see [Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only) |
 | The hub's `app` channel enabled | Calls run on it (it is created with the hub) |
 
 The voice is also told the hub's `name`, its `description` (keep it accurate — the voice introduces the company from it) and the language to speak: the voice agent's `language` setting, or the hub's `language` when that is empty.
@@ -99,6 +100,7 @@ settings:
   max_call_minutes: 10
   inactivity_timeout_seconds: 60
   delegation_timeout_seconds: 30
+  record_calls: false
 ```
 
 ```markdown
@@ -126,7 +128,7 @@ A refusal naming voice calls means the organization is not enabled yet — see [
 Calls are placed from the **web app's chat view** for the hub. The call button shows beside the message box only when the hub can take a call: the organization is enabled, and the hub is a chat hub with an enabled `pilot_voice` agent on an enabled GPT-Live connection.
 
 1. The browser asks for the microphone.
-2. **A fixed notice plays first, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, and the hub cannot change or skip it. If it cannot play, no call is made.
+2. **A fixed notice plays first, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, and the hub cannot change or skip it. If it cannot play, no call is made. On a hub that records calls, a second notice follows, saying the call is being recorded — see [Recording Calls](#recording-calls).
 3. The voice greets the caller, and the call bar shows the call's state, a mute button and hang-up.
 
 The caller's browser connects straight to the voice provider for the audio and never receives a credential. One call runs at a time, and the call belongs to the chat view it was started from: leaving the chat view, or switching to another hub, hangs up.
@@ -197,8 +199,33 @@ In the support inbox (`/support`), a call shows in its conversation as it happen
 - **Fillers** — what the voice said while waiting ("one moment", progress cues) — are shown to the team, labelled, and kept out of every AI's history.
 - **The pilot's answer written for the voice** is shown to the team, labelled as not said to the caller as written; the caller's own chat thread never shows it.
 - **A note** when a call ends in a failure, and when an owed answer could not reach the contact's channel.
+- **The call's recording**, on a hub that records calls — see [Recording Calls](#recording-calls).
 
 The caller's chat thread shows the call's kept rows too. Later turns — on text or on a later call — read the call as the caller heard it: the caller's words and the voice's words, never the fillers or the answers written for the voice. In analytics, the voice's rows carry `agent_role = 'pilot_voice'`.
+
+## Recording Calls
+
+**Off by default.** A call is recorded only when the `pilot_voice` agent it runs on has `record_calls` on — in `agents/<voice>.yaml` or the agent editor's **Record Calls** toggle. Live calls run on the hub's earliest-created usable voice agent (see [Limits](#limits)), so that is the one whose setting counts:
+
+```yaml
+# agents/voice.yaml
+settings:
+  record_calls: true              # default false
+```
+
+The setting is read when a call starts, so turning it on or off applies from the next call.
+
+**Every caller on a live call is told.** On a hub that records calls, a second fixed notice — that the call is being recorded — plays right after the AI notice, in the caller's app language, and the voice speaks only once both have played. A live call is recorded only when the caller's app plays that notice: an app that can't (an older version, or a notice that failed to load) gets an unrecorded call, and a notice that loads but fails to play ends the call.
+
+**What is recorded.** From the moment the voice can start speaking — on a live call, once both notices have played — until the call ends: both sides of the call, silences included, as one uncompressed stereo WAV file — the caller on the left channel, the voice on the right.
+
+**Where the team plays it.** Shortly after a live call ends, its conversation gets a **Call recording** note in the support inbox, with a player. Only the team sees it: the caller never does, in any view, and no AI reads it — the AI's file tools don't offer it and it is kept out of every history. A recording that could not be finished is deleted rather than kept, and that call has no note.
+
+**Gaps.** When the platform restarts during a call (a deploy, for example) or loses its connection to the call for a moment, the call itself goes on, but the recording misses what was said until it reconnects: a few seconds when only the connection dropped, up to about ten seconds when the platform restarted, and at most about half a minute per interruption. Each gap is silence in the file. The player marks the gaps on the recording's timeline and lists each one as a button that jumps to it (or says there were none), and a downloaded copy lists its gaps in the file's own comment.
+
+**Retention and erasure.** A recording is a file of its conversation: it is kept as long as the conversation's other files, under the hub's storage retention, and removed with them — when that retention ends, when the contact's conversation history is deleted, and when the hub is deleted. If a conversation's history is deleted while its call is live, the call ends and nothing is kept.
+
+**Eval calls** are recorded too, when their journey's voice agent records calls — with no notice, since their caller is your own machine, and with no player, since the support inbox lists no eval conversation. See [evals.md → Call evals](evals.md#call-evals-voice-calls).
 
 ## Billing
 

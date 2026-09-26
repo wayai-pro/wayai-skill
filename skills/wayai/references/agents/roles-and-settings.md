@@ -183,7 +183,7 @@ settings:
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
 ```
 
-**OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds` — see [Voice Agent](#voice-agent-pilot_voice-only).
+**OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds`, `record_calls` — see [Voice Agent](#voice-agent-pilot_voice-only).
 
 **xAI** (service: Xai):
 ```yaml
@@ -450,11 +450,12 @@ settings:
   max_call_minutes: 10
   inactivity_timeout_seconds: 60
   delegation_timeout_seconds: 30
+  record_calls: false
 ```
 
 **The binding rule, both ways.** A `pilot_voice` agent binds only a **Realtime** connection, and a Realtime connection binds only a `pilot_voice` agent — refused otherwise on every surface (`A pilot_voice agent can use only a Realtime connection`, `A Realtime connection can be used only by a pilot_voice agent`). The voice agent's model is the connector's own; there is no `model` setting.
 
-**Its five settings** (`settings:` in YAML, or the agent editor):
+**Its settings** (`settings:` in YAML, or the agent editor):
 
 | Setting | Values | Default | What it does |
 |---|---|---|---|
@@ -463,6 +464,7 @@ settings:
 | `max_call_minutes` | 1–119 | 10 | A call ends when it reaches this length. 119 minutes is the provider's own session limit |
 | `inactivity_timeout_seconds` | 10–600 | 60 | A call ends after this many seconds in which neither side speaks |
 | `delegation_timeout_seconds` | 5–120 | 30 | How long the voice waits for the hub's agent to answer one question. Past it, the caller hears that it is taking longer than expected, and a late answer reaches the voice silently, to use if the caller asks again |
+| `record_calls` | `true` / `false` | `false` | Records the calls that run on this agent: each live call once its caller has been told, for your team to play from the conversation, and each eval call ([`../evals.md` → Call evals](../evals.md#call-evals-voice-calls)) — see [`../calls.md` → Recording Calls](../calls.md#recording-calls) |
 
 **Its instructions** (`agents/<slug>.md`) say how the voice talks — tone, pace, greeting, how it reads back a number — not what the business knows. They follow platform rules the hub cannot change (the voice never states a price, amount, date, fee or rule, or confirms an action, unless the hub's agent gave it exactly that) and the hub's name, `description` and language. They are fixed when a call starts and used as written: placeholders are not filled, very long text is cut, and edits reach the next call.
 

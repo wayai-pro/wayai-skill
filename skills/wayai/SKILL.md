@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.91.0
+version: 6.92.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -196,12 +196,12 @@ Channel uniqueness (phone / page / inbound address) is enforced across **product
 
 A `chat` hub can take **live AI voice calls** from the web app's chat view: the caller presses **Start a voice call**, hears a fixed notice that they are talking to an AI, and talks with a voice. **Voice calls are in private preview: WayAI enables them per organization**, and until it has, `wayai push` refuses to create a Realtime connection or a `pilot_voice` agent, or to turn on any of the pieces below, with `Voice calls are not enabled for this organization, so …` — stop and tell the user when you see it.
 
-- **The voice** is a `pilot_voice` agent on a **Realtime** connection (OpenAI GPT-Live, on the organization's own OpenAI project key). Its settings are its voice, language and call limits; its instructions say *how* to talk
+- **The voice** is a `pilot_voice` agent on a **Realtime** connection (OpenAI GPT-Live, on the organization's own OpenAI project key). Its settings are its voice, language, call limits and whether calls are recorded (off by default); its instructions say *how* to talk
 - **Every answer comes from the hub's pilot**, which runs a normal turn — tools, monitors, reply gate — for each question the voice hands over. The same rules as text decide whether the AI may answer, and the call ends when they stop allowing it (a transfer to the team, a takeover, a close, …)
 - **Actions with side effects wait for the caller's spoken yes**; a `call_utterance` monitor can **steer** the voice mid-call; `wayai run-eval --call-mode` and `wayai eval call` evaluate calls
 - **Billing:** each question the voice hands over bills 1 operation, plus a per-minute rate for the call's connected minutes
 
-Setup, endings, what the team sees, billing and limits: [`references/calls.md`](references/calls.md).
+Setup, endings, what the team sees, recording, billing and limits: [`references/calls.md`](references/calls.md).
 
 ## Tools
 
@@ -886,7 +886,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Kanban** | [`references/kanban.md`](references/kanban.md) | Kanban field specs: flags, transitions, followups, additional-context schema/instructions, lanes, constraint matrix, warnings |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
-| **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls (private preview): the Realtime connection, the `pilot_voice` agent, the web call and its AI notice, who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, billing, limits |
+| **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls (private preview): the Realtime connection, the `pilot_voice` agent, the web call and its AI notice, who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |

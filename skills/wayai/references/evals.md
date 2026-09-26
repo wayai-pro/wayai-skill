@@ -443,7 +443,7 @@ A machine caller places a real call to the journey's voice agent and speaks the 
 
 - **A journey whose `agent:` is the hub's `pilot_voice` agent.** The web editors don't offer that role, so write it in `journeys/<slug>.yaml` and `wayai push`. Its `user` turns are the caller's lines; the `assistant` turns after each line are the answer the hub owes it. The same transcript with `agent:` set to the pilot is what `run-eval --call-mode` runs.
 - **WebRTC for Node, installed once by you, next to the CLI:** `npm install -g @roamhq/wrtc@0.10`. It is not a dependency of the CLI; without it the command fails before placing any call.
-- **Caller audio, made on your machine** — WayAI never carries the call's audio:
+- **Caller audio, made on your machine** and sent straight to the voice provider:
   - `--clips <dir>`: pre-recorded 16-bit PCM WAV files, `<dir>/<N>.wav` for caller line N (1, 2, …). The same audio every run, so pass rates measure the call, not the synthesis.
   - or `OPENAI_API_KEY` in your shell: each line is synthesized once with your own OpenAI key and cached on disk (`--tts-voice`, default `coral`; `--tts-model`, default `gpt-4o-mini-tts`).
 
@@ -466,6 +466,8 @@ A machine caller places a real call to the journey's voice agent and speaks the 
 **Other flags:** `--runs <n>` (default 1, one after another), `--latency-p95-ms <ms>` (default 2000), `--json <file>` (the full report; its folder is checked before any call is placed), `--hub <uuid|name>`. The command exits 0 only when every run passed and the report it was asked to write was written.
 
 **Ctrl-C** hangs up the call in progress, reads its record, closes its eval conversation, and starts no further run; SIGTERM and a closed terminal do the same. A second Ctrl-C leaves at once — the call then ends on its own limits (at most `--max-call-seconds`) and its eval conversation stays open.
+
+**Recording.** When the journey's voice agent has `record_calls` on ([calls.md → Recording Calls](calls.md#recording-calls)), each eval call is recorded too, with no recording notice played to your machine, and the recording is kept with that run's eval conversation. The support inbox doesn't list eval conversations, so it has no player for these recordings.
 
 ---
 
