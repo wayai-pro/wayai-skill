@@ -4,7 +4,7 @@ Live AI voice calls on a hub: an end user presses a call button in the hub's cha
 
 ## Table of Contents
 - [What a Voice Call Is](#what-a-voice-call-is)
-- [Private Preview](#private-preview)
+- [When Voice Calls Are Off](#when-voice-calls-are-off)
 - [What a Hub Needs](#what-a-hub-needs)
 - [Setting Up a Hub for Calls](#setting-up-a-hub-for-calls)
 - [Placing a Call](#placing-a-call)
@@ -29,27 +29,26 @@ The voice knows nothing about the business on its own. It is told never to state
 
 A call belongs to a conversation: the caller's open conversation with the hub, or a new one. The voice starts each call with the conversation's recent text, so a call can pick up where a chat left off, and what is said on the call is stored in the conversation as messages (see [What the Team Sees](#what-the-team-sees)).
 
-## Private Preview
+## When Voice Calls Are Off
 
-**Voice calls are in private preview, and WayAI enables them per organization.** Until WayAI has enabled them for your organization:
+Voice calls are open to every organization, and any hub can be set up for them. **WayAI can turn them off platform-wide.** While they are off:
 
 - the Realtime connector is not offered when adding a connection, and the Settings editor offers neither the **Pilot Voice** role nor the `call_utterance` monitor trigger;
-- these writes are refused on every surface, with a message that starts `Voice calls are not enabled for this organization, so …`:
+- these writes are refused on every surface, with a message that starts `Voice calls are not enabled for this platform, so …`:
   - **creating** a Realtime connection or a `pilot_voice` agent (enabled or not), turning one on, or giving an agent the `pilot_voice` role;
-  - leaving an **enabled** `call_utterance` monitor where there was none: creating one enabled, turning one on, or moving an enabled monitor onto the trigger. A disabled one can be created or moved onto the trigger, and waits there until the organization is enabled.
+  - leaving an **enabled** `call_utterance` monitor where there was none: creating one enabled, turning one on, or moving an enabled monitor onto the trigger. A disabled one can be created or moved onto the trigger, and waits there until voice calls are back on.
 
   `wayai push` refuses these before it writes anything, and `wayai diff` reports them — except turning an **existing** Realtime connection back on, which is refused only when the push applies it: the push's other changes still land, and the push reports that one connection as refused;
 - no call button appears, and no call can be placed.
 
 Turning any of them off, editing one without turning it on, and deleting one are always allowed, and publishing or syncing a hub carries them to production unchanged.
 
-If you see that refusal, stop and tell the user: voice calls must be enabled for their organization by WayAI first. Nothing in the hub's configuration can turn them on.
+If you see that refusal, stop and tell the user: WayAI has turned voice calls off. Nothing in the hub's configuration can turn them on.
 
 ## What a Hub Needs
 
 | Requirement | Why |
 |---|---|
-| Voice calls enabled for the organization | See [Private Preview](#private-preview) |
 | `hub_type: chat` | Calls are placed from the end user's chat view; `task` hubs take no calls |
 | `ai_mode: pilot` or `pilot+copilot` | The hub's pilot answers every question on the call |
 | An enabled `pilot` agent on an LLM connection | It answers the questions the voice hands over. A harness-backed pilot cannot answer calls |
@@ -61,7 +60,7 @@ The voice is also told the hub's `name`, its `description` (keep it accurate —
 
 ## Setting Up a Hub for Calls
 
-Everything is ordinary hub configuration — `wayai push`, or the web Settings once the organization is enabled.
+Everything is ordinary hub configuration — `wayai push`, or the web Settings.
 
 **1. The OpenAI project key**, once per organization, as an org credential of type API Key:
 
@@ -117,7 +116,7 @@ The pilot (`agents/pilot.yaml` + `.md`) is the hub's ordinary text pilot. On a c
 wayai push -y
 ```
 
-A refusal naming voice calls means the organization is not enabled yet — see [Private Preview](#private-preview).
+A refusal naming voice calls means WayAI has turned them off — see [When Voice Calls Are Off](#when-voice-calls-are-off).
 
 **5. Optional:** a [steering monitor](agents/roles-and-settings.md#steering-a-live-call--call_utterance) to correct the voice mid-call, and [call evals](evals.md#call-evals-voice-calls) (`wayai run-eval --call-mode`, `wayai eval call`).
 
@@ -125,7 +124,7 @@ A refusal naming voice calls means the organization is not enabled yet — see [
 
 ## Placing a Call
 
-Calls are placed from the **web app's chat view** for the hub. The call button shows beside the message box only when the hub can take a call: the organization is enabled, and the hub is a chat hub with an enabled `pilot_voice` agent on an enabled GPT-Live connection.
+Calls are placed from the **web app's chat view** for the hub. The call button shows beside the message box only when the hub can take a call: voice calls are on (see [When Voice Calls Are Off](#when-voice-calls-are-off)), and the hub is a chat hub with an enabled `pilot_voice` agent on an enabled GPT-Live connection.
 
 1. The browser asks for the microphone.
 2. **A fixed notice plays first, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, and the hub cannot change or skip it. If it cannot play, no call is made. On a hub that records calls, a second notice follows, saying the call is being recorded — see [Recording Calls](#recording-calls).
@@ -186,7 +185,7 @@ If the call ends while the caller was still owed an answer, that answer is deliv
 | The voice agent's limits | `max_call_minutes` reached; `inactivity_timeout_seconds` with neither side speaking | At once |
 | The AI may no longer answer the conversation | A reply-gate hold, `transfer_to_team`, a team takeover, the fail-safe, the conversation closing (the `close_conversation` tool, a terminal kanban status, the team's Close, inactivity auto-close), the contact's access becoming pending or blocked, an `ai_mode` change, or the pilot becoming unable to answer calls | At once; a change to the hub's settings within about half a minute |
 | Configuration | The `app` channel, the `pilot_voice` agent or its Realtime connection disabled or deleted | Within about half a minute |
-| Calls switched off | Voice calls disabled for the organization | Within about a minute |
+| Calls switched off | WayAI turns voice calls off | Within about a minute |
 | A failure | The voice provider failed or closed the call, or the platform lost the call and could not recover it | The team is told in the conversation; nothing is escalated |
 
 A call whose setup never completes (the caller's browser never finished connecting) ends on its own. The caller is not told why a call ended; the text path's rules decide what, if anything, they receive.
@@ -238,7 +237,6 @@ The setting is read when a call starts, so turning it on or off applies from the
 
 ## Limits
 
-- **Private preview**, enabled per organization by WayAI.
 - **Chat hubs, web chat only.** Calls are placed from the web app's chat view; WhatsApp, phone numbers, the mobile apps and `task` hubs take no calls.
 - **One live call per conversation.** With several enabled `pilot_voice` agents, calls use the earliest-created one on a usable connection.
 - **A call lasts at most `max_call_minutes`** — at most 119 minutes, the provider's session limit.

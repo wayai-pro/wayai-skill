@@ -412,7 +412,7 @@ If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mu
 
 ## Call evals (voice calls)
 
-A hub that takes [voice calls](calls.md) is evaluated in two halves, and both run the hub's real agent with its real tools. Placing calls needs voice calls enabled for the organization (private preview); `--call-mode` is an ordinary text eval and does not.
+A hub that takes [voice calls](calls.md) is evaluated in two halves, and both run the hub's real agent with its real tools. Placing calls needs voice calls turned on (see [calls.md → When Voice Calls Are Off](calls.md#when-voice-calls-are-off)); `--call-mode` is an ordinary text eval and does not.
 
 | Half | Command | Responder | What it tells you |
 |---|---|---|---|

@@ -107,7 +107,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 - Tool / native variant (External Resources)
 - STT (Groq STT, OpenAI STT, ElevenLabs STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS)
-- Realtime (OpenAI GPT-Live — voice calls, private preview; see [Realtime](#realtime))
+- Realtime (OpenAI GPT-Live — voice calls; see [Realtime](#realtime))
 
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
@@ -261,7 +261,7 @@ The **category**, not the HTTP status, says what to fix. A rejected key shows as
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS) |
-| `Realtime` | The voice of live AI voice calls (OpenAI GPT-Live) — private preview |
+| `Realtime` | The voice of live AI voice calls (OpenAI GPT-Live) |
 
 ---
 
@@ -751,7 +751,7 @@ Text-to-speech with Google's Gemini TTS models.
 
 ## Realtime
 
-The voice of live AI voice calls ([calls.md](calls.md)). **Private preview:** WayAI enables voice calls per organization, and until it has, the connector is not offered when adding a connection, and creating a Realtime connection or turning one on is refused (`Voice calls are not enabled for this organization, so a Realtime connection cannot be created or turned on`). `wayai push` refuses a new one before writing anything, and `wayai diff` reports it; turning an existing one back on is refused only when the push applies it, after its other changes. What stays allowed, and why: [calls.md → Private Preview](calls.md#private-preview).
+The voice of live AI voice calls ([calls.md](calls.md)). While WayAI has voice calls turned off, the connector is not offered when adding a connection, and creating a Realtime connection or turning one on is refused (`Voice calls are not enabled for this platform, so a Realtime connection cannot be created or turned on`). `wayai push` refuses a new one before writing anything, and `wayai diff` reports it; turning an existing one back on is refused only when the push applies it, after its other changes. What stays allowed, and why: [calls.md → When Voice Calls Are Off](calls.md#when-voice-calls-are-off).
 
 A Realtime connection is not an LLM connection: no turn runs on it, and it binds only a `pilot_voice` agent, which binds only a Realtime connection ([roles-and-settings.md → Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only)). The voice's settings are that agent's, not the connection's; the connection has no `settings:`.
 
@@ -779,7 +779,7 @@ connections:
     credential: openai-voice
 ```
 
-**UI:** the hub's Connections tab → **Add Connection** → **OpenAI GPT-Live**; fill **Connection Name** and **Project API Key**, then Save. Shown only once voice calls are enabled for the organization.
+**UI:** the hub's Connections tab → **Add Connection** → **OpenAI GPT-Live**; fill **Connection Name** and **Project API Key**, then Save. Not shown while WayAI has voice calls turned off.
 
 ---
 

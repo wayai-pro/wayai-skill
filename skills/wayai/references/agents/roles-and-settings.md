@@ -31,7 +31,7 @@ WayAI agents operate on three tracks. The conversation's `current_responder_type
 
 The Pilot agent's response is delivered through the channel; the Copilot agent's response surfaces in the team UI as a suggestion (no channel delivery). The `consultant` role is track-independent but foreground: it runs only when people (or agents) consult it in visible threads, and its turns bill as normal operations.
 
-`pilot_voice` is the voice of live calls (private preview — see [`../calls.md`](../calls.md)). It speaks on the pilot track's behalf, but it is not a responder: no text turn, eval run or transfer ever runs it, and the hub's pilot answers every question it hands over. See [Voice Agent](#voice-agent-pilot_voice-only).
+`pilot_voice` is the voice of live calls (see [`../calls.md`](../calls.md)). It speaks on the pilot track's behalf, but it is not a responder: no text turn, eval run or transfer ever runs it, and the hub's pilot answers every question it hands over. See [Voice Agent](#voice-agent-pilot_voice-only).
 
 ---
 
@@ -71,7 +71,7 @@ Background roles (`monitor`, evaluators, `summarizer`), `consultant` and `pilot_
 | Conversation quality scoring | `conversation_evaluator` and/or `message_evaluator` |
 | Silent monitoring/logging | `monitor` |
 | A domain expert your support team (or agents) consult in visible threads | Add a `consultant` (configurable now; consult dispatch ships in a follow-up) |
-| Live AI voice calls on a chat hub (private preview) | Add a `pilot_voice` agent on a Realtime connection; the `pilot` still answers — see [`../calls.md`](../calls.md) |
+| Live AI voice calls on a chat hub | Add a `pilot_voice` agent on a Realtime connection; the `pilot` still answers — see [`../calls.md`](../calls.md) |
 
 ---
 
@@ -437,7 +437,7 @@ Configurable from the UI in the agent's detail view (Agents tab) and through `wa
 
 ## Voice Agent (`pilot_voice` only)
 
-A `pilot_voice` agent is the voice of the hub's live calls (private preview — see [`../calls.md`](../calls.md) for what a call is and how to set a hub up). It talks with the caller and hands every question to the conversation's pilot-track agent, which answers from its own instructions and tools; the voice says the answer. Voice calls must be enabled for the organization by WayAI first: until then, creating a `pilot_voice` agent, turning one on, or changing an agent's role to it is refused (`Voice calls are not enabled for this organization, so a pilot_voice agent cannot be created or turned on`); what stays allowed is in [`../calls.md` → Private Preview](../calls.md#private-preview).
+A `pilot_voice` agent is the voice of the hub's live calls (see [`../calls.md`](../calls.md) for what a call is and how to set a hub up). It talks with the caller and hands every question to the conversation's pilot-track agent, which answers from its own instructions and tools; the voice says the answer. While WayAI has voice calls turned off, creating a `pilot_voice` agent, turning one on, or changing an agent's role to it is refused (`Voice calls are not enabled for this platform, so a pilot_voice agent cannot be created or turned on`); what stays allowed is in [`../calls.md` → When Voice Calls Are Off](../calls.md#when-voice-calls-are-off).
 
 ```yaml
 # agents/voice.yaml
@@ -506,7 +506,7 @@ evaluation_variables:           # the fields of this monitor's own answer its co
 | `user_message` | Right after the customer's message, before the answering agent replies. The customer waits for it, so it is meant for a fast, closed-set monitor. |
 | `assistant_reply` | After the answering agent has drafted its reply, before any of it is sent — the **reply gate**. See [The reply gate](#the-reply-gate--assistant_reply). |
 | `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
-| `call_utterance` | On a live voice call, while the call's transcript grows — it can **steer** the voice. See [Steering a live call](#steering-a-live-call--call_utterance). Private preview: voice calls must be enabled for the organization. |
+| `call_utterance` | On a live voice call, while the call's transcript grows — it can **steer** the voice. See [Steering a live call](#steering-a-live-call--call_utterance). Refused while WayAI has voice calls turned off. |
 
 **Every trigger runs.**
 
@@ -822,7 +822,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 
 ### Steering a live call — `call_utterance`
 
-A monitor on `trigger: call_utterance` watches a live voice call ([`../calls.md`](../calls.md)) while its transcript grows — both speakers' words, before an utterance is even final — and its rules can correct the voice as the call goes on. **Private preview:** creating an enabled one, moving an enabled monitor onto the trigger, or turning one on is refused until WayAI has enabled voice calls for the organization (`Voice calls are not enabled for this organization, so a call_utterance monitor cannot be created or turned on`); what stays allowed is in [`../calls.md` → Private Preview](../calls.md#private-preview).
+A monitor on `trigger: call_utterance` watches a live voice call ([`../calls.md`](../calls.md)) while its transcript grows — both speakers' words, before an utterance is even final — and its rules can correct the voice as the call goes on. While WayAI has voice calls turned off, creating an enabled one, moving an enabled monitor onto the trigger, or turning one on is refused (`Voice calls are not enabled for this platform, so a call_utterance monitor cannot be created or turned on`); what stays allowed is in [`../calls.md` → When Voice Calls Are Off](../calls.md#when-voice-calls-are-off).
 
 **It is not a gate.** The voice's own words — its greeting, its fillers, how it phrases an answer — reach the caller before any check sees them, and no reply gate judges them. A steer cannot un-say anything; it changes what the voice says next.
 
