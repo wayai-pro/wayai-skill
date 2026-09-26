@@ -759,7 +759,7 @@ A Realtime connection is not an LLM connection: no turn runs on it, and it binds
 
 | Connector | connector_id | Auth | Description |
 |-----------|--------------|------|-------------|
-| OpenAI GPT-Live | `01e7b19c-bc94-43f4-a780-ad5a22fb7127` | API Key | Live voice calls on OpenAI GPT-Live (`gpt-live-1`): a voice that talks with callers and asks your hub's agent for every answer. |
+| OpenAI GPT-Live | `01e7b19c-bc94-43f4-a780-ad5a22fb7127` | API Key | Live voice calls on OpenAI GPT-Live (`gpt-live-1`): a voice that talks with callers and asks your hub's agent for answers. |
 
 ### OpenAI GPT-Live
 
