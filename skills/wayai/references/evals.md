@@ -16,6 +16,7 @@ Evals are test scenarios that verify agent behavior. Each scenario is a YAML fil
 - [Scenario Sets (Subfolders)](#scenario-sets-subfolders)
 - [Capturing a Production Conversation](#capturing-a-production-conversation)
 - [Running Evals](#running-evals)
+- [Call evals (voice calls)](#call-evals-voice-calls)
 - [Inspecting Results](#inspecting-results)
 - [Runtime-relative dates](#runtime-relative-dates-now)
 - [Debug: what did the agent actually see?](#debug-what-did-the-agent-actually-see)
@@ -406,6 +407,65 @@ wayai eval session stop <session_id>     # cancel a session left running
 Safe to run at any time: a session that already finished keeps its status and completion time, and the command says so instead of reporting a cancel — so a session you stop "just in case" is never mislabelled, and a finished one points you at its results rather than a re-run. Use it whenever a `run-eval` process died without cancelling (a killed terminal, a CI job cancellation, a lost connection); `run-eval` prints the session id you need on every exit path.
 
 If the set/journey declares a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals), the session first resets it against the target base; a pre-session seed that fails for a reason you must fix aborts the run with `fixture_seed_failed` (nothing is scored) — a merely transient refusal is `fixture_seed_unavailable` and is waited out instead — and enabled scenarios declaring different fixtures are rejected with `fixture_mismatch`.
+
+---
+
+## Call evals (voice calls)
+
+A hub that takes [voice calls](calls.md) is evaluated in two halves, and both run the hub's real agent with its real tools. Placing calls needs voice calls enabled for the organization (private preview); `--call-mode` is an ordinary text eval and does not.
+
+| Half | Command | Responder | What it tells you |
+|---|---|---|---|
+| Judged | `wayai run-eval --call-mode` | the hub's pilot (a text agent) | Whether the pilot's answers, written the way a call turn writes them, pass your `message_evaluator` |
+| Heard | `wayai eval call --journey <name\|id>` | the hub's `pilot_voice` agent | Whether real calls work: what the voice heard, whether it asked the hub's agent, what it said, how fast |
+
+### Call mode for text evals (`--call-mode`)
+
+```bash
+wayai run-eval --call-mode                   # the sole enabled set, every turn as a call turn
+wayai run-eval --call-mode --set <name>      # --set / --eval / --runs select as usual
+```
+
+`--call-mode` runs every turn of the session — message scenarios and journey steps alike, including a continuation after a transfer — the way a live call's turn runs: the pilot is told its reply will be read aloud (short sentences, plain text, figures written exactly), and the reply gate takes no rewrite — a draft it would rewrite is held, as on a call. The flag is stored on the session. Scoring is unchanged: the hub's `message_evaluator` judges each reply.
+
+A text eval never runs the voice: `run-eval` refuses a session in which any scenario's responder is a `pilot_voice` agent (`voice_agent_responder`), with or without `--call-mode`. A journey whose responder is the voice agent belongs to `wayai eval call` — on a hub that has one, pick the text set with `--set`.
+
+### Placing scored calls (`wayai eval call`)
+
+```bash
+wayai eval call --journey "Book a cleaning" --runs 5 --clips ./clips
+OPENAI_API_KEY=… wayai eval call --journey "Book a cleaning"      # synthesize the caller's lines instead
+```
+
+A machine caller places a real call to the journey's voice agent and speaks the journey's caller lines in real time, over WebRTC straight to the voice provider. Each run hangs up, reads the call's record, scores it, and closes the call's own eval conversation, which belongs to a synthetic caller — never to you, and never mixed into production analytics.
+
+**What it needs:**
+
+- **A journey whose `agent:` is the hub's `pilot_voice` agent.** The web editors don't offer that role, so write it in `journeys/<slug>.yaml` and `wayai push`. Its `user` turns are the caller's lines; the `assistant` turns after each line are the answer the hub owes it. The same transcript with `agent:` set to the pilot is what `run-eval --call-mode` runs.
+- **WebRTC for Node, installed once by you, next to the CLI:** `npm install -g @roamhq/wrtc@0.10`. It is not a dependency of the CLI; without it the command fails before placing any call.
+- **Caller audio, made on your machine** — WayAI never carries the call's audio:
+  - `--clips <dir>`: pre-recorded 16-bit PCM WAV files, `<dir>/<N>.wav` for caller line N (1, 2, …). The same audio every run, so pass rates measure the call, not the synthesis.
+  - or `OPENAI_API_KEY` in your shell: each line is synthesized once with your own OpenAI key and cached on disk (`--tts-voice`, default `coral`; `--tts-model`, default `gpt-4o-mini-tts`).
+
+**What it scores**, deterministically, per run: recognition of the caller's numbers and CPFs; delegation recall (every line whose answer carries a figure reached the hub's agent); the answer's facts; unvetted claims (every figure the voice said, checked against what the hub's agent answered — prices, amounts and dates tolerate none); read-back of a dictated number; style (plain text, short sentences); and latency (the caller's end of speech to the voice's first audio, as a p95). A run passes when every dimension passes.
+
+**A plan file** (`--plan <file.json>`) overrides the script per caller line, numbered from 1: `interrupt` (start speaking over the voice's previous answer), `expect_delegation`, `readback` (the value the voice must read back, or `null`), and `clip` (a WAV path, relative to the plan file):
+
+```json
+{ "lines": { "2": { "interrupt": true }, "3": { "readback": "123.456.789-09", "clip": "clips/3.wav" }, "5": { "expect_delegation": false } } }
+```
+
+**Cost, and the caps.** Every run spends the provider's call minutes on the organization's own OpenAI key, plus WayAI operations: one per question the voice hands over, plus the call's per-minute rate ([calls.md → Billing](calls.md#billing)).
+
+| Flag | Default | Caps |
+|---|---|---|
+| `--max-call-seconds <s>` | 180 | A run's call length. Enforced by the server, so a runner that dies mid-call still can't overspend; the call also never outlasts the voice agent's own `max_call_minutes` |
+| `--max-operations <n>` | 30 | A run's WayAI operations, counted live; the runner hangs up before a minute begins that would pass it |
+| `--max-usd <x>` at `--usd-per-minute <x>` | 2 at 0.1 | The whole suite's provider spend: no run starts unless its worst case fits |
+
+**Other flags:** `--runs <n>` (default 1, one after another), `--latency-p95-ms <ms>` (default 2000), `--json <file>` (the full report; its folder is checked before any call is placed), `--hub <uuid|name>`. The command exits 0 only when every run passed and the report it was asked to write was written.
+
+**Ctrl-C** hangs up the call in progress, reads its record, closes its eval conversation, and starts no further run; SIGTERM and a closed terminal do the same. A second Ctrl-C leaves at once — the call then ends on its own limits (at most `--max-call-seconds`) and its eval conversation stays open.
 
 ---
 

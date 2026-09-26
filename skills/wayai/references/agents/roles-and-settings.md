@@ -11,6 +11,8 @@ Deep reference for choosing an agent role, structuring delegation, and configuri
 - [Per-Connector `settings`](#per-connector-settings)
 - [Response Format (Structured Output)](#response-format-structured-output)
 - [Evaluation Variables](#evaluation-variables)
+- [Voice Agent (`pilot_voice` only)](#voice-agent-pilot_voice-only)
+- [Monitor Configuration (`monitor` only)](#monitor-configuration-monitor-only)
 - [`enabled` Behavior](#enabled-behavior)
 - [`include_message_timestamps` Behavior](#include_message_timestamps-behavior)
 
@@ -29,6 +31,8 @@ WayAI agents operate on three tracks. The conversation's `current_responder_type
 
 The Pilot agent's response is delivered through the channel; the Copilot agent's response surfaces in the team UI as a suggestion (no channel delivery). The `consultant` role is track-independent but foreground: it runs only when people (or agents) consult it in visible threads, and its turns bill as normal operations.
 
+`pilot_voice` is the voice of live calls (private preview — see [`../calls.md`](../calls.md)). It speaks on the pilot track's behalf, but it is not a responder: no text turn, eval run or transfer ever runs it, and the hub's pilot answers every question it hands over. See [Voice Agent](#voice-agent-pilot_voice-only).
+
 ---
 
 ## Role Reference
@@ -41,13 +45,14 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `copilot_specialist` | Multiple | Yes (full transfer) | No | Copilot-track specialist |
 | `pilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Receives `consult_agent`; runs once and returns |
 | `copilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Copilot-track advisor |
-| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each of `idle`, `user_message` and `assistant_reply`; any number on `manual` — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
+| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each trigger except `manual`, which takes any number — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 | `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
 | `consultant` | Multiple | No (consulted on demand) | n/a | Track-independent; consulted by people (and agents) in visible consult threads. **An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.** Never a track responder and never a `transfer_to_agent`/`consult_agent` target. Configurable today; consult dispatch ships in a follow-up |
+| `pilot_voice` | Multiple (one answers calls) | No (the voice of live calls) | n/a | Talks with the caller on a live voice call and hands every question to the conversation's pilot-track agent. Binds only a Realtime connection. Never a text responder, eval responder or delegation target. Calls use the earliest-created enabled one on a usable connection — see [Voice Agent](#voice-agent-pilot_voice-only) |
 
-Background roles (`monitor`, evaluators, `summarizer`) and `consultant` are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
+Background roles (`monitor`, evaluators, `summarizer`), `consultant` and `pilot_voice` are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
 
 **`transfer_to_agent` targets any agent on the same track** — the entry `pilot`/`copilot` *or* a `*_specialist` (status `agent` → pilot track; status `team` → copilot track). Targeting the entry pilot enables the **hub-and-spoke router** pattern: the pilot dispatches to specialists, and a specialist can transfer back to the pilot to re-dispatch a request that belongs to a different domain. Cross-track agents and advisor/background roles are never transfer targets. (Within one turn an agent can't be delegated back to an agent already in the chain — the reinvoke cycle guard bounds ping-pong; across turns, re-routing is unrestricted.)
 
@@ -66,6 +71,7 @@ Background roles (`monitor`, evaluators, `summarizer`) and `consultant` are excl
 | Conversation quality scoring | `conversation_evaluator` and/or `message_evaluator` |
 | Silent monitoring/logging | `monitor` |
 | A domain expert your support team (or agents) consult in visible threads | Add a `consultant` (configurable now; consult dispatch ships in a follow-up) |
+| Live AI voice calls on a chat hub (private preview) | Add a `pilot_voice` agent on a Realtime connection; the `pilot` still answers — see [`../calls.md`](../calls.md) |
 
 ---
 
@@ -176,6 +182,8 @@ settings:
   max_tokens: 4096
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
 ```
+
+**OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds` — see [Voice Agent](#voice-agent-pilot_voice-only).
 
 **xAI** (service: Xai):
 ```yaml
@@ -427,6 +435,43 @@ Configurable from the UI in the agent's detail view (Agents tab) and through `wa
 
 ---
 
+## Voice Agent (`pilot_voice` only)
+
+A `pilot_voice` agent is the voice of the hub's live calls (private preview — see [`../calls.md`](../calls.md) for what a call is and how to set a hub up). It talks with the caller and hands every question to the conversation's pilot-track agent, which answers from its own instructions and tools; the voice says the answer. Voice calls must be enabled for the organization by WayAI first: until then, creating a `pilot_voice` agent, turning one on, or changing an agent's role to it is refused (`Voice calls are not enabled for this organization, so a pilot_voice agent cannot be created or turned on`); what stays allowed is in [`../calls.md` → Private Preview](../calls.md#private-preview).
+
+```yaml
+# agents/voice.yaml
+name: Voice
+role: pilot_voice
+connection: voice                 # a Realtime connection (service: OpenAI GPT-Live)
+settings:
+  speaker_voice: bossa
+  language: pt
+  max_call_minutes: 10
+  inactivity_timeout_seconds: 60
+  delegation_timeout_seconds: 30
+```
+
+**The binding rule, both ways.** A `pilot_voice` agent binds only a **Realtime** connection, and a Realtime connection binds only a `pilot_voice` agent — refused otherwise on every surface (`A pilot_voice agent can use only a Realtime connection`, `A Realtime connection can be used only by a pilot_voice agent`). The voice agent's model is the connector's own; there is no `model` setting.
+
+**Its five settings** (`settings:` in YAML, or the agent editor):
+
+| Setting | Values | Default | What it does |
+|---|---|---|---|
+| `speaker_voice` | `bossa`, `tempo`, or another built-in GPT-Live voice id | `bossa` | The voice the caller hears. `bossa` and `tempo` are Brazilian Portuguese voices |
+| `language` | empty, `pt`, `en`, `es` | empty | The language the voice speaks. Empty uses the hub's `language` |
+| `max_call_minutes` | 1–119 | 10 | A call ends when it reaches this length. 119 minutes is the provider's own session limit |
+| `inactivity_timeout_seconds` | 10–600 | 60 | A call ends after this many seconds in which neither side speaks |
+| `delegation_timeout_seconds` | 5–120 | 30 | How long the voice waits for the hub's agent to answer one question. Past it, the caller hears that it is taking longer than expected, and a late answer reaches the voice silently, to use if the caller asks again |
+
+**Its instructions** (`agents/<slug>.md`) say how the voice talks — tone, pace, greeting, how it reads back a number — not what the business knows. They follow platform rules the hub cannot change (the voice never states a price, amount, date, fee or rule, or confirms an action, unless the hub's agent gave it exactly that) and the hub's name, `description` and language. They are fixed when a call starts and used as written: placeholders are not filled, very long text is cut, and edits reach the next call.
+
+**Text turns never run it.** No text message, eval run, `send-message` or transfer reaches a `pilot_voice` agent: it is never a responder, never a `transfer_to_agent` or `consult_agent` target, and a text eval naming it as responder is refused (`voice_agent_responder`). A voice agent's own tools, `response_format` and `additional_context_template` have no effect: the voice only hands questions over. Its only eval is a call eval ([`../evals.md` → Call evals](../evals.md#call-evals-voice-calls)).
+
+**Experiment arms do not apply to it.** A call's conversation still runs under its arm — the pilot that answers follows the arm's overrides — but the voice is the same for every arm.
+
+---
+
 ## Monitor Configuration (`monitor` only)
 
 `monitor_config` is a setting on the **`monitor` agent** — it controls **when** the monitor evaluates a conversation and which conditions flag it. `flag_conditions` use OR semantics (any match flags the conversation). Unlike the evaluator/summarizer, the monitor is **not** auto-provisioned — create it explicitly. Round-trips via `wayai pull` / `wayai push` as a top-level key on the monitor agent:
@@ -459,8 +504,9 @@ evaluation_variables:           # the fields of this monitor's own answer its co
 | `user_message` | Right after the customer's message, before the answering agent replies. The customer waits for it, so it is meant for a fast, closed-set monitor. |
 | `assistant_reply` | After the answering agent has drafted its reply, before any of it is sent — the **reply gate**. See [The reply gate](#the-reply-gate--assistant_reply). |
 | `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
+| `call_utterance` | On a live voice call, while the call's transcript grows — it can **steer** the voice. See [Steering a live call](#steering-a-live-call--call_utterance). Private preview: voice calls must be enabled for the organization. |
 
-**All four run.**
+**Every trigger runs.**
 
 A `user_message` monitor runs **inside** the customer's turn rather than as a turn of its own. Its `flag_conditions` are evaluated and the conversation flagged exactly as an idle monitor's are, and it writes no message of its own.
 
@@ -472,7 +518,7 @@ A `user_message` monitor runs **inside** the customer's turn rather than as a tu
 
 ### One enabled monitor per trigger
 
-**A hub runs at most one enabled monitor on each of `idle`, `user_message` and `assistant_reply`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called.
+**A hub runs at most one enabled monitor on each trigger except `manual`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called.
 
 What each surface does with the rule:
 
@@ -488,18 +534,18 @@ What each surface does with the rule:
 
 ### `history_messages` and `include_tool_results`
 
-These shape what a `user_message`, `assistant_reply` or `manual` monitor READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window.
+These shape what a monitor on any trigger but `idle` READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window.
 
 | Key | Meaning |
 |---|---|
 | `history_messages` | How many of the newest messages the monitor sees. Default 10, maximum 100. Tool calls and their results do not count toward it: the ones made among those messages come along, up to the 50 most recent calls with their results. Keep it small — a closed-set monitor's accuracy falls as unrelated content grows. |
 | `include_tool_results` | `false` by default: the monitor's window shows each tool call — that a tool ran, and with what — but not what it returned (a harness-backed agent's tool activity is not shown). `true` also shows what a tool that keeps its calls in history (its `keep_in_history`) returned; on a reply gate it shows what every tool returned while the draft was written, up to the 50 most recent results (see [the reply gate](#the-reply-gate--assistant_reply)). Set `true` only when the monitor's judgement depends on a tool's output. |
 
-**`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other three triggers do not use a delay and may omit it.
+**`delay_seconds` belongs to `idle` and is required for it.** An `idle` monitor — one that says so, or one that omits `trigger` entirely — must declare a delay of at least 10 seconds, and a push without one is refused. The other triggers do not use a delay and may omit it.
 
 ### `rules` and `fallback`
 
-A `user_message` monitor can act on what it found, and so can an `assistant_reply` one (the reply gate) and a `manual` one when another monitor runs it. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on `idle`, which has nothing to interpret them.
+A `user_message` monitor can act on what it found, and so can an `assistant_reply` one (the reply gate), a `manual` one when another monitor runs it, and a `call_utterance` one on a live call. `rules` is an ordered list: the first rule whose conditions ALL hold selects an action, and `fallback` supplies one when no rule matched. Both are refused on `idle`, which has nothing to interpret them, and `fallback` is refused on `call_utterance` too (see [Steering a live call](#steering-a-live-call--call_utterance), which also narrows what its rules may do).
 
 ```yaml
 monitor_config:
@@ -510,7 +556,7 @@ monitor_config:
         - variable: urgency
           operator: "="
           value: high
-        - variable: urgency_confidence        # only on a decisions model
+        - variable: urgency_confidence        # a confidence — see "Conditions are the same conditions" below
           operator: ">="
           value: 0.8
       action:
@@ -530,7 +576,7 @@ monitor_config:
 - **`wayai push` refuses its declaration** until the YAML sets a `response_format` or drops the rules, and nothing else in that push is applied until it does. `wayai pull` of such a hub gives you exactly that YAML, so fix it before your next push.
 - **A rule on a variable nothing declares** (a typo, or one deactivated since) can never match, and is not reported as unjudged — declare it.
 
-**Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting, and those variables exist only on a model that returns calibrated confidence.
+**Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting. A decisions model reports a calibrated `{field}_confidence` for every field of its answer (declare it in `evaluation_variables` as a number, and leave it out of `schema_json`, which it cannot answer); on any other model, a `{field}_confidence` number exists only if your `schema_json` asks for it, and then it is the model's own estimate.
 
 **The model never names a tool or an argument.** It produces values. Your rule decides which tool runs and which argument each value fills — either `from_variable` (something the monitor decided) or `const` (something you wrote). A value coming back as text is passed to the tool as a value and nothing else; it is validated by that tool's own schema exactly as the answering agent's tool calls are.
 
@@ -538,9 +584,9 @@ monitor_config:
 
 **The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
 
-**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger.
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone.
 
-**What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here.
+**What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here. A `call_utterance` rule may call fewer — see [Steering a live call](#steering-a-live-call--call_utterance).
 
 Why the others are not on it. `close_conversation` and `update_kanban_status` (a move to a status you marked terminal ends the conversation) decide whether the conversation is still open, which this turn settled before the monitor ran — so the call would change the conversation record without changing the reply the customer is about to get. `consult_agent` would run a second model call inside the customer's wait. Assign any of them to the answering agent instead, which can act on them mid-reply.
 
@@ -772,3 +818,55 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 
 **One enabled gate per hub**, like the other firing triggers.
 
+### Steering a live call — `call_utterance`
+
+A monitor on `trigger: call_utterance` watches a live voice call ([`../calls.md`](../calls.md)) while its transcript grows — both speakers' words, before an utterance is even final — and its rules can correct the voice as the call goes on. **Private preview:** creating an enabled one, moving an enabled monitor onto the trigger, or turning one on is refused until WayAI has enabled voice calls for the organization (`Voice calls are not enabled for this organization, so a call_utterance monitor cannot be created or turned on`); what stays allowed is in [`../calls.md` → Private Preview](../calls.md#private-preview).
+
+**It is not a gate.** The voice's own words — its greeting, its fillers, how it phrases an answer — reach the caller before any check sees them, and no reply gate judges them. A steer cannot un-say anything; it changes what the voice says next.
+
+```yaml
+# agents/call-steering.yaml
+name: Call Steering
+role: monitor
+connection: openrouter              # an LLM connection
+monitor_config:
+  trigger: call_utterance
+  speaker: caller                   # caller | voice | both (default)
+  rules:
+    - when:
+        - { variable: caller_upset, operator: "=", value: true }
+        - { variable: caller_upset_confidence, operator: ">=", value: 0.9 }
+      action:
+        kind: steer
+        note: "The caller is upset. Apologize briefly, slow down, and keep your answers short."
+response_format:
+  schema_name: call_check
+  schema_json:
+    type: object
+    properties:
+      caller_upset: { type: boolean, description: "The caller sounds upset or frustrated." }
+      caller_upset_confidence: { type: number, description: "How sure you are, from 0 to 1." }
+    required: [caller_upset, caller_upset_confidence]
+    additionalProperties: false
+evaluation_variables:
+  - { name: caller_upset, type: boolean }
+  - { name: caller_upset_confidence, type: number }
+```
+
+**When it checks.** After every sentence or two of new speech from the side `speaker` names (`caller`, `voice`, or `both`, the default), one check at a time per call. Whatever `speaker` says, a check reads both sides: the conversation's newest messages (`history_messages`, as on `user_message`) plus the newest part of the call's transcript, labelled by speaker. The voice's fillers ("one moment") are read too — they are the voice's own speech. As on `user_message`, the model is offered no tools; its rules call them.
+
+**Every rule must be high-confidence.** A transcript can be misheard, so each `call_utterance` rule needs a condition on a `{field}_confidence` variable that the monitor declares in its `evaluation_variables` as a number, compared `>=` a value from `0.9` to `1` (or `>` a value from `0.9` up to, not including, `1`). A rule without one is refused on every surface. At run time, a rule whose confidence did not come back as a number steps aside for that check. Where a confidence comes from — a decisions model, or your own schema as in the example — is under [Conditions are the same conditions](#rules-and-fallback). Either way a confident monitor can be confidently wrong about a misheard call, so test it on real calls.
+
+**Actions.**
+
+| Action | What happens |
+|---|---|
+| `steer` | The rule's `note` — your words, at most 500 characters — is given to the voice as an instruction, exactly as written, and the voice changes course without saying the correction. Nothing the monitor produced, and so nothing the caller said, ever reaches the voice this way. |
+| `call_tool` | Only a tool a call would run **without** the caller's spoken confirmation ([`../calls.md` → Spoken confirmation](../calls.md#spoken-confirmation-of-actions)), because nobody confirms what a rule does: `update_state`, `transfer_to_agent`, `transfer_to_team` (a transfer to the team ends the call — see [How Calls End](../calls.md#how-calls-end)), and this hub's own HTTP tools that only read (GET, HEAD or OPTIONS). Refused: MCP tools, `schedule_followup` and `run_monitor` (a call would hold them), and `insert_note` (a check has no reply to brief). |
+| `none` | Nothing. |
+
+**Refused on this trigger:** `fallback` (it would act on every check), `flag_conditions` (a check never flags the conversation), `hold` and `rewrite` (there is no drafted reply), and a blank `note`. Like every monitor with `rules`, it needs a `response_format` ([`rules` and `fallback`](#rules-and-fallback)).
+
+**Caps, per call.** Each rule acts at most once in a call. A call takes at most **3 steers** — a steer stays in the voice's instructions for the rest of the call — and at most **300 checks** (about half an hour of continuous speech); past that the call goes on unsteered. Once no rule can act again, the call's checks stop. A call that started without a `call_utterance` monitor is never checked: one added during a call steers from the next call.
+
+**Cost.** A check starts no turn and bills no operation of its own — its time is inside the call's minutes — but each check is a model call on the monitor's connection, billed by your provider. A hub with no `call_utterance` monitor is never checked.

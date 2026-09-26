@@ -1,18 +1,19 @@
 ---
 name: wayai
-version: 6.90.5
+version: 6.91.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
-  plus the Data surface (bases, record types, records, relationships, files, toolsets).
+  plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
+  voice calls (private preview).
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
-  connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns;
+  connections, teams, kanban, states, resources, eval scenarios or journeys, outbound campaigns, voice calls;
   running analytics or evals; annotating conversation outcomes; reviewing or editing workspace YAML
   (hub.yaml, agents/*.yaml, base.yaml, record-types/*.yaml) or agent instruction Markdown;
   designing a base schema, upserting or querying records, linking records with relationships,
   storing versioned files or attachments, wiring inbound webhooks, triggers or external sources,
   building MCP toolsets and Actions, scoping base API tokens, or seeding eval fixtures;
   using the wayai CLI (push, pull, publish, send-message, conversations, sync-skills,
-  create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, evals sql,
+  create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, eval call, evals sql,
   org, init, bases, records, record-types, relationships, files, toolsets, actions, triggers,
   inbound-webhooks, seed); analyzing LLM token/cost spend per message, model, agent, or credential;
   or interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
@@ -59,6 +60,8 @@ WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI
 | Analytics | CLI (`wayai analytics`, `wayai analytics query`) |
 | Cost / token spend analysis (per message, model, agent, role, or credential) | CLI (`wayai analytics sql` over the `message` table) — see [`references/analytics.md`](references/analytics.md#raw-sql--cost-analysis) — `data.*` paths need an explicit cast to run at all, plus the rules that make sums correct |
 | Eval runs and results | CLI (`wayai run-eval`, `wayai eval-results`) |
+| Voice calls (private preview) — Realtime connection, `pilot_voice` agent, `call_utterance` steering monitor | CLI (`wayai push`) or UI, once WayAI has enabled calls for the organization — see [`references/calls.md`](references/calls.md) |
+| Call evals — call-mode text runs, scored machine calls | CLI (`wayai run-eval --call-mode`, `wayai eval call`) — see [`references/evals.md`](references/evals.md#call-evals-voice-calls) |
 | List eval scenarios / raw SQL over eval results | CLI (`wayai evals`, `wayai evals sql`) |
 | Capture production conversation as eval | CLI (`wayai eval capture <conversation_id>`) |
 | Capture production conversation as a journey (full multi-turn transcript) | CLI (`wayai eval journey capture <conversation_id>`) |
@@ -138,9 +141,10 @@ Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom s
 | `copilot` | Copilot | 1 | Suggests responses to the support team |
 | `pilot_specialist` / `copilot_specialist` | Both | Multiple | Delegation target — full transfer via `transfer_to_agent` |
 | `pilot_advisor` / `copilot_advisor` | Both | 1 each | Advisory input via `consult_agent`; returns control |
-| `monitor` | Background | 1 per firing trigger | Observes silently, and on `user_message` its rules may act — briefing the answering agent with a note you wrote, running another monitor for a closer look, or handing the conversation to another agent or to a human team, all taking effect on that same message. On `assistant_reply` it is a reply gate: it reads the drafted reply before anything is sent and can hold it for the team or have the agent rewrite it once. At most one enabled monitor on each of `idle`, `user_message` and `assistant_reply`; any number on `manual`, which run only when another monitor calls them |
+| `monitor` | Background | 1 per firing trigger | Observes silently, and on `user_message` its rules may act — briefing the answering agent with a note you wrote, running another monitor for a closer look, or handing the conversation to another agent or to a human team, all taking effect on that same message. On `assistant_reply` it is a reply gate: it reads the drafted reply before anything is sent and can hold it for the team or have the agent rewrite it once. On `call_utterance` it watches a live voice call and can steer the voice with a note you wrote. At most one enabled monitor on each trigger except `manual`, which takes any number — they run only when another monitor calls them |
 | `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing. Their `evaluation_variables` feed Analytics; the `message_evaluator` also scores eval runs |
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
+| `pilot_voice` | Pilot (voice of live calls) | Multiple (one answers calls) | The voice of the hub's live AI voice calls (private preview): talks with the caller and hands every question to the pilot, which answers. Binds only a Realtime connection; no text turn, eval run or transfer ever runs it — see [Voice Calls](#voice-calls-private-preview) |
 | `consultant` | Track-independent (on-demand) | Multiple | Consulted by people (and agents) in visible consult threads. Never a pilot/copilot responder, never auto-fired, and never a transfer/advisor target. *An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.* Consult turns bill as normal foreground operations. Configurable today; consult dispatch (tagging a consultant from the support composer) ships in a follow-up |
 
 `transfer_to_agent` targets **any same-track agent** — a `*_specialist` *or* the entry `pilot`/`copilot`, so the pilot can act as a **hub-and-spoke router** (specialists transfer cross-domain requests back to it for re-dispatch). Cross-track, advisor, consultant, and background roles are never transfer targets.
@@ -171,8 +175,9 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
 | **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
 | **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs); TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs, Google), each at the same loudness |
+| **Realtime** | OpenAI GPT-Live — the voice of live AI voice calls, used only by a `pilot_voice` agent (private preview) |
 
-**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
+**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Realtime, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
 
 **OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → Bearer Token), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
@@ -186,6 +191,17 @@ Communication endpoints on a hub — where messages arrive and replies get deliv
 - WhatsApp / Instagram / Email (Resend) / Telegram channels are provisioned automatically when their **Channel connection** is created
 
 Channel uniqueness (phone / page / inbound address) is enforced across **production** hubs only — a preview can share endpoints with its production, and external channels are testable on previews via `#test CODE` tester registration (see Hub Environments).
+
+## Voice Calls (private preview)
+
+A `chat` hub can take **live AI voice calls** from the web app's chat view: the caller presses **Start a voice call**, hears a fixed notice that they are talking to an AI, and talks with a voice. **Voice calls are in private preview: WayAI enables them per organization**, and until it has, `wayai push` refuses to create a Realtime connection or a `pilot_voice` agent, or to turn on any of the pieces below, with `Voice calls are not enabled for this organization, so …` — stop and tell the user when you see it.
+
+- **The voice** is a `pilot_voice` agent on a **Realtime** connection (OpenAI GPT-Live, on the organization's own OpenAI project key). Its settings are its voice, language and call limits; its instructions say *how* to talk
+- **Every answer comes from the hub's pilot**, which runs a normal turn — tools, monitors, reply gate — for each question the voice hands over. The same rules as text decide whether the AI may answer, and the call ends when they stop allowing it (a transfer to the team, a takeover, a close, …)
+- **Actions with side effects wait for the caller's spoken yes**; a `call_utterance` monitor can **steer** the voice mid-call; `wayai run-eval --call-mode` and `wayai eval call` evaluate calls
+- **Billing:** each question the voice hands over bills 1 operation, plus a per-minute rate for the call's connected minutes
+
+Setup, endings, what the team sees, billing and limits: [`references/calls.md`](references/calls.md).
 
 ## Tools
 
@@ -299,6 +315,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Seed `fixture:`** — for any eval that *writes*: names a [base](references/bases/README.md) fixture the platform LEASES for the session — resetting it on acquire, clearing it on release — so runs start from a known baseline instead of the last run's residue. One preview base admits **one eval session at a time**: a second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first, and `run-eval` waits it out by default — as it does `fixture_seed_unavailable` (409), the base briefly refusing the lease under its own write backpressure
 - **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
+- **Call evals** (voice calls) — `wayai run-eval --call-mode` and `wayai eval call`: [`references/evals.md`](references/evals.md#call-evals-voice-calls)
 
 Good practice for tool-dependent evals: compose **journey + `fixture:` + `variables`** for repeatable, parallel runs, and phrase `evaluator_instructions` as **functional outcomes, not raw call counts** ("one successful booking", not "exactly one `book_appointment` call") — tools fail transiently, and a correct agent retries. Full YAML shapes, seed-connection setup, run pacing, and authoring/interpreting principles: [`references/evals.md`](references/evals.md).
 
@@ -530,12 +547,13 @@ wayai analytics query   # Structured ClickHouse query (multi-variable, group_by,
 wayai analytics sql     # Raw single-SELECT SQL over `conversation` (one row per conversation) and `message` (per-message tokens/cost/operations — the surface for cost analysis); --schema prints both catalogs + the message-grain rules (`data.*` paths need `toFloat64OrNull(toString(...))` for numerics, `toString(...)` for grouping); --limit, --json
 wayai evals             # List eval scenarios for the hub (--enabled / --disabled)
 wayai evals sql         # Raw single-SELECT SQL over the hub's eval result rows ("SELECT …"; --schema prints the column + eval-score-path catalog; --limit, --json)
-wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set to pick on multi-set hubs; repeatable --eval <name> runs ONLY those scenarios and --runs 2,6 only those repetitions of one; --pacing conservative|balanced|fast|<ms> to throttle run dispatch; waits inside --timeout for a fixture held by another session or for transient base write backpressure — --no-queue fails fast and --no-wait implies it; exits 1 if --timeout expires with the session still running)
+wayai run-eval          # Run a scenario set's enabled evals (sole set by default; --set to pick on multi-set hubs; repeatable --eval <name> runs ONLY those scenarios and --runs 2,6 only those repetitions of one; --pacing conservative|balanced|fast|<ms> to throttle run dispatch; --call-mode runs every turn the way a live voice call runs it; waits inside --timeout for a fixture held by another session or for transient base write backpressure — --no-queue fails fast and --no-wait implies it; exits 1 if --timeout expires with the session still running)
 wayai eval-results      # Inspect eval results (--session <id> or --eval <name>; --runs for per-run detail, --json for raw)
 wayai eval capture      # Capture production conversation as eval YAML (<conversation_id> [--set <name>])
 wayai eval journey capture  # Capture a conversation's FULL transcript as a journey (<conversation_id> [--name <n>]); then `wayai pull` to sync it to journeys/<slug>.yaml
 wayai eval session stop     # Cancel a running eval session (<session_id>) — recovery when a run-eval died without cancelling its own session
 wayai eval session delete   # Delete an eval session + its run history (<session_id>, or --all for every session on the hub; -y to skip confirm)
+wayai eval call         # Place scored voice calls for a journey whose responder is the pilot_voice agent (--journey <name|id>, --runs, --clips <dir> or OPENAI_API_KEY, cost caps); needs `npm install -g @roamhq/wrtc@0.10` once — see references/evals.md
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
 wayai status            # Show workspace status
@@ -868,7 +886,8 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Kanban** | [`references/kanban.md`](references/kanban.md) | Kanban field specs: flags, transitions, followups, additional-context schema/instructions, lanes, constraint matrix, warnings |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
-| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, authoring & interpreting principles |
+| **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls (private preview): the Realtime connection, the `pilot_voice` agent, the web call and its AI notice, who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, billing, limits |
+| **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Outbound** | [`references/outbound.md`](references/outbound.md) | Outbound contacts, lists, schedules, channel rules, execution modes |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |

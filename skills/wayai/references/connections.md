@@ -17,6 +17,7 @@ For the canonical, programmatic source of connector definitions (auth schemas, s
   - [MCP variant (MCP Server)](#mcp-variant-mcp-server)
 - [STT](#stt)
 - [TTS](#tts)
+- [Realtime](#realtime)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -106,6 +107,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 - Tool / native variant (External Resources)
 - STT (Groq STT, OpenAI STT, ElevenLabs STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS)
+- Realtime (OpenAI GPT-Live — voice calls, private preview; see [Realtime](#realtime))
 
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
@@ -259,6 +261,7 @@ The **category**, not the HTTP status, says what to fix. A rejected key shows as
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS) |
+| `Realtime` | The voice of live AI voice calls (OpenAI GPT-Live) — private preview |
 
 ---
 
@@ -746,6 +749,40 @@ Text-to-speech with Google's Gemini TTS models.
 
 ---
 
+## Realtime
+
+The voice of live AI voice calls ([calls.md](calls.md)). **Private preview:** WayAI enables voice calls per organization, and until it has, the connector is not offered when adding a connection, and creating a Realtime connection or turning one on is refused (`Voice calls are not enabled for this organization, so a Realtime connection cannot be created or turned on`). `wayai push` refuses a new one before writing anything, and `wayai diff` reports it; turning an existing one back on is refused only when the push applies it, after its other changes. What stays allowed, and why: [calls.md → Private Preview](calls.md#private-preview).
+
+A Realtime connection is not an LLM connection: no turn runs on it, and it binds only a `pilot_voice` agent, which binds only a Realtime connection ([roles-and-settings.md → Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only)). The voice's settings — its voice, language and call limits — are that agent's, not the connection's; the connection has no `settings:`.
+
+### Available Connectors
+
+| Connector | connector_id | Auth | Description |
+|-----------|--------------|------|-------------|
+| OpenAI GPT-Live | `01e7b19c-bc94-43f4-a780-ad5a22fb7127` | API Key | Live voice calls on OpenAI GPT-Live (`gpt-live-1`): a voice that talks with callers and asks your hub's agent for every answer. |
+
+### OpenAI GPT-Live
+
+**Prerequisites:** an API key of the OpenAI project your calls run in, from [platform.openai.com](https://platform.openai.com). The provider's call minutes are billed by OpenAI to that project (bring your own key). Only WayAI uses the key: a caller's browser never receives it.
+
+**CLI (`wayai push`):** create the key once as an org credential of type API Key, then declare the connection. Auto-creation binds by auth type, so pin the credential by name whenever the hub can see more than one API Key credential ([Binding an organization credential](#binding-an-organization-credential)):
+
+```bash
+echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --type "API Key" --stdin
+```
+
+```yaml
+connections:
+  - name: voice
+    type: Realtime
+    service: OpenAI GPT-Live
+    credential: openai-voice
+```
+
+**UI:** the hub's Connections tab → **Add Connection** → **OpenAI GPT-Live**; fill **Connection Name** and **Project API Key**, then Save. Shown only once voice calls are enabled for the organization.
+
+---
+
 ## Quick Reference
 
 | Connector | connector_id | Type | Auth |
@@ -770,3 +807,4 @@ Text-to-speech with Google's Gemini TTS models.
 | Groq TTS | `d7e8f9a0-1b2c-4d3e-8f40-5a6b7c8d9e0f` | TTS | API Key |
 | ElevenLabs TTS | `a1b2c3d4-e5f6-4789-a012-3456789abcde` | TTS | API Key |
 | Google AI Studio TTS | `54448ab4-7457-436d-ae1a-4d7713130cb9` | TTS | API Key |
+| OpenAI GPT-Live | `01e7b19c-bc94-43f4-a780-ad5a22fb7127` | Realtime | API Key |
