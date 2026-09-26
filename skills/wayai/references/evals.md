@@ -467,7 +467,7 @@ A machine caller places a real call to the journey's voice agent and speaks the 
 
 **Ctrl-C** hangs up the call in progress, reads its record, closes its eval conversation, and starts no further run; SIGTERM and a closed terminal do the same. A second Ctrl-C leaves at once — the call then ends on its own limits (at most `--max-call-seconds`) and its eval conversation stays open.
 
-**Recording.** When the journey's voice agent has `record_calls` on ([calls.md → Recording Calls](calls.md#recording-calls)), each eval call is recorded too, with no recording notice played to your machine, and the recording is kept with that run's eval conversation. The support inbox doesn't list eval conversations, so it has no player for these recordings.
+**Recording.** When the journey's voice agent has `record_calls` on ([calls.md → Recording Calls](calls.md#recording-calls)), each eval call is recorded too, with no recording warning shown to your machine, and the recording is kept with that run's eval conversation. The support inbox doesn't list eval conversations, so it has no player for these recordings.
 
 ---
 

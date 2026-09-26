@@ -135,9 +135,10 @@ A refusal naming voice calls means WayAI has turned them off — see [When Voice
 
 Calls are placed from the **web app's chat view** for the hub. The call button shows beside the message box only when the hub can take a call: voice calls are on (see [When Voice Calls Are Off](#when-voice-calls-are-off)), and the hub is a chat hub with an enabled `pilot_voice` agent on an enabled GPT-Live connection.
 
-1. The browser asks for the microphone.
-2. **A fixed notice plays first, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, and the hub cannot change or skip it. If it cannot play, no call is made. On a hub that records calls, a second notice follows, saying the call is being recorded — see [Recording Calls](#recording-calls).
-3. The voice greets the caller, and the call bar shows the call's state, a mute button and hang-up.
+1. On a hub that records calls, the caller is first warned that the call will be recorded, and the call starts only if they choose to go on — see [Recording Calls](#recording-calls).
+2. The browser asks for the microphone.
+3. **A fixed notice plays, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, before the voice speaks, and the hub cannot change or skip it. If it cannot play, no call is made.
+4. The voice greets the caller, and the call bar shows the call's state, a mute button and hang-up — and, on a recorded call, a **Recording** badge.
 
 The caller's browser connects straight to the voice provider for the audio and never receives a credential. One call runs at a time, and the call belongs to the chat view it was started from: leaving the chat view, or switching to another hub, hangs up.
 
@@ -221,11 +222,11 @@ settings:
   record_calls: true              # default false
 ```
 
-The setting is read when a call starts, so turning it on or off applies from the next call.
+The setting is read when a call starts, so turning it off applies from the next call. Turning it on applies from a caller's next call once their app has refreshed the hub (for example, when it is opened or reloaded): until then it shows them no warning, and their calls are not recorded.
 
-**Every caller on a live call is told.** On a hub that records calls, a second fixed notice — that the call is being recorded — plays right after the AI notice, in the caller's app language, and the voice speaks only once both have played. A live call is recorded only when the caller's app plays that notice: an app that can't (an older version, or a notice that failed to load) gets an unrecorded call, and a notice that loads but fails to play ends the call.
+**Every caller on a live call is warned, and chooses.** On a hub that records calls, pressing **Start a voice call** first shows a warning, in the caller's app language, that the call will be recorded. The call starts only when the caller chooses to go on; cancelling starts nothing. Screen readers announce the warning. During the call, the call bar shows a **Recording** badge until the call ends. A live call is recorded only when the caller's app says they went on past the warning: an app that did not show it (an older version, or one that has not refreshed the hub since recording was turned on) gets an unrecorded call.
 
-**What is recorded.** From the moment the voice can start speaking — on a live call, once both notices have played — until the call ends: both sides of the call, silences included, as one uncompressed stereo WAV file — the caller on the left channel, the voice on the right.
+**What is recorded.** From the moment the voice can start speaking — on a live call, once the AI notice has played — until the call ends: both sides of the call, silences included, as one uncompressed stereo WAV file — the caller on the left channel, the voice on the right.
 
 **Where the team plays it.** Shortly after a live call ends, its conversation gets a **Call recording** note in the support inbox, with a player. Only the team sees it: the caller never does, in any view, and no AI reads it — the AI's file tools don't offer it and it is kept out of every history. A recording that could not be finished is deleted rather than kept, and that call has no note.
 
@@ -233,7 +234,7 @@ The setting is read when a call starts, so turning it on or off applies from the
 
 **Retention and erasure.** A recording is a file of its conversation: it is kept as long as the conversation's other files, under the hub's storage retention, and removed with them — when that retention ends, when the contact's conversation history is deleted, and when the hub is deleted. If a conversation's history is deleted while its call is live, the call ends and nothing is kept.
 
-**Eval calls** are recorded too, when their journey's voice agent records calls — with no notice, since their caller is your own machine, and with no player, since the support inbox lists no eval conversation. See [evals.md → Call evals](evals.md#call-evals-voice-calls).
+**Eval calls** are recorded too, when their journey's voice agent records calls — with no warning, since their caller is your own machine, and with no player, since the support inbox lists no eval conversation. See [evals.md → Call evals](evals.md#call-evals-voice-calls).
 
 ## Billing
 
