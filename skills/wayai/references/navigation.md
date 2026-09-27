@@ -102,6 +102,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `/settings/organizations/[orgId]/hubs/[hubId]/agents/[agentId]` | Agent detail |
 | `/settings/organizations/[orgId]/hubs/[hubId]/connections/[connectionId]` | Connection detail |
 | `/settings/organizations/[orgId]/hubs/[hubId]/connections/new?connector=<connector_id>` | Create connection pre-picked to a connector (matched by `connector_id` UUID, not a slug) |
+| `/settings/organizations/[orgId]/hubs/[hubId]/evals/calls/[conversationId]/[callId]` | An eval call's page: its transcript and recording. Reached by the link `wayai eval call` prints for each run; no list links to it |
 
 ### Hub-only shortcut
 | Path | Purpose |

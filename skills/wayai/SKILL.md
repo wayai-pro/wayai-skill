@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.99.1
+version: 6.100.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -384,7 +384,7 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 | `access_approval_role` | `admin`, `team` | `admin` | Who may approve/block a pending contact: hub admins only, or also support team members |
 | `access_request_message` | string | — | Optional override for the "your access is pending approval" auto-reply (else a localized default by `language`) |
 | `auto_close_inactive_days` | `1`–`180` | `7` | Days of inactivity (no user/team message) before a conversation is force-closed. Every hub has one |
-| `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` before cleanup (archival still happens at close) |
+| `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` — and an eval call's page ([evals.md → Call evals](references/evals.md#call-evals-voice-calls)) — before cleanup (archival still happens at close) |
 | `ended_index_retention_days` | `1`–`730` | `365` | Days an ended conversation stays listed in the hub index. Bounds the Ended tab and how far back `{{previous_conversations(N)}}` reaches |
 | `eval_retention_days` | `0`–`3650`, or `null` | platform default (90) | Days a finished eval session (its runs, results and eval conversations) is kept before retirement. `0` keeps sessions forever. **Omitting the field leaves the current value unchanged** — write `eval_retention_days: null` to clear an override and go back to the platform default. Retirement deletes transcripts permanently — eval scores in Analytics survive |
 

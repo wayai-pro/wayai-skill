@@ -263,7 +263,7 @@ The setting is read when a call starts, so turning it off applies from the next 
 
 **Retention and erasure.** A recording is a file of its conversation: it is kept as long as the conversation's other files, under the hub's storage retention, and removed with them — when that retention ends, when the contact's conversation history is deleted, and when the hub is deleted. If a conversation's history is deleted while its call is live, the call ends and nothing is kept.
 
-**Eval calls** are recorded too, when their journey's voice agent records calls — with no warning, since their caller is your own machine, and with no player, since the support inbox lists no eval conversation. See [evals.md → Call evals](evals.md#call-evals-voice-calls).
+**Eval calls** are recorded too, when their journey's voice agent records calls — with no warning, since their caller is your own machine. The support inbox lists no eval conversation, so an eval call's recording plays from that call's own page in the web app instead, with the same player and gap marks, for the hub's `conversation_retention_days` after the call; `wayai eval call` prints each run's page link. See [evals.md → Call evals](evals.md#call-evals-voice-calls).
 
 ## Billing
 

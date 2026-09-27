@@ -474,7 +474,9 @@ A voice agent whose `inactivity_timeout_seconds` is shorter than such a wait can
 
 **Ctrl-C** hangs up the call in progress, reads its record, closes its eval conversation, and starts no further run; SIGTERM and a closed terminal do the same. A second Ctrl-C leaves at once — the call then ends on its own limits (at most `--max-call-seconds`) and its eval conversation stays open.
 
-**Recording.** When the journey's voice agent has `record_calls` on ([calls.md → Recording Calls](calls.md#recording-calls)), each eval call is recorded too, with no recording warning shown to your machine, and the recording is kept with that run's eval conversation. The support inbox doesn't list eval conversations, so it has no player for these recordings.
+**Each run's call page.** After the report, the command lists each run's page in the web app (under the hub's **Evals**, `…/evals/calls/<conversation_id>/<call_id>`; in `--json`, the run's `record.web_url`): the call's transcript, who said each line and when, and its recording. Opening it takes the same access as the eval results — read access to the hub. The page lasts for the hub's `conversation_retention_days` after the call (7 by default, at most 30; see [SKILL.md → Hub Settings](../SKILL.md#hub-settings)); after that its link reads as not found. The command itself never receives a run's recording, so neither its terminal report nor `--json` carries it (the recording's file key would let anyone signed in who holds it download the audio); the page plays it instead.
+
+**Recording.** When the journey's voice agent has `record_calls` on ([calls.md → Recording Calls](calls.md#recording-calls)), each eval call is recorded too, with no recording warning shown to your machine, and the recording is kept with that run's eval conversation. The support inbox doesn't list eval conversations; the run's call page plays the recording instead, with the inbox's player and gap marks. It appears there shortly after the call ends — on a page opened sooner, press **Refresh**.
 
 ---
 
