@@ -45,7 +45,7 @@ wayai-ws/hubs/<hub>/resources/
 
 Folder name = slugified resource name. Subfolders inside a resource are preserved (relative paths kept on push).
 
-A resource directory, every path component leading to it, and every file and subfolder inside it must be **real, not a symlink**, even one pointing elsewhere inside the workspace. If the hub folder or `resources/` itself is a symlink, every `wayai pull` and `wayai push` stops with an error. The same goes for a symlinked resource folder, subfolder, or file inside `resources/`: `wayai push` (and `diff`/`publish`) stops with an error, and so does `wayai pull` into an existing preview hub folder, which reads the folder first to show the diff. Where pull writes without reading first (a production mirror, or overwriting a folder it could not parse), it skips that entry with a warning instead. Either way a pre-planted link can't redirect a write outside the resource folder or send an outside file to the platform.
+A resource directory, every path component leading to it, and every file and subfolder inside it must be **real, not a symlink**, even one pointing elsewhere inside the workspace. If the hub folder or `resources/` itself is a symlink, every `wayai pull` and `wayai push` stops with an error. The same goes for a symlinked resource folder, subfolder, or file inside `resources/`: `wayai push` (and `diff`/`publish`) stops with an error, and so does `wayai pull` into an existing preview hub folder, which reads the folder first to show the diff. Where pull writes without reading first (a production mirror, or a folder it could not read that you agreed to replace), it skips that entry with a warning instead. Either way a pre-planted link can't redirect a write outside the resource folder or send an outside file to the platform.
 
 ---
 
@@ -104,7 +104,7 @@ Higher `priority` means higher precedence when multiple resources apply.
 
 **Rules:**
 - Detection uses a deny-list of known binary extensions — unknown extensions default to text
-- **Size limit:** 10 MB per file. Files exceeding this are skipped with a warning
+- **Size limit:** 10 MB per file. `wayai push`, `diff` and `publish` skip a larger file with a warning. `wayai pull` cannot compare a folder holding one: it asks before replacing your local files, and `pull -y` stops without writing anything. Move the file out of `resources/` or shrink it, then pull again
 - **Change detection:** SHA-256 hash comparison — only changed files are uploaded on push
 
 ---
