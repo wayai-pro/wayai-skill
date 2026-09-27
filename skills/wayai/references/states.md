@@ -39,7 +39,7 @@ states:
     json_schema:
       type: object
       properties:
-        order_id: { type: string }
+        order_id: { type: [string, "null"] }
         status:
           type: string
           enum: [pending, confirmed, shipped, delivered]
@@ -121,7 +121,7 @@ See [agents/instructions.md](agents/instructions.md) for full placeholder syntax
 - After `reset_state`, the persisted row is deleted; the next read falls back to `initial_value` if set, otherwise `{}`.
 - After `set_state_path` or `update_state`, the persisted row contains ONLY what was explicitly written — it does NOT include the surrounding `initial_value` shape. If the agent needs the rest of the structure, it should read `initial_value` separately or always go through `get_state`.
 
-The shape of `initial_value` (when set) MUST validate against `json_schema`. The platform rejects state definitions where `initial_value` doesn't conform.
+The shape of `initial_value` (when set — `null`, omitted, and `{}` all mean unset) MUST validate against `json_schema`, under the same check agent writes get. A save that would store a non-conforming pair is rejected — in the settings editor, through the API, or by `wayai push`, which reports the error against that state and writes nothing for it. The check runs only when a save changes `json_schema` or `initial_value`: a state whose stored `initial_value` already fails its schema still takes edits to its other fields, and publishing to production copies definitions as they are, without re-checking. The reserved `conversation_summary` state is exempt, as the summarizer's writes to it are.
 
 **When to set it:**
 - The hub author wants the agent to see useful defaults from turn one (e.g., language preferences, a "no orders yet" sentinel).
@@ -132,7 +132,7 @@ The shape of `initial_value` (when set) MUST validate against `json_schema`. The
 - You want shape documentation only — put the shape in the agent's system prompt prose instead. Setting `initial_value` to a structurally-empty object (like `{ "students": [], "contact": { "name": "" } }`) wastes context tokens on every turn for zero signal.
 
 Patterns:
-- Use `null` for fields you want to be "unset" — combined with `nullable` in the schema (or omit `required` so the field can be absent).
+- Use `null` for fields you want to be "unset" — the field's schema must allow it (`type: [string, "null"]`, or the `oneOf` pattern under [JSON Schema Patterns](#json-schema-patterns)); otherwise leave the field out of `initial_value`, which a schema that doesn't `require` it accepts.
 - Use empty arrays `[]` and empty strings `""` over `null` when you want the agent to append rather than replace.
 - Default enum-typed fields to a sensible starting value (e.g., `status: pending`).
 

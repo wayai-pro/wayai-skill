@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.99.0
+version: 6.99.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -754,7 +754,7 @@ states:
       properties:
         order_id: { type: string }
         status: { type: string, enum: [pending, shipped, delivered] }
-    initial_value: { order_id: null, status: null }
+    initial_value: { status: pending }  # must validate against json_schema
 
 connections:
   - name: anthropic
