@@ -8,6 +8,7 @@ Live AI voice calls on a hub: an end user presses a call button in the hub's cha
 - [What a Hub Needs](#what-a-hub-needs)
 - [Setting Up a Hub for Calls](#setting-up-a-hub-for-calls)
 - [Placing a Call](#placing-a-call)
+- [The Call's Opening](#the-calls-opening)
 - [Who the AI May Answer](#who-the-ai-may-answer)
 - [During a Call](#during-a-call)
 - [How Calls End](#how-calls-end)
@@ -127,9 +128,9 @@ wayai push -y
 
 A refusal naming voice calls means WayAI has turned them off — see [When Voice Calls Are Off](#when-voice-calls-are-off).
 
-**5. Optional:** a [steering monitor](agents/roles-and-settings.md#steering-a-live-call--call_utterance) to correct the voice mid-call, and [call evals](evals.md#call-evals-voice-calls) (`wayai run-eval --call-mode`, `wayai eval call`).
+**5. Optional:** your own [call opening](#the-calls-opening) per language, a [steering monitor](agents/roles-and-settings.md#steering-a-live-call--call_utterance) to correct the voice mid-call, and [call evals](evals.md#call-evals-voice-calls) (`wayai run-eval --call-mode`, `wayai eval call`).
 
-**6. Try a call** on the preview: open the hub's chat view, `https://app.wayai.pro/chat/<hub_id>` ([navigation.md](navigation.md#chat); `<hub_id>` from `wayai status --json`), as someone who can chat with the hub, and press **Start a voice call**. Publishing (`wayai publish`) carries the Realtime connection and the voice agent to production like any other configuration.
+**6. Try a call** on the preview: open the hub's chat view, `https://app.wayai.pro/chat/<hub_id>` ([navigation.md](navigation.md#chat); `<hub_id>` from `wayai status --json`), as someone who can chat with the hub, and press **Start a voice call**. Publishing (`wayai publish`) carries the Realtime connection and the voice agent, its call openings included, to production like any other configuration.
 
 ## Placing a Call
 
@@ -137,10 +138,34 @@ Calls are placed from the **web app's chat view** for the hub. The call button s
 
 1. On a hub that records calls, the caller is first warned that the call will be recorded, and the call starts only if they choose to go on — see [Recording Calls](#recording-calls).
 2. The browser asks for the microphone.
-3. **A fixed notice plays, telling the caller they are talking to an AI.** It plays in the caller's app language, with the caller's microphone muted, before the voice speaks, and the hub cannot change or skip it. If it cannot play, no call is made.
+3. **The call's opening plays, telling the caller they are talking to an AI**: WayAI's notice, or the hub's own audio in that language (see [The Call's Opening](#the-calls-opening)). It plays in the caller's app language, with the caller's microphone muted, before the voice speaks, and its text shows in the call bar while it plays. A call always has one: the hub can replace it, never skip it. If it cannot load or play, no call is made.
 4. The voice greets the caller, and the call bar shows the call's state, a mute button and hang-up — and, on a recorded call, a **Recording** badge.
 
 The caller's browser connects straight to the voice provider for the audio and never receives a credential. One call runs at a time, and the call belongs to the chat view it was started from: leaving the chat view, or switching to another hub, hangs up.
+
+## The Call's Opening
+
+Every call opens with a short notice, before the voice connects, telling the caller they are talking to an AI. By default it is **WayAI's**, in the caller's app language (English, Portuguese or Spanish). The voice agent can replace it, **per language**, with an audio file of your own and a caption:
+
+```yaml
+# agents/voice.yaml
+call_openings:
+  pt:
+    file: call-openings/voice-pt.mp3     # hub-relative
+    caption: "Olá! Você está falando com a assistente virtual da Clínica Aurora."
+  en:
+    file: call-openings/voice-en.m4a
+    caption: "Hi! You're talking to Clínica Aurora's AI assistant."
+```
+
+- **Your opening replaces WayAI's notice** in that language, so it must itself tell the caller they are talking to an AI.
+- **A language you leave out plays WayAI's opening.** The language is the caller's app language, not the voice agent's `language`, so set every language your callers use.
+- **The file:** an MP3, or AAC audio (AAC-LC or HE-AAC) in an M4A or MP4 file, **at most 15 seconds and 1 MB**. The upload is refused otherwise, and so is a file that is not audio every browser plays (WAV, Ogg, ALAC, AAC-ELD, a video, a fragmented MP4). The length is read from the file itself.
+- **The caption** (1–500 characters) is what the call bar shows while the audio plays, for a caller who cannot hear it. Write exactly what the audio says.
+- **Where to set it:** `call_openings` in the voice agent's YAML, or the voice agent's **Call opening** section in the agent editor, where each language uploads, plays back and removes on its own. `wayai push` reads each `file` and uploads it; `wayai pull` writes the files back under `call-openings/` (`<agent>-<language>.mp3` or `.m4a`). Leaving `call_openings` out of the YAML keeps the openings the hub already has; `call_openings: {}` removes them all.
+- **It is the voice agent's**: calls use the openings of the voice agent they run on (the earliest-created usable one, see [Limits](#limits)). Set on the preview hub, they reach production when you publish.
+- **When callers hear a change:** from a caller's next call once their app has refreshed the hub (for example, when it is opened or reloaded). Until then, a caller whose app still names an opening you have since changed or removed hears WayAI's opening instead; nobody hears audio under another opening's caption.
+- **Eval calls** play no opening: their caller is your own machine.
 
 ## Who the AI May Answer
 
@@ -230,7 +255,7 @@ The setting is read when a call starts, so turning it off applies from the next 
 
 **Every caller on a live call is warned, and chooses.** On a hub that records calls, pressing **Start a voice call** first shows a warning, in the caller's app language, that the call will be recorded. The call starts only when the caller chooses to go on; cancelling starts nothing. Screen readers announce the warning. During the call, the call bar shows a **Recording** badge until the call ends. A live call is recorded only when the caller's app says they went on past the warning: an app that did not show it (an older version, or one that has not refreshed the hub since recording was turned on) gets an unrecorded call.
 
-**What is recorded.** From the moment the voice can start speaking — on a live call, once the AI notice has played — until the call ends: both sides of the call, silences included, as one stereo WebM file with Opus audio (`audio/webm`, about half a megabyte per recorded minute) — the caller on the left channel, the voice on the right. Recordings made before this format are uncompressed stereo WAV files (`audio/wav`), and keep playing as they are.
+**What is recorded.** From the moment the voice can start speaking — on a live call, once the call's opening has played — until the call ends: both sides of the call, silences included, as one stereo WebM file with Opus audio (`audio/webm`, about half a megabyte per recorded minute) — the caller on the left channel, the voice on the right. Recordings made before this format are uncompressed stereo WAV files (`audio/wav`), and keep playing as they are.
 
 **Where the team plays it.** Shortly after a live call ends, its conversation gets a **Call recording** note in the support inbox, with a player. Only the team sees it: the caller never does, in any view, and no AI reads it — the AI's file tools don't offer it and it is kept out of every history. A recording that could not be finished is deleted rather than kept, and that call has no note.
 
