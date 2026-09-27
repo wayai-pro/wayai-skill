@@ -56,7 +56,7 @@ If you see that refusal, stop and tell the user: WayAI has turned voice calls of
 | An enabled `pilot_voice` agent on that connection | The voice itself: its settings and instructions — see [Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only) |
 | The hub's `app` channel enabled | Calls run on it (it is created with the hub) |
 
-The voice is also told the language to speak: the voice agent's `language` setting, or the hub's `language` when that is empty. The fixed greeting names the hub by its `name`; anything else the voice should know about the company goes in its instructions.
+The voice is also told the language to speak: the voice agent's `language` setting, or the hub's `language` when that is empty. WayAI's greeting names the hub by its `name`, unless the voice agent sets its own (`greeting_text`); anything else the voice should know about the company goes in its instructions.
 
 ## Setting Up a Hub for Calls
 
@@ -161,10 +161,14 @@ A refused call answers `409` with `details.reason` set to one of: `calls_unavail
 When the voice hands a question to the hub's agent, that agent runs a full turn — its tools, its `user_message` monitor and its reply gate — so an answer takes several seconds. While it waits:
 
 - the voice says what its instructions tell it to — something short, like "one moment";
-- if the answer isn't back about 5 seconds after the caller stopped speaking, the caller hears a fixed "still checking" cue, and another at about 10 seconds;
-- if it isn't back within the voice agent's `delegation_timeout_seconds`, the caller hears that it is taking longer than expected and is invited to ask again. An answer that arrives after that is given to the voice silently, to use if the caller asks again; it is not read out.
+- if the answer isn't back about 5 seconds after the caller stopped speaking, the caller hears a "still checking" cue, and another at about 10 seconds. The voice agent's `progress_cues: false` turns both off, and the wait is then silent unless the voice's instructions fill it;
+- if it isn't back within the voice agent's `delegation_timeout_seconds`, the caller hears that it is taking longer than expected and is invited to ask again, cues on or off. An answer that arrives after that is given to the voice silently, to use if the caller asks again; it is not read out.
 
-If the voice raises a question the call has no words for (the caller said nothing new, or the words were lost), the caller is asked to repeat. If the caller asks something new before an older question is answered, the older one is dropped: its turn stops at its next step (a step already running finishes), and its answer is never said.
+A wait for an answer never ends the call for inactivity before its `delegation_timeout_seconds` is up, whether or not a cue fills it.
+
+If the voice raises a question the call has no words for (the caller said nothing new, or the words were lost), the caller is asked to repeat; if the hub's agent could not produce an answer, the voice apologizes and invites the question again. If the caller asks something new before an older question is answered, the older one is dropped: its turn stops at its next step (a step already running finishes), and its answer is never said.
+
+These lines — the greeting, both cues, the request to repeat, the apology and the timeout line — are WayAI's, in the call's language, unless the voice agent sets its own wording: see [Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only) (`greeting_text`, `first_progress_cue_text`, `second_progress_cue_text`, `please_repeat_text`, `turn_failed_text`, `timed_out_text`). Only their wording changes: when each is said, including the cues at about 5 and 10 seconds, stays as described here.
 
 ### Hand-offs
 
@@ -192,7 +196,7 @@ If the call ends while the caller was still owed an answer, that answer is deliv
 | Ending | What ends it | How fast |
 |---|---|---|
 | The caller | Hang-up, closing the tab or leaving the chat view, or a lost connection | At once |
-| The voice agent's limits | `max_call_minutes` reached; `inactivity_timeout_seconds` with neither side speaking | At once |
+| The voice agent's limits | `max_call_minutes` reached; `inactivity_timeout_seconds` with neither side speaking and no answer awaited | At once |
 | The AI may no longer answer the conversation | A reply-gate hold, `transfer_to_team`, a team takeover, the fail-safe, the conversation closing (the `close_conversation` tool, a terminal kanban status, the team's Close, inactivity auto-close), the contact's access becoming pending or blocked, an `ai_mode` change, or the pilot becoming unable to answer calls | At once; a change to the hub's settings within about half a minute |
 | Configuration | The `app` channel, the `pilot_voice` agent or its Realtime connection disabled or deleted | Within about half a minute |
 | Calls switched off | WayAI turns voice calls off | Within about a minute |

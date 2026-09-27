@@ -455,6 +455,8 @@ A machine caller places a real call to the journey's voice agent and speaks the 
 { "lines": { "2": { "interrupt": true }, "3": { "readback": "123.456.789-09", "clip": "clips/3.wav" }, "5": { "expect_delegation": false } } }
 ```
 
+**Progress cues off.** When the journey's voice agent has `progress_cues: false` ([calls.md → Answers and progress cues](calls.md#answers-and-progress-cues)), the wait for each answer is silent, so a pause is no sign the answer is over: after each caller line it expects the hub's agent to answer, the runner waits until the voice agent's `delegation_timeout_seconds` (plus a few seconds) has passed before it speaks the next line. Runs take longer — size `--max-call-seconds` for it — and a voice agent whose `inactivity_timeout_seconds` is shorter than that wait can end the call while the runner waits after an early answer.
+
 **Cost, and the caps.** Every run spends the provider's call minutes on the organization's own OpenAI key, plus WayAI operations: one per question the voice hands over, plus the call's per-minute rate ([calls.md → Billing](calls.md#billing)).
 
 | Flag | Default | Caps |

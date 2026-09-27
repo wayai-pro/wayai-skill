@@ -183,7 +183,7 @@ settings:
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
 ```
 
-**OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds`, `record_calls` — see [Voice Agent](#voice-agent-pilot_voice-only).
+**OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds`, `record_calls`, `progress_cues`, and the wording of the voice's fixed lines (`greeting_text`, `first_progress_cue_text`, `second_progress_cue_text`, `please_repeat_text`, `turn_failed_text`, `timed_out_text`) — see [Voice Agent](#voice-agent-pilot_voice-only).
 
 **xAI** (service: Xai):
 ```yaml
@@ -451,6 +451,8 @@ settings:
   inactivity_timeout_seconds: 60
   delegation_timeout_seconds: 30
   record_calls: false
+  progress_cues: true
+  greeting_text: "Olá! Aqui é a Clínica Aurora. Como posso ajudar?"   # empty = WayAI's greeting
 ```
 
 **The binding rule, both ways.** A `pilot_voice` agent binds only a **Realtime** connection, and a Realtime connection binds only a `pilot_voice` agent — refused otherwise on every surface (`A pilot_voice agent can use only a Realtime connection`, `A Realtime connection can be used only by a pilot_voice agent`). The voice agent's model is the connector's own; there is no `model` setting.
@@ -462,9 +464,17 @@ settings:
 | `speaker_voice` | `bossa`, `tempo`, or another built-in GPT-Live voice id | `bossa` | The voice the caller hears. `bossa` and `tempo` are Brazilian Portuguese voices |
 | `language` | empty, `pt`, `en`, `es` | empty | The language the voice speaks. Empty uses the hub's `language` |
 | `max_call_minutes` | 1–119 | 10 | A call ends when it reaches this length. 119 minutes is the provider's own session limit |
-| `inactivity_timeout_seconds` | 10–600 | 60 | A call ends after this many seconds in which neither side speaks |
+| `inactivity_timeout_seconds` | 10–600 | 60 | A call ends after this many seconds in which neither side speaks. A wait for the hub's agent to answer, up to `delegation_timeout_seconds`, does not count |
 | `delegation_timeout_seconds` | 5–120 | 30 | How long the voice waits for the hub's agent to answer one question. Past it, the caller hears that it is taking longer than expected, and a late answer reaches the voice silently, to use if the caller asks again |
 | `record_calls` | `true` / `false` | `false` | Records the calls that run on this agent: each live call whose caller chose to go on past the recording warning, for your team to play from the conversation, and each eval call ([`../evals.md` → Call evals](../evals.md#call-evals-voice-calls)) — see [`../calls.md` → Recording Calls](../calls.md#recording-calls) |
+| `progress_cues` | `true` / `false` | `true` | While the hub's agent works on an answer, the voice says a short "still checking" line about 5 and 10 seconds after the caller stops speaking. `false`: that wait is silent unless the voice's instructions fill it; the timeout line still plays |
+| `greeting_text` | text, up to 300 characters | empty | What the voice says when the call starts. Empty: WayAI's greeting, which names the hub |
+| `first_progress_cue_text`, `second_progress_cue_text` | text, up to 300 characters | empty | What the voice says at the first (about 5 s) and second (about 10 s) progress cue. Empty: WayAI's line |
+| `please_repeat_text` | text, up to 300 characters | empty | What the voice says when it has no words for the caller's question and asks them to repeat it. Empty: WayAI's line |
+| `turn_failed_text` | text, up to 300 characters | empty | What the voice says when the hub's agent could not produce an answer. Empty: WayAI's apology |
+| `timed_out_text` | text, up to 300 characters | empty | What the voice says when an answer is not back within `delegation_timeout_seconds`. Empty: WayAI's apology |
+
+**Its fixed lines** are the six texts above. An empty one is WayAI's line, in the call's language; a set one is said as written whatever the call's language, so write it in the language the calls use. The voice says each in its own voice, so its wording can vary a little. A text over 300 characters is refused on save. Placeholders (`{{…}}`) are not filled. They are read when a call starts: edits reach the next call, and a call in progress keeps the wording it started with.
 
 **Its instructions** (`agents/<slug>.md`) say how the voice talks — tone, pace, greeting, how it reads back a number — and what it hands to the hub's agent, not what the business knows. They are the only rules the voice follows: WayAI adds just one line after them, the language to speak (from `language`). Start from the rules in the example in [`../calls.md` → Setting Up a Hub for Calls](../calls.md#setting-up-a-hub-for-calls): without them, the voice may answer a question, quote a price or confirm an action on its own. They are fixed when a call starts and used as written: placeholders are not filled, very long text is cut, and edits reach the next call.
 

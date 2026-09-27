@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.96.0
+version: 6.97.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -196,7 +196,7 @@ Channel uniqueness (phone / page / inbound address) is enforced across **product
 
 A `chat` hub can take **live AI voice calls** from the web app's chat view: the caller presses **Start a voice call**, hears a fixed notice that they are talking to an AI, and talks with a voice. Any hub can be set up for them. **WayAI can turn voice calls off platform-wide**, and while they are off, `wayai push` refuses to create a Realtime connection or a `pilot_voice` agent, or to turn on any of the pieces below, with `Voice calls are not enabled for this platform, so …` — stop and tell the user when you see it.
 
-- **The voice** is a `pilot_voice` agent on a **Realtime** connection (OpenAI GPT-Live, on the organization's own OpenAI project key). Its settings are its voice, language, call limits and whether calls are recorded (off by default); its instructions are the only rules it follows: how to talk, and handing every question to the pilot (start from [the example](references/calls.md#setting-up-a-hub-for-calls))
+- **The voice** is a `pilot_voice` agent on a **Realtime** connection (OpenAI GPT-Live, on the organization's own OpenAI project key). Its settings are its voice, language, call limits, whether calls are recorded (off by default), whether it says progress cues while an answer is awaited, and the wording of its fixed lines (greeting, cues, repeat, apology, timeout); its instructions are the only rules it follows: how to talk, and handing every question to the pilot (start from [the example](references/calls.md#setting-up-a-hub-for-calls))
 - **Answers come from the hub's pilot** when the voice hands it the question, as its instructions should tell it to; the pilot runs a normal turn — tools, monitors, reply gate — for each question the voice hands over. The same rules as text decide whether the AI may answer, and the call ends when they stop allowing it (a transfer to the team, a takeover, a close, …)
 - **Actions with side effects wait for the caller's spoken yes**; a `call_utterance` monitor can **steer** the voice mid-call; `wayai run-eval --call-mode` and `wayai eval call` evaluate calls
 - **Billing:** each question the voice hands over bills 1 operation, plus a per-minute rate for the call's connected minutes
