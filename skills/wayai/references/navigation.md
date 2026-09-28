@@ -14,12 +14,12 @@ Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace w
 
 ## Top-Level Map
 
-Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_nav` preference if valid, otherwise to a role-default in this order: `/chat` → `/task` → `/support` → `/settings`.
+Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_nav` preference if valid, otherwise to a role-default in this order: `/chat` → `/support` → `/settings`.
 
 | Prefix | Purpose | Who sees it |
 |--------|---------|-------------|
-| `/chat` | Conversations where the signed-in user is the **end user** of a `chat` hub | Hub Users |
-| `/task` | Task-oriented conversations (one user, many concurrent) | Hub Users on `task` hubs |
+| `/chat` | Every agent the signed-in user talks to as the **end user**: `chat` hubs (one ongoing thread each) and `task` hubs (one conversation per task) | Hub Users |
+| `/task` | Legacy alias — renders Chat and moves to the matching `/chat` link (kept for old links) | Hub Users |
 | `/support` | Inbox / kanban for team members handling end-user conversations | Hub Team Users, Hub Admins |
 | `/settings` | Unified settings shell (account + org + hub) with sidebar nav | Account: all authenticated users; Org/Hub: admins |
 | `/user` | Legacy alias — 308 redirects to `/settings/account/*` (kept for external bookmarks) | All authenticated users |
@@ -43,17 +43,23 @@ Auth pages use **inline translations** (en/pt/es objects in the same file), not 
 ## Conversation Surfaces
 
 ### Chat
-| Path | Purpose |
-|------|---------|
-| `/chat` | Last-active chat conversation (single per user per hub) |
-| `/chat/[hubId]` | Chat with a specific hub |
+One list of agents, chat and task hubs alike, most recent activity first. `?filter=in_progress` lists every open task across task hubs instead.
 
-### Task
 | Path | Purpose |
 |------|---------|
-| `/task` | Task inbox |
-| `/task/hubs/[hubId]` | Task list scoped to one hub |
-| `/task/[conversationId]` | Specific task conversation |
+| `/chat` | All agents |
+| `/chat/[hubId]` | A `chat` hub: its ongoing thread. A `task` hub: its task list (In progress; `?status=ended` for Ended) with New task |
+| `/chat/[hubId]/tasks/[conversationId]` | One task conversation |
+| `/chat/[hubId]/new/[taskStartId]` | A new task in a `task` hub (`taskStartId` is a fresh id per new task) |
+
+### Task (legacy)
+These keep working for old links and render Chat. Hand over the `/chat` links above instead.
+
+| Path | Opens |
+|------|---------|
+| `/task` | `/chat` |
+| `/task/hubs/[hubId]` | `/chat/[hubId]` |
+| `/task/[conversationId]` | The task at `/chat/[hubId]/tasks/[conversationId]`, when it is among the user's loaded tasks (their recent open ones are). Otherwise, e.g. an older ended task, it does not open: the desktop layout falls back to `/chat`, a phone-width one shows an empty thread |
 
 ### Support
 | Path | Purpose |
@@ -155,5 +161,5 @@ https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?co
 
 - **Always hand over one deep link.** Never describe a breadcrumb path. If the agent doesn't know the `orgId` / `hubId`, run `wayai status --json` first to resolve them.
 - **Never invent paths.** Only use URLs documented here. New routes must be added to this file (and `APP_ROUTE_PREFIXES` if top-level) before they can be linked.
-- **Locale prefix only for marketing.** App routes (`/chat`, `/task`, …) are not locale-prefixed; the user's language preference is read from UserDO.
+- **Locale prefix only for marketing.** App routes (`/chat`, `/support`, …) are not locale-prefixed; the user's language preference is read from UserDO.
 - **Most auth routes can be linked to** (e.g. `/login`, `/verify-email`, `/welcome`). The two exceptions in the Auth Routes table — `/callback` and `/oauth/authorize` — cannot, because they require live state from the auth provider.

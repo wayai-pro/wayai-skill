@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.101.1
+version: 6.101.2
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -349,7 +349,7 @@ Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--
 
 People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML:
 
-- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` or `/task`
+- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat`
 - **Hub Team User** — support team member handling conversations in `/support`; grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
@@ -900,5 +900,5 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, base credentials, modeling & tool-design principles |
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
-| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/task`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
+| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL |
 | **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | The per-hub / per-base folder memory pattern — what belongs in an `AGENTS.md`, and which of the two the CLI seeds |
