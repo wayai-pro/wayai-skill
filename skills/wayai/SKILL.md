@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.101.2
+version: 6.101.3
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -349,7 +349,7 @@ Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--
 
 People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML:
 
-- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat`
+- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab)
 - **Hub Team User** — support team member handling conversations in `/support`; grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`

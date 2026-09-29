@@ -70,6 +70,9 @@ These keep working for old links and render Chat. Hand over the `/chat` links ab
 | `/support/hubs/[hubId]/users/[hubUserId]` | Individual Hub User profile |
 | `/support/[conversationId]` | Specific support conversation |
 
+### Mobile app
+The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. Where the user has `task` hubs, an In progress filter lists their open tasks across hubs. Support is the team inbox of `/support`. The apps have no links to hand over: send the user to a screen with the web links above.
+
 ## Settings Hierarchy
 
 Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance. The hub-detail catch-all (`[[...segments]]`) holds the URL shape; content renders in `(app)/layout.tsx` to keep a stable RSC tree across tab switches.
