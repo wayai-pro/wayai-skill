@@ -19,7 +19,6 @@ Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_n
 | Prefix | Purpose | Who sees it |
 |--------|---------|-------------|
 | `/chat` | Every agent the signed-in user talks to as the **end user**: `chat` hubs (one ongoing thread each) and `task` hubs (one conversation per task) | Hub Users |
-| `/task` | Legacy alias — renders Chat and moves to the matching `/chat` link (kept for old links) | Hub Users |
 | `/support` | Inbox / kanban for team members handling end-user conversations | Hub Team Users, Hub Admins |
 | `/settings` | Unified settings shell (account + org + hub) with sidebar nav | Account: all authenticated users; Org/Hub: admins |
 | `/user` | Legacy alias — 308 redirects to `/settings/account/*` (kept for external bookmarks) | All authenticated users |
@@ -51,15 +50,6 @@ One list of agents, chat and task hubs alike, most recent activity first. `?filt
 | `/chat/[hubId]` | A `chat` hub: its ongoing thread. A `task` hub: its task list (In progress; `?status=ended` for Ended) with New task |
 | `/chat/[hubId]/tasks/[conversationId]` | One task conversation |
 | `/chat/[hubId]/new/[taskStartId]` | A new task in a `task` hub (`taskStartId` is a fresh id per new task) |
-
-### Task (legacy)
-These keep working for old links and render Chat. Hand over the `/chat` links above instead.
-
-| Path | Opens |
-|------|---------|
-| `/task` | `/chat` |
-| `/task/hubs/[hubId]` | `/chat/[hubId]` |
-| `/task/[conversationId]` | The task at `/chat/[hubId]/tasks/[conversationId]`, when it is among the user's loaded tasks (their recent open ones are). Otherwise, e.g. an older ended task, it does not open: the desktop layout falls back to `/chat`, a phone-width one shows an empty thread |
 
 ### Support
 | Path | Purpose |
