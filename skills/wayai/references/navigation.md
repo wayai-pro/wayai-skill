@@ -1,6 +1,6 @@
 # App Navigation & Deep Links
 
-Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace with `https://mac{1-9}.wayai-dev.com` for local dev). Use this when guiding the user to a screen — never invent paths or describe breadcrumbs ("go to Settings → Hubs → …"). Always hand over a single deep link.
+Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace with `https://mac{1-9}.wayai-dev.com` for local dev). Use this when guiding the user to a screen — never invent paths or describe breadcrumbs ("go to Settings → Hubs → …"). Always hand over a single deep link — except for the one screen no link reaches, the desktop app's settings ([Desktop app](#desktop-app)).
 
 ## Table of Contents
 - [Top-Level Map](#top-level-map)
@@ -61,7 +61,14 @@ One list of agents, chat and task hubs alike, most recent activity first. `?filt
 | `/support/[conversationId]` | Specific support conversation |
 
 ### Mobile app
-The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. Where the user has `task` hubs, an In progress filter lists their open tasks across hubs. Support is the team inbox of `/support`. The apps have no links to hand over: send the user to a screen with the web links above.
+The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. Where the user has `task` hubs, an In progress filter lists their open tasks across hubs. Support is the team inbox of `/support`. The mobile apps have no links to hand over: send the user to a screen with the web links above.
+
+### Desktop app
+The desktop app is the web app in its own window, with the same screens, for macOS (Apple silicon and Intel) and Windows; there is none for Linux. Send the person to `https://wayai.pro/download`: it offers the one for their computer, on Windows the Microsoft Store listing plus a direct installer for a PC without the Store (Windows may warn when that installer is opened: choose **More info**, then **Run anyway**). Google, Microsoft and Apple sign-in finish in the computer's browser, then return to the app.
+
+Over a browser tab it adds system notifications when a conversation moves from the AI to the team on a hub the person supports (while unclaimed or claimed by them) and when a customer writes in a conversation they claimed, a click opening it in Support; the sidebar's Support count on the Dock icon (macOS) or taskbar button (Windows) and in the menu bar or system tray, where the app keeps running when its window is closed; and updates of its own (a Microsoft Store copy updates through the Store), which the sidebar's update icon offers as **Restart to update WayAI** once one is ready.
+
+A link you hand over opens in the browser, not in the app, so the app's settings for that computer take no link: they are the **Desktop app** section of the Profile tab (`/settings/account/profile`), shown only inside the app, where the avatar menu → **User Settings** opens it. They are **Open at login** (for a Microsoft Store copy, Windows' own Settings → Apps → Startup), **Keep running when the window is closed**, **Notifications**, and **Show message text** (macOS only; Windows notifications never show a customer's name or words).
 
 ## Settings Hierarchy
 
@@ -115,7 +122,7 @@ Reached via the avatar menu (bottom of sidebar) → User Settings, or the ACCOUN
 | Path | Purpose |
 |------|---------|
 | `/settings/account` | Default account tab (redirects to profile) |
-| `/settings/account/profile` | Name, email, avatar, theme, language |
+| `/settings/account/profile` | Name, email, avatar, theme, language; inside the desktop app, its settings for that computer ([Desktop app](#desktop-app)) |
 | `/settings/account/api-tokens` | Personal `way_` API tokens for the `wayai` CLI and direct API calls |
 
 Legacy `/user/*` paths 308-redirect to the equivalent `/settings/account/*` URL — bookmarks and external links stay valid for one release cycle.
@@ -128,6 +135,7 @@ Public, locale-prefixed (`/`, `/en`, `/pt`, `/es`). Default locale (`en`) render
 |------|---------|
 | `/` | Marketing home, and the onboarding entry point — its `#start` section carries the install command and the example prompt, then SKILL.md drives state 1+ |
 | `/pricing` | Plans + pricing |
+| `/download` | The desktop app for macOS and Windows ([Desktop app](#desktop-app)) |
 | `/privacy` | Privacy policy |
 | `/terms` | Terms of service |
 
@@ -152,7 +160,7 @@ https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?co
 
 ## Rules
 
-- **Always hand over one deep link.** Never describe a breadcrumb path. If the agent doesn't know the `orgId` / `hubId`, run `wayai status --json` first to resolve them.
+- **Always hand over one deep link.** Never describe a breadcrumb path — the one exception is the desktop app's settings, which no link reaches ([Desktop app](#desktop-app)). If the agent doesn't know the `orgId` / `hubId`, run `wayai status --json` first to resolve them.
 - **Never invent paths.** Only use URLs documented here. New routes must be added to this file (and `APP_ROUTE_PREFIXES` if top-level) before they can be linked.
 - **Locale prefix only for marketing.** App routes (`/chat`, `/support`, …) are not locale-prefixed; the user's language preference is read from UserDO.
 - **Most auth routes can be linked to** (e.g. `/login`, `/verify-email`, `/welcome`). The two exceptions in the Auth Routes table — `/callback` and `/oauth/authorize` — cannot, because they require live state from the auth provider.
