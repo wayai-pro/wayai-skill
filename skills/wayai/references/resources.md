@@ -60,7 +60,6 @@ resources:
     # type: knowledge             # default — omitted
     description: Product docs
     # enabled: true               # default — omitted
-    # user_browsable: false       # default — omitted
 
   - id: "skill-uuid"
     name: Order Management
@@ -69,7 +68,7 @@ resources:
     description: Handles order queries
 ```
 
-**Default omission:** `enabled: true`, `user_browsable: false`, and `type: knowledge` are defaults — they're omitted from pulled YAML and from your edits.
+**Default omission:** `enabled: true` and `type: knowledge` are defaults — they're omitted from pulled YAML and from your edits.
 
 ---
 
