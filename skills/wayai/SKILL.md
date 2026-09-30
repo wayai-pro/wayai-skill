@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.102.0
+version: 6.102.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -22,7 +22,7 @@ description: |
 
 # WayAI Skill
 
-WayAI is a SaaS platform for AI-powered communication hubs. Each hub combines AI agents and a human team across channels (WhatsApp, Email, Instagram, Telegram, native App). This workspace stores hubs as code — one folder per hub (`hub.yaml` + `agents/*.{yaml,md}` + `evals/`, `journeys/`, `resources/`) synced bidirectionally to the platform via the `wayai` CLI.
+WayAI is where AI agents and people work together — serving your customers and running your operations. Each hub combines AI agents and a human team, from person-centered support and sales across channels to task-centered back-office work ([Hub Types](#hub-types)). This workspace stores hubs as code — one folder per hub (`hub.yaml` + `agents/*.{yaml,md}` + `evals/`, `journeys/`, `resources/`) synced bidirectionally to the platform via the `wayai` CLI.
 
 **Platform is the source of truth.** Workspace files are the edit surface — changes flow through files → `wayai push` → platform. Always `wayai pull` before editing to catch out-of-band changes.
 
