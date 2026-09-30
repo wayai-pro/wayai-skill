@@ -462,7 +462,7 @@ settings:
 | Setting | Values | Default | What it does |
 |---|---|---|---|
 | `speaker_voice` | `bossa`, `tempo`, or another built-in GPT-Live voice id | `bossa` | The voice the caller hears. `bossa` and `tempo` are Brazilian Portuguese voices |
-| `language` | empty, `pt`, `en`, `es` | empty | The language the voice speaks. Empty uses the hub's `language` |
+| `language` | empty, `caller`, `pt`, `en`, `es` | empty | The language the voice speaks. Empty uses the hub's `language`; `caller` uses the language in the caller's profile, or the hub's `language` when they have none (an eval call's caller has none) |
 | `max_call_minutes` | 1–119 | 10 | A call ends when it reaches this length. 119 minutes is the provider's own session limit |
 | `inactivity_timeout_seconds` | 10–600 | 60 | A call ends after this many seconds in which neither side speaks. A wait for the hub's agent to answer, up to `delegation_timeout_seconds`, does not count |
 | `delegation_timeout_seconds` | 5–120 | 30 | How long the voice waits for the hub's agent to answer one question. Past it, the caller hears that it is taking longer than expected, and a late answer reaches the voice silently, to use if the caller asks again |

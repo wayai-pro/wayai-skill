@@ -57,7 +57,7 @@ If you see that refusal, stop and tell the user: WayAI has turned voice calls of
 | An enabled `pilot_voice` agent on that connection | The voice itself: its settings and instructions — see [Voice Agent](agents/roles-and-settings.md#voice-agent-pilot_voice-only) |
 | The hub's `app` channel enabled | Calls run on it (it is created with the hub) |
 
-The voice is also told the language to speak: the voice agent's `language` setting, or the hub's `language` when that is empty. WayAI's greeting names the hub by its `name`, unless the voice agent sets its own (`greeting_text`); anything else the voice should know about the company goes in its instructions.
+The voice is also told the language to speak: the voice agent's `language` setting, or the hub's `language` when that is empty. Set it to `caller` to speak each caller's own profile language (the hub's `language` for a caller without one). WayAI's greeting names the hub by its `name`, unless the voice agent sets its own (`greeting_text`); anything else the voice should know about the company goes in its instructions.
 
 ## Setting Up a Hub for Calls
 
