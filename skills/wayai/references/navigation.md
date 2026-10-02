@@ -42,7 +42,7 @@ Auth pages use **inline translations** (en/pt/es objects in the same file), not 
 ## Conversation Surfaces
 
 ### Chat
-One list of agents, chat and task hubs alike, most recent activity first. `?filter=in_progress` lists every open task across task hubs instead.
+One list of agents, chat and task hubs alike, most recent activity first. A `task` hub's row shows how many of the user's tasks in it are in progress.
 
 | Path | Purpose |
 |------|---------|
@@ -61,7 +61,7 @@ One list of agents, chat and task hubs alike, most recent activity first. `?filt
 | `/support/[conversationId]` | Specific support conversation |
 
 ### Mobile app
-The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. Where the user has `task` hubs, an In progress filter lists their open tasks across hubs. Support is the team inbox of `/support`. The mobile apps have no links to hand over: send the user to a screen with the web links above.
+The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. A `task` hub's row shows how many of the user's tasks in it are in progress. Support is the team inbox of `/support`. The mobile apps have no links to hand over: send the user to a screen with the web links above.
 
 ### Desktop app
 The desktop app is the web app in its own window, with the same screens, for macOS (Apple silicon and Intel) and Windows; there is none for Linux. Send the person to `https://wayai.pro/download`: it offers the one for their computer, on Windows the Microsoft Store listing plus a direct installer for a PC without the Store (Windows may warn when that installer is opened: choose **More info**, then **Run anyway**). Google, Microsoft and Apple sign-in finish in the computer's browser, then return to the app.
