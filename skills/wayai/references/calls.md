@@ -175,7 +175,7 @@ call_openings:
 - the conversation is with the AI, not the team (a conversation the team holds takes no call until it is handed back);
 - the hub's `ai_mode` has a pilot.
 
-Calls add conditions of their own: the agent answering the conversation must be a pilot-track agent (`pilot` or `pilot_specialist`) that is not harness-backed, the organization's free-plan operations must not be used up (see [Billing](#billing)), and a conversation holds one live call at a time.
+Calls add conditions of their own: the agent answering the conversation must be a pilot-track agent (`pilot` or `pilot_specialist`) that is not harness-backed, the organization must not have used up an operations quota that stops it — on the free plan, or on a paid plan with the spend cap on (see [Billing](#billing)), and a conversation holds one live call at a time.
 
 A refused call answers `409` with `details.reason` set to one of: `calls_unavailable` (the hub can't take calls now — not enabled, not a chat hub, no usable voice agent, connection or key, or a pilot that can't answer calls), `ai_unavailable` (the AI may not answer this conversation now), `quota_exceeded`, or `call_in_progress`. The caller sees a generic "couldn't start the call" message; which check refused is never shown to them.
 
@@ -271,7 +271,7 @@ The setting is read when a call starts, so turning it off applies from the next 
 - **The call bills per connected minute** of the voice agent — every minute begun — at a per-minute rate WayAI sets, once, when the call ends. Time on a call is not billed a second time as turn duration.
 - **A steering check** starts no turn and bills no operation of its own; its model call runs on the monitor's own connection.
 - **The voice provider's minutes** are billed by OpenAI to the organization's own project key.
-- **Free plan:** a new call is refused (`quota_exceeded`) once the organization's free-plan operations are used up. A call in progress is not cut, but from then on the hub's agent answers nothing more on it: each further question gets the voice's apology that it couldn't get the information.
+- **Operations quota:** a new call is refused (`quota_exceeded`) once the organization has used up its operations quota on the free plan, or on a paid plan with the spend cap on. A call in progress is not cut, but from then on the hub's agent answers nothing more on it: each further question gets the voice's apology that it couldn't get the information.
 - Call evals bill the same way — see [evals.md → Call evals](evals.md#call-evals-voice-calls).
 
 ## Limits
