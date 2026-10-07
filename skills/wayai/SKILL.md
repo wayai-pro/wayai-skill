@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.102.2
+version: 6.102.3
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, outbound, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -788,9 +788,9 @@ connection: anthropic              # connection display name
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
 # previous_conversations_count: 3  # off by default (max 20); this user's N most recent ended conversations, prepended to the FIRST user message and frozen at the first agent turn that uses it. Foreground roles only; `0` clears it (omitting the key on update leaves it as-is); summaries come from the conversation_evaluator (see references/agents/roles-and-settings.md#previous-conversations-context)
 settings:
-  model: claude-sonnet-5
+  model: claude-sonnet-5-5
   max_tokens: 4096
-  # temperature (only sampling knob): Sonnet 5 / Opus 4.7+ / Fable strip a non-default value — set it only on Opus 4.6 / Sonnet 4.6 & older
+  # temperature (only sampling knob): Sonnet 5+ / Haiku 5.5 / Opus 4.7+ / Fable strip a non-default value — set it only on Opus 4.6 / Sonnet 4.6 & older
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter/xAI reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
   # file_handling_mode: no longer changes what the model receives (earlier files are always announced by path, never re-attached); metadata_only still auto-enables read_file. max_attachment_size_mb is inert (see roles-and-settings.md#file-handling-all-llm-connectors)
   # deliver_preamble: true           # default; pre-tool "let me check…" text is delivered as its own message (voice: own TTS clip; ignored on email). false = only the final reply (see roles-and-settings.md#pre-tool-preamble-delivery-all-llm-connectors)
