@@ -66,7 +66,7 @@ Org tags are organization-scoped labels used to organize hubs and credentials, g
 | Entity | How it's tagged | Effect |
 |--------|----------------|--------|
 | Org credential | UI: Credentials tab → tag picker | Restricts which hubs can use the credential (see matching rule below) — leave untagged to make it available to every hub |
-| Hub | `hub.yaml` (`tags: [...]`) **or** UI: Org → Hubs tab | Unlocks the tagged org credentials sharing those tags (untagged credentials are always available) |
+| Hub | `hub.yaml` (`tags: [...]`) **or** UI: Org → Hubs tab — changing them takes an organization admin (below) | Unlocks the tagged org credentials sharing those tags (untagged credentials are always available) |
 | API token (scope) | API only (`hub_tags` in a grant scope), by tag **id** — the token UI scopes by org and hub, not by tag | Token applies only to hubs carrying one of those tags |
 
 **Hub tags in `hub.yaml`:** declare a list of slug names — `wayai push` resolves them against `org_tag` and rejects unknown names with `Unknown org tag(s): …`. Tags must be **created in the platform UI first** (Settings → Organization → Tags); the CLI does not auto-create org-level entities. Credentials are only taggable in the UI.
@@ -82,6 +82,11 @@ tags:
 
 Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_statuses` semantics). Use `tags: []` to clear all tags.
 
+**Only an organization admin changes a hub's tags.** A hub's tags decide which tag-restricted org credentials it can use, so adding or removing one takes an owner or admin of the organization, or an API token whose grants carry `org:admin` over every hub of the org. A token whose `org:admin` grant is limited to some tags, or to one environment, changes only those tags, on hubs of that environment.
+- A push, a settings save or a publish that leaves the hub's tags as they are works for everyone who could make it before, hub admins and CI tokens included.
+- One that adds or removes a tag is refused with `403`, naming the tags it would add and remove. If a push is refused because its `hub.yaml` lists tags the hub no longer has, `wayai pull` first.
+- Publishing a preview whose tags differ from its production hub's carries a tag change to production, so only an organization admin can publish it. Until then, a hub admin's publish is refused: an organization admin publishes it, or sets the preview's tags back to production's.
+
 **Credential ↔ hub matching rule** (enforced in `OrgDO.listCredentialsForHub`):
 
 | Credential tags | Hub tags | Visible to hub? |
@@ -93,7 +98,7 @@ Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_stat
 
 The rule is **asymmetric**, and the credential's tags are the side that gates: an **untagged credential is global** — every hub can use it, tagged or not. Only a **tagged** credential is restricted, and it needs the hub to share at least one of its tags. A hub's own tags never hide a global credential. An additional **environment filter** layers on top — a credential's `environment` (`preview` | `production` | `all`) must be `all` or match the hub's environment.
 
-**Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` reports "no matching credential" while the credential clearly exists in the org, the cause is almost always the credential carrying tags the hub doesn't share (or an environment mismatch) — add the tag to `hub.yaml` `tags`, or clear the credential's tags in the UI to make it global.
+**Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` reports "no matching credential" while the credential clearly exists in the org, the cause is almost always the credential carrying tags the hub doesn't share (or an environment mismatch) — have an organization admin add the tag to the hub (`hub.yaml` `tags`), or clear the credential's tags in the UI to make it global.
 
 **Tag deletion** is blocked while any credential or hub still references the tag (`OrgTagReferencesError`). Untag references first, then delete.
 
