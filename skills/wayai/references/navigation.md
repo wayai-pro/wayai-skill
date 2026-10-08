@@ -48,7 +48,7 @@ One list of agents, chat and task hubs alike, most recent activity first. A `tas
 |------|---------|
 | `/chat` | All agents |
 | `/chat/[hubId]` | A `chat` hub: its ongoing thread. A `task` hub: its task list (In progress; `?status=ended` for Ended) with New task |
-| `/chat/[hubId]/tasks/[conversationId]` | One task conversation |
+| `/chat/[hubId]/conversations/[conversationId]` | One conversation of the hub: a task, or a `chat` hub's conversation |
 | `/chat/[hubId]/new/[taskStartId]` | A new task in a `task` hub (`taskStartId` is a fresh id per new task) |
 
 ### Support
