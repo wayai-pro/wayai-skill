@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.103.0
+version: 6.103.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -374,6 +374,8 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 5. **Relabel** (CLI `wayai relabel <label>` / `--clear`, or UI) — set/clear a preview's `preview_label` (the sibling disambiguator). NOT editable via `hub.yaml` + push — it's server-owned
 
 Production is read-only — all config mutations flow through preview. Multiple previews can link to the same production (many-to-1). Channel uniqueness is enforced on production only — previews can share phone/email/SID with their production.
+
+Publishing and syncing write the production hub, so an API token (`wayai login --token`) publishes only when its grants cover that hub with `hub:write`. A token limited to the preview, by hub or to the `preview` environment, is refused with `403`. A first publish creates the production hub, so the token needs access to every hub of the organization in production (and, if it is limited by tag, to the preview's tags). Signed-in people publish as before.
 
 WhatsApp/Instagram/Telegram channels can be exercised on a preview before publishing — register a tester via a `#test CODE` claim code (see `references/connections.md` → Channel → "Testing a channel on a preview before publishing").
 

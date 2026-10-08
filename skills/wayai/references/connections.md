@@ -83,7 +83,7 @@ tags:
 Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_statuses` semantics). Use `tags: []` to clear all tags.
 
 **Only an organization admin changes a hub's tags.** A hub's tags decide which tag-restricted org credentials it can use, so adding or removing one takes an owner or admin of the organization, or an API token whose grants carry `org:admin` over every hub of the org. A token whose `org:admin` grant is limited to some tags, or to one environment, changes only those tags, on hubs of that environment.
-- A push, a settings save or a publish that leaves the hub's tags as they are works for everyone who could make it before, hub admins and CI tokens included.
+- A push, a settings save or a publish that leaves the hub's tags as they are passes this rule for everyone, hub admins and CI tokens included.
 - One that adds or removes a tag is refused with `403`, naming the tags it would add and remove. If a push is refused because its `hub.yaml` lists tags the hub no longer has, `wayai pull` first.
 - Publishing a preview whose tags differ from its production hub's carries a tag change to production, so only an organization admin can publish it. Until then, a hub admin's publish is refused: an organization admin publishes it, or sets the preview's tags back to production's.
 
