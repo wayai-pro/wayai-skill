@@ -56,7 +56,7 @@ Allowed transitions: `hub.yaml` declares `allowed_next_statuses` per status. The
 ## What is intentionally NOT in this example
 - **`hub_id`, `hub_environment`, per-entity `id`** — set by `wayai pull`. Never author them. New hubs ship without these fields; they appear on the first pull after `push`. **One exception — followup `id`:** it is the only per-entity id the server never assigns (the web editor mints one for followups it creates; `wayai pull` only echoes an id that already exists). Author it by hand on any `before_event` an `inactivity_after_before_event` followup links to via `after_followup_id` — the link has nothing else to name. See [`references/kanban.md`](../kanban.md#followups).
 - **Channels other than `app`** — the `app` channel auto-creates with the hub. WhatsApp / Instagram / Email / Telegram require channel connections set up via the UI (OAuth) or by adding a Channel-type entry to `connections:` (API-key channels). See `references/connections.md`.
-- **Custom tools, `composed_tools`, `response_format`, MCP tools, skills, outbound, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
+- **Custom tools, `composed_tools`, `response_format`, MCP tools, skills, automations, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
 - **Multiple agents (specialist, advisor, copilot, evaluators).** This example has one pilot. Multi-agent patterns are covered in `references/agents/roles-and-settings.md` (`Delegation Flow`, `Role Reference`).
 
 ## When to consult this file

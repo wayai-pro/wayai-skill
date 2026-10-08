@@ -98,7 +98,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `state` | `/state` | Conversation/user state schemas |
 | `resource` | `/resource` | Knowledge bases, skill resources |
 | `evals` | `/evals` | Eval scenarios + results |
-| `outbound` | `/outbound` | Outbound campaigns |
+| `automations` | `/automations` | Automations — the toggle that arms each one, run now — and the contacts and lists they target (see [automations.md](automations.md)) |
 | `analytics` | `/analytics` | Hub metrics |
 | `users` | `/users` | Team users, Hub Users, admins (sub-tabs: `admins` \| `users` \| `teams` \| `support_model`) |
 
@@ -106,7 +106,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | Path | Purpose |
 |------|---------|
 | `/settings/organizations/[orgId]/hubs/[hubId]/agents/[agentId]` | Agent detail |
-| `/settings/organizations/[orgId]/hubs/[hubId]/connections/[connectionId]` | Connection detail |
+| `/settings/organizations/[orgId]/hubs/[hubId]/connections/[connectionId]` | Connection detail; a WhatsApp connection's page also manages its message templates |
 | `/settings/organizations/[orgId]/hubs/[hubId]/connections/new?connector=<connector_id>` | Create connection pre-picked to a connector (matched by `connector_id` UUID, not a slug) |
 | `/settings/organizations/[orgId]/hubs/[hubId]/evals/calls/[conversationId]/[callId]` | An eval call's page: its transcript and recording. Reached by the link `wayai eval call` prints for each run; no list links to it |
 

@@ -444,6 +444,8 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 
 **Features:** Automatic token refresh (7 days), CTWA + Conversions API.
 
+**Message templates:** managed from the WhatsApp connection's page in the app (create, submit to Meta for approval, check status, send a test). Sent by an automation's `send_message` ([automations.md](automations.md#message-templates)) and by kanban follow-ups outside the 24-hour window.
+
 ### Resend
 
 Email send + receive via [Resend](https://resend.com). Resend uses an API key tied to your verified domain and supports email forwarding for inbound.
