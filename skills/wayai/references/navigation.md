@@ -68,7 +68,9 @@ The desktop app is the web app in its own window, with the same screens, for mac
 
 Over a browser tab it adds system notifications when a conversation moves from the AI to the team on a hub the person supports (while unclaimed or claimed by them) and when a customer writes in a conversation they claimed, a click opening it in Support; the sidebar's Support count on the Dock icon (macOS) or taskbar button (Windows) and in the menu bar or system tray, where the app keeps running when its window is closed; and updates of its own (a Microsoft Store copy updates through the Store), which the sidebar's update icon offers as **Restart to update WayAI** once one is ready.
 
-A link you hand over opens in the browser, not in the app, so the app's settings for that computer take no link: they are the **Desktop app** section of the Profile tab (`/settings/account/profile`), shown only inside the app, where the avatar menu → **User Settings** opens it. They are **Open at login** (for a Microsoft Store copy, Windows' own Settings → Apps → Startup), **Keep running when the window is closed**, **Notifications**, and **Show message text** (macOS only; Windows notifications never show a customer's name or words).
+A link you hand over opens in the browser, not in the app, so the app's settings for that computer take no link: they are the **Desktop app** section of the Profile tab (`/settings/account/profile`) inside the app, where the avatar menu → **User Settings** opens it. They are **Open at login** (for a Microsoft Store copy, Windows' own Settings → Apps → Startup), **Keep running when the window is closed**, **Notifications**, and **Show message text** (macOS only; Windows notifications never show a customer's name or words).
+
+In a browser on a Mac or a Windows computer, the same section of `/settings/account/profile` holds one setting of that browser's own instead: **Open links in the desktop app**, off until turned on. While it is on, most pages of Chat, Support and the communities (never settings), loaded fresh in that browser from a link, a bookmark or the address bar, offer to open in the desktop app, and **Open** opens the page there. A reload or a move within the web app offers nothing. It needs the desktop app installed on that computer, which the browser cannot check.
 
 ## Settings Hierarchy
 
@@ -123,7 +125,7 @@ Reached via the avatar menu (bottom of sidebar) → User Settings, or the ACCOUN
 | Path | Purpose |
 |------|---------|
 | `/settings/account` | Default account tab (redirects to profile) |
-| `/settings/account/profile` | Name, email, avatar, theme, language; inside the desktop app, its settings for that computer ([Desktop app](#desktop-app)) |
+| `/settings/account/profile` | Name, email, avatar, theme, language; inside the desktop app, its settings for that computer; in a browser on a Mac or Windows computer, **Open links in the desktop app** ([Desktop app](#desktop-app)) |
 | `/settings/account/api-tokens` | Personal `way_` API tokens for the `wayai` CLI and direct API calls |
 
 Legacy `/user/*` paths 308-redirect to the equivalent `/settings/account/*` URL — bookmarks and external links stay valid for one release cycle.
