@@ -47,11 +47,11 @@ automations:
     action:
       type: run_agent                # run_agent | send_message
       channel: whatsapp              # whatsapp | instagram | email | app; left out on a task hub
-      agent: "Support Agent"         # run_agent only (or agent_id)
+      agent: "Support Agent"         # run_agent only (or agent_id); a pilot or pilot_specialist
       instructions: "Check in on the customer's last order."  # run_agent only
-      # connection / connection_id   — send_message on whatsapp, run_agent on email
-      # template / template_id       — send_message on whatsapp
-      # text                         — send_message on app
+      connection: "Sales WhatsApp"   # the channel's connection: every channel but app (or connection_id)
+      template: "check_in"           # whatsapp: the template sent, or a run_agent's opener (or template_id)
+      # text                         — send_message on email and app
     gate:                            # optional — decides each run before it starts; see "Gates"
       monitor: "Holiday Check"       # a monitor on trigger automation_fire, by agent name
 ```
@@ -67,19 +67,22 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 | Hub type | Target | Action | Channel | Fields the action takes |
 |----------|--------|--------|---------|-------------------------|
 | `chat` | `contact_list` | `send_message` | `whatsapp` | `connection` + `template` (a WhatsApp template of that connection) |
+| `chat` | `contact_list` | `send_message` | `email` | `connection` (an email connection) + `text` |
 | `chat` | `contact_list` | `send_message` | `app` | `text` |
-| `chat` | `contact_list` | `run_agent` | `whatsapp`, `instagram`, `app` | `agent` + `instructions` |
-| `chat` | `contact_list` | `run_agent` | `email` | `agent` + `instructions` + `connection` (required) |
+| `chat` | `contact_list` | `run_agent` | `whatsapp` | `agent` + `instructions` + `connection` + `template` (the opener, a WhatsApp template of that connection) |
+| `chat` | `contact_list` | `run_agent` | `instagram`, `email` | `agent` + `instructions` + `connection` |
+| `chat` | `contact_list` | `run_agent` | `app` | `agent` + `instructions` |
 | `task` | `none` — one task per run | `run_agent` | none | `agent` + `instructions` |
 | `task` | `contact_list` — one task per contact | `run_agent` | none | `agent` + `instructions` |
 
 - **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)) — or, on a task hub, `webhook`, with an `auth` of `hmac` or `static_header` (the latter naming its `header`) and no `cron` or `timezone` ([Webhook Triggers](#webhook-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target. A webhook trigger is refused on a chat hub, and a hub-type change that would leave one on a chat hub is refused, naming it.
 - **Target:** `contact_list`, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)). On a task hub the target may also be `none` (`target: { type: none }`, naming no list): each run opens one task. `none` is refused on a chat hub.
-- **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
-- **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel. The `agent` must be a `pilot` or `pilot_specialist` agent, since each task runs it ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
+- **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, `connection` on the app, or `template` on Instagram.
+- **A `run_agent`'s `agent` must be a `pilot` or `pilot_specialist` agent**, on every hub: the named agent takes the turn — in a contact's conversation on a chat hub, in each task on a task hub — and no other role takes it.
+- **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
 - **Gate:** `gate.monitor` must name one of the hub's monitors on `trigger: automation_fire` whose model is a decisions model ([Gates](#gates)) — on a push, one of the agents the push leaves; on a publish, one of the preview's. Any other agent is refused, naming the automation. Leave `gate` out (or set it to `null`) for every run to fire.
-- **Not available yet, refused at save:** `event` and `webhook` triggers on a chat hub, and `send_message` on `email` or `instagram`.
+- **Not available yet, refused at save:** `event` and `webhook` triggers on a chat hub, and `send_message` on `instagram`.
 
 ---
 
@@ -132,7 +135,7 @@ automations:
       text: "Our new opening hours start next week."
 ```
 
-This saves and fires, but reaches no one yet — see [What Each Fire Does](#what-each-fire-does).
+Each fire posts the text to the members linked to a WayAI account that holds access to the hub; the others are skipped — see [What Each Fire Does](#what-each-fire-does).
 
 **A daily task for an agent** (task hub):
 
@@ -175,6 +178,36 @@ automations:
       instructions: "Review the closed conversation in your data and note anything the team should follow up on."
 ```
 
+**Run an agent on WhatsApp** (chat hub) — the template opens a conversation whose 24-hour window is closed, and the agent answers the contact's reply:
+
+```yaml
+automations:
+  - name: "Renewal Offer"
+    trigger: { type: schedule, cron: "0 10 * * 2" }
+    target: { type: contact_list, list: "renewals-due" }
+    action:
+      type: run_agent
+      channel: whatsapp
+      connection: "Sales WhatsApp"
+      template: "renewal_hello"          # approved; sent first when the window is closed
+      agent: "Renewals Agent"
+      instructions: "Offer the customer this month's renewal discount and answer their questions."
+```
+
+**Send an email** (chat hub) — a marketing email ends with an unsubscribe link:
+
+```yaml
+automations:
+  - name: "Monthly Newsletter"
+    trigger: { type: schedule, cron: "0 9 1 * *" }
+    target: { type: contact_list, org_list: "newsletter" }
+    action:
+      type: send_message
+      channel: email
+      connection: "Support Email"        # the email connection it is sent from
+      text: "**This month at Acme:** new plans, and a guide to the new dashboard."
+```
+
 **Run an agent by email** (chat hub):
 
 ```yaml
@@ -196,21 +229,28 @@ automations:
 
 The table is a chat hub's fire; a task hub's opens tasks instead ([Task Hubs](#task-hubs)). The notes under it hold for both.
 
-A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)), read when the fire runs. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
+A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)), read when the fire runs. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email, a linked WayAI account for the app — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
+
+Every send lands in **the contact's own conversation on that channel** — the one open with them, or a new one — so their replies arrive in it. It goes out through an enabled channel of the action's connection (an email one needs a verified sending domain).
 
 | Action | Channel | Per contact |
 |--------|---------|-------------|
-| `send_message` | `whatsapp` | Sends the template to the contact's `phone` and records it in the contact's WhatsApp conversation |
-| `send_message` | `app` | Skipped: a fire does not reach contacts in the app yet, so there is no app conversation to post into |
-| `run_agent` | `email` | The agent receives `instructions` as a system message (the contact never sees it) in the contact's email conversation and replies by email. Needs an enabled email channel on the action's connection, with a verified sending domain |
-| `run_agent` | `whatsapp`, `instagram` | The agent takes a turn on `instructions` in a system conversation that is not addressed to the contact, so its reply does not reach them yet |
-| `run_agent` | `app` | Skipped, as for `send_message` on `app` |
+| `send_message` | `whatsapp` | Sends the template to the contact's `phone` |
+| `send_message` | `email` | Emails the `text` (Markdown) from the connection's address. A `marketing` email ends with an unsubscribe link and carries one-click unsubscribe headers, which suppress the address with `all` ([Suppressions](#suppressions)); an `operational` one carries neither |
+| `send_message` | `app` | Posts the `text` to the WayAI account the contact is linked to ([The Contact Book](#the-contact-book)), as an agent's reply reaches them: unread in their conversation list, with a push when the app is closed |
+| `run_agent` | `whatsapp` | The window is that of the conversation the send lands in. When the contact wrote in it in the last 24 hours, the `agent` takes a turn on `instructions` and replies on WhatsApp. Otherwise the `template` is sent first, and the agent answers when the contact replies, with the instructions in its context: WhatsApp refuses any other message outside the window. A new conversation holds no message of the contact's, so the template opens it — for a contact who never wrote, and for one whose previous conversation ended, even if they wrote within WhatsApp's 24 hours |
+| `run_agent` | `instagram` | Instagram has no templates. A contact who has not written to the hub in the last 24 hours, in any of their conversations (an ended one included), is skipped (`outside_messaging_window`); for any other, the `agent` takes a turn on `instructions` and replies on Instagram |
+| `run_agent` | `email`, `app` | The `agent` takes a turn on `instructions` and replies by email, or in the app |
 
 - **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read, the fire sends to no one: every contact is recorded failed, and the next fire is the schedule's.
-- `agent` must name one of the hub's agents at save; on a chat hub, a fire does not yet use it to choose which agent takes the turn.
+- **A contact the hub blocked is never sent to** (`contact_blocked`): nothing is sent or recorded in a conversation.
+- **The contact book approves its contacts.** On a hub that asks permission before talking to a new contact, a contact an automation reaches is approved by its contact-book entry: no access request is raised for the team, and the contact's replies reach the agent rather than waiting for approval. A contact whose access request was already waiting is approved too, and their conversation stays with the team, as the team's own approval leaves it.
+- **The app reaches existing access only.** A contact reaches the app through the WayAI account it is linked to, and only when that account already holds enabled access to the firing hub — otherwise it is skipped (`missing_user_link`, `missing_hub_user`). An automation never grants anyone access, on any channel.
+- **`run_agent` runs the named `agent`**, and it stays the conversation's agent, so the contact's replies reach it too. The `instructions` are a system message the contact never sees, kept in the conversation's context for its later turns — a retry, a transfer to another agent, the contact's replies. A contact whose conversation the team holds — one whose access request the automation just approved included — is skipped (`not_agent_track`), and so is every contact on a hub whose AI mode has no pilot (`mode_has_no_pilot`): nothing is sent or charged, and the conversation stays the team's.
+- **WhatsApp's marketing opt-out is honoured.** When WhatsApp refuses a marketing message because the person stopped marketing messages from the business, the phone gets a `marketing` suppression: the contact is skipped (`whatsapp_marketing_opt_out`), later `marketing` automations skip them, and `operational` ones still reach them.
 - `instructions` are sent as written: a `{{…}}` placeholder in them is not filled in, and reaches the agent as typed. Placeholders work in an agent's own instructions and `additional_context_template` ([agents/instructions.md](agents/instructions.md)).
 - **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
-- After the suppression check, a `send_message` fire — and a task hub's fire ([Task Hubs](#task-hubs)) — checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and a scheduled automation's next fire is a day later at the soonest. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
+- After the suppression check, every fire checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and a scheduled automation's next fire is a day later at the soonest. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
 
 ---
 
@@ -335,7 +375,7 @@ automations:
 - **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `webhook`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), and a webhook delivery's run the delivery's body, exactly as received, and when it was received ([Webhook Triggers](#webhook-triggers)), as `trigger_data`: data, never inside the instructions.
 - **What it decides:** the first rule whose conditions all hold, else `fallback`; with no `fallback`, the run is **skipped**. Its conditions read its answer's fields and their `{field}_confidence` directly — a gate needs no `evaluation_variables`.
   - `run` — the run fires as configured.
-  - `run_with_agent` — the run fires with the named agent (by agent name) in place of the automation's own. Only a `run_agent` automation can; the agent must exist and be enabled, and on a task hub be a `pilot` or `pilot_specialist`. Otherwise the run does not fire, records `gate_agent_invalid`, and the automation's alert names why.
+  - `run_with_agent` — the run fires with the named agent (by agent name) in place of the automation's own. Only a `run_agent` automation can; the agent must exist, be enabled, and be a `pilot` or `pilot_specialist`, as the automation's own must. Otherwise the run does not fire, records `gate_agent_invalid`, and the automation's alert names why.
   - `skip` — the run does not fire.
 - **Each run records the decision** in the run history, with its agent and how sure the gate was: the lowest confidence among the answers the deciding rule read (every answer, when no rule matched).
 - **A gate that cannot decide does not run.** A provider failure or a gate slower than 5 seconds records the run `gate_failed` and nothing is sent. A provider's `4xx` (a revoked key, a model the provider refuses) also raises the connection's alert on the hub's Status & Notices. A scheduled run that failed is not retried: the next run is the schedule's.
@@ -384,7 +424,7 @@ An automation runs on its schedule — or, with an event trigger, on each of its
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
 - A **webhook** automation has no schedule: while it is enabled, not paused and able to run, it takes deliveries ([Webhook Triggers](#webhook-triggers)); disabling or pausing it refuses them at once.
-- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`), and its gate's monitor can still decide ([Gates](#gates)). One that is enabled and not paused but cannot run is skipped at each scheduled run (a webhook automation refuses each delivery instead): the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, a `run_agent` automation's agent is enabled and still a `pilot` or `pilot_specialist`, and its gate's monitor can still decide ([Gates](#gates)). One that is enabled and not paused but cannot run is skipped at each scheduled run (a webhook automation refuses each delivery instead): the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
 - **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
 - **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume**, **Run now** and a webhook automation's **Rotate secret**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
 - A preview hub's automation delivers for real — to the contacts of its list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
@@ -395,7 +435,7 @@ An automation runs on its schedule — or, with an event trigger, on each of its
 
 ## Message Templates
 
-WhatsApp message templates belong to a WhatsApp connection and are managed from that connection's page in the app (create, submit to Meta for approval, check status, send a test). The same templates are sent by `send_message` on WhatsApp and by kanban follow-ups outside the 24-hour window ([kanban.md](kanban.md)).
+WhatsApp message templates belong to a WhatsApp connection and are managed from that connection's page in the app (create, submit to Meta for approval, check status, send a test). The same templates are sent by `send_message` on WhatsApp, by a WhatsApp `run_agent` to open a conversation whose 24-hour window is closed, and by kanban follow-ups outside the 24-hour window ([kanban.md](kanban.md)).
 
 A template is sent only once Meta has approved it, and an automation sends it as-is — no template variables are filled in, so choose a template whose body needs none.
 
@@ -487,7 +527,7 @@ Each suppression has a **scope**:
 
 Suppressions are only ever widened: suppressing an identity already held at `marketing` with `all` makes it `all`, and suppressing one held at `all` with `marketing` leaves it `all`. To narrow one, remove it and add it again.
 
-**Who writes them.** The organization's contact-book managers, with either scope, in the Contacts tab (Suppressions, or a contact's page) or the API: `POST /api/contact-book/suppressions` with `{ organization_id, identity: { kind: phone | email | instagram, value }, scope }`; `GET /api/contact-book/suppressions?organization_id=<org_id>` to list (paged by `cursor` and `limit`, newest first); `DELETE /api/contact-book/suppressions/<suppression_id>?organization_id=<org_id>` to remove; `GET /api/contact-book/contacts/<contact_id>/suppressions?organization_id=<org_id>` for one contact's. And the person themselves, through an email's one-click unsubscribe link, which suppresses their address with `all` — no sign-in, and their mail app's unsubscribe button does the same. Automation emails do not carry that link yet: until they do, record an email opt-out as a suppression yourself.
+**Who writes them.** The organization's contact-book managers, with either scope, in the Contacts tab (Suppressions, or a contact's page) or the API: `POST /api/contact-book/suppressions` with `{ organization_id, identity: { kind: phone | email | instagram, value }, scope }`; `GET /api/contact-book/suppressions?organization_id=<org_id>` to list (paged by `cursor` and `limit`, newest first); `DELETE /api/contact-book/suppressions/<suppression_id>?organization_id=<org_id>` to remove; `GET /api/contact-book/contacts/<contact_id>/suppressions?organization_id=<org_id>` for one contact's. And the person themselves: through the unsubscribe link every marketing automation email carries, which suppresses their address with `all` — no sign-in, and their mail app's unsubscribe button does the same; and through WhatsApp, which refuses a marketing message to someone who stopped the business's marketing messages — their phone is then suppressed with `marketing`, shown as a WhatsApp opt-out.
 
 Suppressions are checked only on an automation's sends; an agent's replies in a conversation the person is having are never stopped.
 

@@ -445,7 +445,7 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 
 **Features:** Automatic token refresh (7 days), CTWA + Conversions API.
 
-**Message templates:** managed from the WhatsApp connection's page in the app (create, submit to Meta for approval, check status, send a test) on a preview hub; publish and sync copy them to production, where they are read-only ([automations.md](automations.md#message-templates)). Sent by an automation's `send_message` and by kanban follow-ups outside the 24-hour window.
+**Message templates:** managed from the WhatsApp connection's page in the app (create, submit to Meta for approval, check status, send a test) on a preview hub; publish and sync copy them to production, where they are read-only ([automations.md](automations.md#message-templates)). Sent by an automation's `send_message`, by a WhatsApp `run_agent` automation to open a conversation whose 24-hour window is closed, and by kanban follow-ups outside the 24-hour window.
 
 ### Resend
 
