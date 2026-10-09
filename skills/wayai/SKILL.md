@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.103.2
+version: 6.104.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -44,7 +44,8 @@ WayAI is where AI agents and people work together — serving your customers and
 
 | Entity | How |
 |--------|-----|
-| Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, journeys, automations, contacts & lists, custom tools | CLI (`wayai push`); an automation is switched on from the app |
+| Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, journeys, automations, custom tools | CLI (`wayai push`); an automation is switched on from the app |
+| Contacts and org lists (the organization's contact book, which automations target) | UI (organization settings → Contacts) or API (`/api/contact-book`) — never `hub.yaml`. See [Automations](#automations) |
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, MCP OAuth) | Platform UI |
@@ -82,9 +83,10 @@ WayAI is where AI agents and people work together — serving your customers and
 ```
 Organization                ← CLI (`wayai org create`) or UI
 ├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
-├── Org Tags                ← UI — gate which credentials each hub can resolve
+├── Org Tags                ← UI — gate which credentials each hub can resolve and which contacts it sees
 ├── Org Resources           ← CLI (`wayai org pull/push`) — shared knowledge/skills, fan out to linked hubs
 ├── Bases                   ← CLI (`wayai bases`) — the Data surface. Org-level, NOT inside a hub (see Bases)
+├── Contact book            ← UI (Contacts) or API — contacts + org lists that automations target. Org-level, NOT in `hub.yaml`
 └── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
     ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI
     ├── Channels            ← auto-provisioned, never authored (see Channels)
@@ -95,7 +97,7 @@ Organization                ← CLI (`wayai org create`) or UI
     ├── States              ← CLI — `hub.yaml` (JSON-schema data agents read/write)
     ├── Resources           ← CLI — `hub.yaml` + `resources/` folder (knowledge + skills)
     ├── Evals + Journeys    ← CLI — `evals/`, `journeys/`
-    ├── Automations         ← CLI — `hub.yaml` (automations, contacts, lists); switched on in the app
+    ├── Automations         ← CLI — `hub.yaml`; switched on in the app; each targets an org list by name
     └── Teams + Users       ← UI (Hub → Users) — teams, admins, team users, hub users
 ```
 
@@ -321,14 +323,15 @@ Good practice for tool-dependent evals: compose **journey + `fixture:` + `variab
 
 ## Automations
 
-An automation starts work in the hub on its own: a **trigger** (a `schedule` — 5-field cron + timezone), a **target** (a `contact_list` — one of the hub's lists) and an **action** run for each contact on it:
+An automation starts work in the hub on its own: a **trigger** (a `schedule` — 5-field cron + timezone), a **target** (a `contact_list` — an org list, named by `org_list`) and an **action** run for each contact the fire reaches:
 
 - `send_message` (chat hubs only) — a WhatsApp message template on `whatsapp`, or a `text` on `app`
 - `run_agent` — an `agent` and admin-written `instructions` on a `channel` (`whatsapp` / `instagram` / `email` / `app`; `email` also names its connection); each contact's fire hands the instructions to the hub's agent as a system message. The only action a task hub can save
 
-The contacts and lists are two more `hub.yaml` blocks: `outbound_contacts` (named contacts with ≥1 channel identifier — `phone` E.164 / `email` / `instagram_sid` — plus free-form tags) and `outbound_lists` (named static collections, by contact name). Inline contacts are practical to ~500 — beyond that, import via UI/API.
+Contacts and org lists are **organization data, not hub config**: they live in the organization's contact book, managed in the organization's settings (Contacts tab) and its API (`/api/contact-book`), never in `hub.yaml`. An automation names an org list — `target: { type: contact_list, org_list: <list-name> }` — and each fire reaches the members of that list the firing hub can see. Organization admins, or a token holding `contacts:write` over the whole organization, manage the book; a hub admin can view the contacts their hub sees. A contact's visibility (its scope tags, or all hubs, chosen at create/import, plus an environment: `production` by default, so a preview hub sees only `preview` and `all` contacts), org lists and CSV import: [`references/automations.md`](references/automations.md#the-contact-book).
 
-- **Absent vs empty:** no `automations:` key changes nothing; `automations: []` deletes every automation. (An absent `outbound_contacts:` / `outbound_lists:` key deletes them all, except a list an automation the push keeps still targets: that delete is refused, naming the automations.) The old `outbound_schedules:` key is no longer read
+- **Absent vs empty:** no `automations:` key changes nothing; `automations: []` deletes every automation. The old `outbound_schedules:` key, and the hub contact and list blocks the contact book replaced, are no longer read
+- **A list is never looked up at save:** deleting or renaming an org list an automation names is allowed; its next fire records `list_not_found` and raises a hub alert. A fire whose list holds more contacts the hub sees than the platform's cap records `list_over_cap` and reaches none
 - **Created disabled:** the toggle in the hub's Automations tab arms the schedule; `enabled:` in `hub.yaml` is stored but arms nothing. Run now fires once
 - **Refused at save, naming the automation:** unknown keys, a field the action does not use, event/webhook triggers, gates, and `send_message` on email or Instagram (not available yet)
 
@@ -679,7 +682,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
 │       └── seeds/<id>.yaml
 └── hubs/
     └── <hub-slug>--<label>/             # One folder per preview hub (disambiguated)
-        ├── hub.yaml                     # Hub config + states + connections + automations + contacts/lists + resources
+        ├── hub.yaml                     # Hub config + states + connections + automations + resources
         ├── agents/
         │   ├── <slug>.yaml              # Agent config (one per agent, slugified name)
         │   └── <slug>.md                # Agent instructions (one per agent)
@@ -779,7 +782,7 @@ connections:
       modelId: eleven_multilingual_v2
 ```
 
-`hub.yaml` also holds `resources:`, `outbound_contacts:`, `outbound_lists:`, `automations:` blocks. See the per-domain references for full schemas.
+`hub.yaml` also holds `resources:` and `automations:` blocks. See the per-domain references for full schemas.
 
 ## `agents/<slug>.yaml` Shape
 
@@ -896,7 +899,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
-| **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule trigger, contact-list target, `send_message` / `run_agent`), valid combinations per hub type, absent-key vs `[]`, enabling and run now, message templates, contacts & lists, limits |
+| **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule trigger, contact-list target, `send_message` / `run_agent`), valid combinations per hub type, absent-key vs `[]`, enabling and run now, message templates, limits, the organization's contact book (contacts, visibility, org lists, CSV import) |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
 | **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, relationship types, relationships, batch, bulk import |

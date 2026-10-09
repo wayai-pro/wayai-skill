@@ -85,6 +85,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/credentials` | Org-level credentials |
 | `/settings/organizations/[orgId]/resources` | Org-level resources (shared knowledge bases / skills) |
 | `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
+| `/settings/organizations/[orgId]/contacts` | The organization's contact book: contacts, org lists, CSV import and account links (see [automations.md](automations.md#the-contact-book)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
 
 ### Hub level
@@ -98,7 +99,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `state` | `/state` | Conversation/user state schemas |
 | `resource` | `/resource` | Knowledge bases, skill resources |
 | `evals` | `/evals` | Eval scenarios + results |
-| `automations` | `/automations` | Automations — the toggle that arms each one, run now — and the contacts and lists they target (see [automations.md](automations.md)) |
+| `automations` | `/automations` | Automations — the toggle that arms each one, run now. The contacts and org lists they target are the organization's contact book, not the hub's (see [automations.md](automations.md#the-contact-book)) |
 | `analytics` | `/analytics` | Hub metrics |
 | `users` | `/users` | Team users, Hub Users, admins (sub-tabs: `admins` \| `users` \| `teams` \| `support_model`) |
 
