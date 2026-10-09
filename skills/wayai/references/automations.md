@@ -52,7 +52,7 @@ automations:
       connection: "Sales WhatsApp"   # the channel's connection: every channel but app (or connection_id)
       template: "check_in"           # whatsapp: the template sent, or a run_agent's opener (or template_id)
       # text                         — send_message on email and app
-    gate:                            # optional — decides each run before it starts; see "Gates"
+    gate:                            # optional — decides each run, or each contact of a list, before it starts; see "Gates"
       monitor: "Holiday Check"       # a monitor on trigger automation_fire, by agent name
 ```
 
@@ -81,7 +81,7 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 - **A `run_agent`'s `agent` must be a `pilot` or `pilot_specialist` agent**, on every hub: the named agent takes the turn — in a contact's conversation on a chat hub, in each task on a task hub — and no other role takes it.
 - **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
-- **Gate:** `gate.monitor` must name one of the hub's monitors on `trigger: automation_fire` whose model is a decisions model ([Gates](#gates)) — on a push, one of the agents the push leaves; on a publish, one of the preview's. Any other agent is refused, naming the automation. Leave `gate` out (or set it to `null`) for every run to fire.
+- **Gate:** `gate.monitor` must name one of the hub's monitors whose model is a decisions model, on `trigger: automation_fire` (a fire gate), or — for a `contact_list` target — `trigger: automation_item` (an item gate) ([Gates](#gates)): on a push, one of the agents the push leaves; on a publish, one of the preview's. Any other agent is refused, naming the automation. Leave `gate` out (or set it to `null`) for every run to fire.
 - **Not available yet, refused at save:** `event` and `webhook` triggers on a chat hub, and `send_message` on `instagram`.
 
 ---
@@ -229,7 +229,7 @@ automations:
 
 The table is a chat hub's fire; a task hub's opens tasks instead ([Task Hubs](#task-hubs)). The notes under it hold for both.
 
-A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)), read when the fire runs. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email, a linked WayAI account for the app — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
+A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)). The list is read **a page of 100 contacts at a time** while the run goes on, so a list of any size the contact book holds is reached, and each contact's target shows in the run history as soon as its page is done; the run reads `running` until its last page. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email, a linked WayAI account for the app — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history. Each contact is started at most once per run, even when the run is interrupted and picks up where it stopped: a contact whose start was cut off part-way is recorded failed (`interrupted`) rather than started again.
 
 Every send lands in **the contact's own conversation on that channel** — the one open with them, or a new one — so their replies arrive in it. It goes out through an enabled channel of the action's connection (an email one needs a verified sending domain).
 
@@ -242,15 +242,17 @@ Every send lands in **the contact's own conversation on that channel** — the o
 | `run_agent` | `instagram` | Instagram has no templates. A contact who has not written to the hub in the last 24 hours, in any of their conversations (an ended one included), is skipped (`outside_messaging_window`); for any other, the `agent` takes a turn on `instructions` and replies on Instagram |
 | `run_agent` | `email`, `app` | The `agent` takes a turn on `instructions` and replies by email, or in the app |
 
-- **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read, the fire sends to no one: every contact is recorded failed, and the next fire is the schedule's.
+- **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read for a page, that page sends to no one: its contacts are recorded failed (`suppression_check_failed`), and the next page is checked again.
 - **A contact the hub blocked is never sent to** (`contact_blocked`): nothing is sent or recorded in a conversation.
 - **The contact book approves its contacts.** On a hub that asks permission before talking to a new contact, a contact an automation reaches is approved by its contact-book entry: no access request is raised for the team, and the contact's replies reach the agent rather than waiting for approval. A contact whose access request was already waiting is approved too, and their conversation stays with the team, as the team's own approval leaves it.
 - **The app reaches existing access only.** A contact reaches the app through the WayAI account it is linked to, and only when that account already holds enabled access to the firing hub — otherwise it is skipped (`missing_user_link`, `missing_hub_user`). An automation never grants anyone access, on any channel.
 - **`run_agent` runs the named `agent`**, and it stays the conversation's agent, so the contact's replies reach it too. The `instructions` are a system message the contact never sees, kept in the conversation's context for its later turns — a retry, a transfer to another agent, the contact's replies. A contact whose conversation the team holds — one whose access request the automation just approved included — is skipped (`not_agent_track`), and so is every contact on a hub whose AI mode has no pilot (`mode_has_no_pilot`): nothing is sent or charged, and the conversation stays the team's.
 - **WhatsApp's marketing opt-out is honoured.** When WhatsApp refuses a marketing message because the person stopped marketing messages from the business, the phone gets a `marketing` suppression: the contact is skipped (`whatsapp_marketing_opt_out`), later `marketing` automations skip them, and `operational` ones still reach them.
 - `instructions` are sent as written: a `{{…}}` placeholder in them is not filled in, and reaches the agent as typed. Placeholders work in an agent's own instructions and `additional_context_template` ([agents/instructions.md](agents/instructions.md)).
-- **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
-- After the suppression check, every fire checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and a scheduled automation's next fire is a day later at the soonest. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
+- **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`, a failed run with no targets, and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). A list deleted while a run reads it ends that run `list_not_found` too, keeping the contacts it reached. A contact book that cannot be read is asked again for about 40 minutes; then the run ends `list_unavailable`. None of them is sent again: the next fire is the schedule's. (Runs from before lists were read a page at a time may show `list_over_cap`, a per-fire size cap that no longer applies.)
+- After the suppression check, every page checks the org's operations quota before any of its contacts is started. When the org is over its quota, that page's contacts are skipped (`operations_quota_exceeded`), no later page is read, and the run ends `quota_exceeded`: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, that page's contacts are recorded failed (`operations_quota_check_failed`), nothing is sent to them, the next page checks again, and a scheduled automation's next fire waits a day. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
+- **Pausing stops a run that is still reading its list** before its next page: it ends `run_stopped`, keeping the contacts it reached. So does deleting the automation, or a change that leaves it unable to run.
+- **Runs of a schedule do not pile up.** A scheduled fire that comes while the automation's previous run is still reading its list is skipped, and the schedule's next fire runs as usual. Run now is refused while a run is still going. A run still shown running two days after it started holds back neither ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)).
 
 ---
 
@@ -332,7 +334,10 @@ automations:
 
 ## Gates
 
-A gate decides each run **before it starts**: a decisions monitor answers its own questions about the run, and its rules choose to **run** it, **run it with another agent**, or **skip** it. A skipped run reads no list and sends nothing.
+A gate is a decisions monitor that answers its own questions and lets its rules decide. An automation names one gate, of one of two kinds, set by its monitor's trigger:
+
+- a **fire gate** (`trigger: automation_fire`) decides each run **before it starts**: **run** it, **run it with another agent**, or **skip** it. A skipped run reads no list and sends nothing.
+- an **item gate** (`trigger: automation_item`, a contact-list target only) decides **each contact** of a run before anything is started for that contact: **start** it, **start it with another agent**, or **skip** it ([Item Gates](#item-gates)).
 
 ```yaml
 # agents/holiday-check.yaml — the gate's monitor
@@ -371,7 +376,7 @@ automations:
     gate: { monitor: "Holiday Check" }
 ```
 
-- **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter today), which each run checks. A hub may hold one per automation; any number of automations may share one.
+- **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) — or `automation_item` for an item gate — bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter today), which each run checks. A hub may hold one per automation; any number of automations may share one.
 - **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `webhook`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), and a webhook delivery's run the delivery's body, exactly as received, and when it was received ([Webhook Triggers](#webhook-triggers)), as `trigger_data`: data, never inside the instructions.
 - **What it decides:** the first rule whose conditions all hold, else `fallback`; with no `fallback`, the run is **skipped**. Its conditions read its answer's fields and their `{field}_confidence` directly — a gate needs no `evaluation_variables`.
   - `run` — the run fires as configured.
@@ -383,6 +388,53 @@ automations:
 - **A gate that can no longer run** — its monitor deleted, disabled, renamed, moved off `automation_fire` or off a decisions model, or on a connection with no decisions endpoint — skips each run with the reason shown in the Automations tab and an alert on the Status tab, as an automation whose agent is gone does ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). Fix the monitor and the next run fires.
 - **Run now** asks the gate too.
 - **Cost.** Gate decisions bill the organization one operation for every so many decisions, a number the platform sets; a gate that failed bills nothing. A run the gate lets through also bills its own work as any run does. Each decision is a model call on the monitor's connection, billed by your provider.
+
+### Item Gates
+
+An item gate is asked once for **each contact** of a run, before anything is started for that contact — a send, a turn, a task — so a contact it skips costs no send and opens no conversation.
+
+```yaml
+# agents/renewal-fit.yaml — the item gate's monitor
+name: Renewal Fit
+role: monitor
+connection: OpenRouter
+settings:
+  model: jev-latest
+instructions: |
+  Decide whether this customer should get this month's renewal offer, from their labels and metadata.
+response_format:
+  type: json_schema
+  schema_name: item
+  schema_json:
+    type: object
+    properties:
+      offer: { type: string, enum: [send, senior, skip], description: "What should this customer get?" }
+monitor_config:
+  trigger: automation_item
+  rules:
+    - when: [{ variable: offer, operator: "=", value: skip }]
+      action: { kind: skip }
+    - when: [{ variable: offer, operator: "=", value: senior }]
+      action: { kind: start_with_agent, agent: "Senior Agent" }
+  fallback: { kind: start }
+```
+
+```yaml
+# hub.yaml
+automations:
+  - name: "Renewal Offer"
+    trigger: { type: schedule, cron: "0 10 * * 2" }
+    target: { type: contact_list, org_list: "renewals-due" }
+    action: { type: run_agent, channel: app, agent: "Renewals Agent", instructions: "Offer this month's renewal discount." }
+    gate: { monitor: "Renewal Fit" }
+```
+
+- **Only on a contact list.** An automation whose target is `none` takes a fire gate only; naming an item gate's monitor there is refused, naming the automation.
+- **What it sees:** what a fire gate sees ([above](#gates)), and the contact as data: its id, name, labels and metadata, and the list it was read from. Never its phone, email or Instagram id.
+- **What it decides**, for that contact: `start` — its work starts as configured; `start_with_agent` — it starts with the named agent in place of the automation's own (a `run_agent` automation only, the agent held to the same rules as `run_with_agent`; otherwise that contact is recorded failed, `gate_agent_invalid`, and the automation's alert names why); `skip` — nothing is started for it (`gate_skipped`). With no rule matching and no `fallback`, the contact is skipped.
+- **Each contact's target records the decision**, its agent and how sure the gate was. The run itself records no gate decision.
+- **A gate that cannot decide starts nothing for that contact** (`gate_failed`); a provider's `4xx` also raises the connection's alert. A contact whose gate failed is not asked again in that run: the schedule's next run asks again.
+- **Cost.** Each contact's decision counts toward the same billing as a fire gate's — one operation for every so many decisions, a gate that failed billing nothing — and a contact it starts bills its own work.
 
 ---
 

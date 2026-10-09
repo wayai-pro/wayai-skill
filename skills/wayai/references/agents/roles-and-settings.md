@@ -45,7 +45,7 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `copilot_specialist` | Multiple | Yes (full transfer) | No | Copilot-track specialist |
 | `pilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Receives `consult_agent`; runs once and returns |
 | `copilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Copilot-track advisor |
-| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each trigger except `manual` and `automation_fire`, which take any number — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
+| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each trigger except `manual`, `automation_fire` and `automation_item`, which take any number — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 | `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
@@ -508,7 +508,7 @@ evaluation_variables:           # the fields of this monitor's own answer its co
     enum: [positive, neutral, negative]
 ```
 
-**What a condition can read.** A monitor's `flag_conditions` and `rules` read the monitor's OWN answer — never another agent's — through the fields it declares in its `evaluation_variables`: the same list, with the same types, an evaluator carries (see [Evaluation Variables](#evaluation-variables)). Declare every field a condition names, including a `{field}_confidence` one (`type: number`) on a decisions model — except on an `automation_fire` gate, whose conditions read its answer directly ([An automation's fire gate](#an-automations-fire-gate--automation_fire)). A monitor's declarations are read up to about two million characters of names and enum values in all; any past that are left out. A `boolean` field compares as `true` or `false`. A monitor's variables feed its own conditions only; they are not Analytics columns.
+**What a condition can read.** A monitor's `flag_conditions` and `rules` read the monitor's OWN answer — never another agent's — through the fields it declares in its `evaluation_variables`: the same list, with the same types, an evaluator carries (see [Evaluation Variables](#evaluation-variables)). Declare every field a condition names, including a `{field}_confidence` one (`type: number`) on a decisions model — except on an `automation_fire` or `automation_item` gate, whose conditions read its answer directly ([An automation's fire gate](#an-automations-fire-gate--automation_fire)). A monitor's declarations are read up to about two million characters of names and enum values in all; any past that are left out. A `boolean` field compares as `true` or `false`. A monitor's variables feed its own conditions only; they are not Analytics columns.
 
 ### `trigger`
 
@@ -520,6 +520,7 @@ evaluation_variables:           # the fields of this monitor's own answer its co
 | `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
 | `call_utterance` | On a live voice call, while the call's transcript grows — it can **steer** the voice. See [Steering a live call](#steering-a-live-call--call_utterance). Refused while WayAI has voice calls turned off. |
 | `automation_fire` | Before each run of an automation that names it as its gate — never on a conversation. See [An automation's fire gate](#an-automations-fire-gate--automation_fire). A hub may have any number. |
+| `automation_item` | Before each contact of a run of an automation that targets a contact list and names it as its gate — never on a conversation. See [An automation's item gate](#an-automations-item-gate--automation_item). A hub may have any number. |
 
 **Every trigger runs.**
 
@@ -533,7 +534,7 @@ A `user_message` monitor runs **inside** the customer's turn rather than as a tu
 
 ### One enabled monitor per trigger
 
-**A hub runs at most one enabled monitor on each trigger except `manual` and `automation_fire`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called — and neither is `automation_fire`: each automation names its own gate.
+**A hub runs at most one enabled monitor on each trigger except `manual`, `automation_fire` and `automation_item`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called — and neither are the two automation gates: each automation names its own gate.
 
 What each surface does with the rule:
 
@@ -549,7 +550,7 @@ What each surface does with the rule:
 
 ### `history_messages` and `include_tool_results`
 
-These shape what a monitor on any trigger but `idle` and `automation_fire` READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window, and on an `automation_fire` gate, which reads no conversation.
+These shape what a monitor on any trigger but `idle` and the automation gates READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window, and on an `automation_fire` or `automation_item` gate, which reads no conversation.
 
 | Key | Meaning |
 |---|---|
@@ -599,7 +600,7 @@ monitor_config:
 
 **The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
 
-**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone, and `run`, `run_with_agent` and `skip` to `automation_fire` alone ([An automation's fire gate](#an-automations-fire-gate--automation_fire)).
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone, `run` and `run_with_agent` to `automation_fire` alone ([An automation's fire gate](#an-automations-fire-gate--automation_fire)), `start` and `start_with_agent` to `automation_item` alone ([An automation's item gate](#an-automations-item-gate--automation_item)), and `skip` to those two.
 
 **What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here. A `call_utterance` rule may call fewer — see [Steering a live call](#steering-a-live-call--call_utterance).
 
@@ -922,4 +923,39 @@ monitor_config:
 - **Refused on this trigger:** `flag_conditions` (there is no conversation to flag), `history_messages` and `include_tool_results` (there is no conversation to read). Like every monitor with `rules`, it needs a `response_format`.
 - **Not limited per hub**: each automation names its own gate, and several automations may share one.
 - **Cost.** One operation for every so many decisions, a number the platform sets, billed to the organization; each decision is also a model call on the monitor's connection, billed by your provider.
+
+### An automation's item gate — `automation_item`
+
+A monitor on `trigger: automation_item` is an automation's **item gate** ([`../automations.md` → Item Gates](../automations.md#item-gates)): for each contact of a run of an automation that targets a contact list and whose `gate.monitor` names it, before anything is started for that contact, it answers its questions about the contact, and its rules decide whether that contact's work starts. It reads the automation, the run and the contact — its name, labels and metadata, never its phone, email or Instagram id — and never a conversation.
+
+```yaml
+# agents/renewal-fit.yaml
+role: monitor
+settings:
+  model: jev-latest                 # a decisions model — required
+response_format:
+  type: json_schema
+  schema_name: item
+  schema_json:
+    type: object
+    properties:
+      fit: { type: string, enum: [send, senior, skip], description: "What should this customer get?" }
+monitor_config:
+  trigger: automation_item
+  rules:
+    - when: [{ variable: fit, operator: "=", value: skip }]
+      action: { kind: skip }
+    - when: [{ variable: fit, operator: "=", value: senior }]
+      action: { kind: start_with_agent, agent: "Senior Agent" }
+  fallback: { kind: start }
+```
+
+| Action | Does |
+|---|---|
+| `start` | The contact's work starts as configured. |
+| `start_with_agent` | It starts with `agent` — another of the hub's agents, by name — in place of the automation's own (a `run_agent` automation only). |
+| `skip` | Nothing is started for the contact. |
+
+- **Only these three**, and only on a contact-list automation: an automation that targets no list takes a fire gate (`automation_fire`) instead. With no rule matching and no `fallback`, the contact is **skipped**.
+- Everything else is as for a fire gate above: a decisions model only, conditions that read its answer directly, `flag_conditions`, `history_messages` and `include_tool_results` refused, not limited per hub, and the same cost — one operation for every so many decisions, counted per contact.
 
