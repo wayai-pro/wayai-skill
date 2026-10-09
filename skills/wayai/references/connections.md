@@ -101,7 +101,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 
 **Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` reports "no matching credential" while the credential clearly exists in the org, the cause is almost always the credential carrying tags the hub doesn't share (or an environment mismatch) — have an organization admin add the tag to the hub (`hub.yaml` `tags`), or clear the credential's tags in the UI to make it global.
 
-**Tag deletion** is blocked while any credential or hub still references the tag, or while a contact's scope tags or an org list's filter use it (`OrgTagReferencesError`, which counts each kind). Untag references first, then delete.
+**Tag deletion** is blocked while any credential or hub still references the tag, or while a contact's scope tags, an org list's filter or a hub list's filter (a hub's `contact_lists:`) use it (`OrgTagReferencesError`, which counts each kind). Untag references first, then delete.
 
 ---
 

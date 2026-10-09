@@ -1,6 +1,6 @@
 # Automations
 
-An automation starts work in a hub on its own: on a schedule, for every contact of one of the organization's lists that the hub can see, it sends a message or runs an agent. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts and lists they target are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
+An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent. The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
 
 ## Table of Contents
 - [Shape](#shape)
@@ -12,6 +12,7 @@ An automation starts work in a hub on its own: on a schedule, for every contact 
 - [Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)
 - [Message Templates](#message-templates)
 - [Limits](#limits)
+- [Hub Lists](#hub-lists)
 - [The Contact Book](#the-contact-book)
 
 ---
@@ -34,7 +35,8 @@ automations:
       timezone: "America/Sao_Paulo"  # IANA; default UTC
     target:
       type: contact_list
-      org_list: "vip-customers"      # an org list of the organization's contact book, by name
+      list: "vip-customers"          # one of this hub's lists (`contact_lists:`), by name — or:
+      # org_list: "vip-customers"    # an org list of the organization's contact book, by name
     action:
       type: run_agent                # run_agent | send_message
       channel: whatsapp              # whatsapp | instagram | email | app
@@ -61,7 +63,7 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 | `chat` or `task` | `contact_list` | `run_agent` | `email` | `agent` + `instructions` + `connection` (required) |
 
 - **Trigger:** `schedule` only, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`).
-- **Target:** `contact_list` only, naming an org list by `org_list` — a list name: lowercase letters, digits and hyphens, at most 64 characters. The name is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)).
+- **Target:** `contact_list` only, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)).
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
 - **Task hubs run agents only:** `send_message` is refused there. A hub-type change that would make a stored automation invalid is refused, naming it.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
@@ -84,6 +86,25 @@ automations:
       channel: whatsapp
       connection: "WhatsApp Main"        # the WhatsApp connection's display name
       template: "appointment_reminder"   # a template of that connection
+```
+
+**A hub list of this hub's own** (chat hub):
+
+```yaml
+contact_lists:
+  - name: "lapsed-vips"
+    filter:
+      labels: ["vip"]
+      scope_tags: ["sao-paulo"]          # organization tag names
+automations:
+  - name: "Win-back"
+    trigger: { type: schedule, cron: "0 10 * * 1", timezone: "America/Sao_Paulo" }
+    target: { type: contact_list, list: "lapsed-vips" }
+    action:
+      type: send_message
+      channel: whatsapp
+      connection: "WhatsApp Main"
+      template: "we_miss_you"
 ```
 
 **App text** (chat hub):
@@ -120,7 +141,7 @@ automations:
 
 ## What Each Fire Does
 
-A fire runs once per contact it reaches: each member of the org list that the firing hub can see ([Visibility](#visibility)). A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
+A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)), read when the fire runs. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
 
 | Action | Channel | Per contact |
 |--------|---------|-------------|
@@ -132,7 +153,7 @@ A fire runs once per contact it reaches: each member of the org list that the fi
 
 - **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read, the fire sends to no one: every contact is recorded failed, and the next fire is the schedule's.
 - `agent` must name one of the hub's agents at save; a fire does not yet use it to choose which agent takes the turn.
-- **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created) records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
+- **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
 - After the suppression check, a `send_message` fire checks the org's operations quota for the contacts it did not stop. When the org is over its quota, every one of them is skipped and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner.
 
 ---
@@ -145,6 +166,7 @@ A fire runs once per contact it reaches: each member of the org list that the fi
 - A reference to an agent the same push creates or renames resolves on that push, by the name the push gives it. A push whose agents are refused writes none of them, so an automation naming one of them is refused too.
 - A reference to anything the hub does not hold is refused, naming the automation.
 - `org_list` is a name only, with no id twin: an org list belongs to the organization, so a push stores the name as written and never checks it against the contact book, and publishing copies it unchanged.
+- `list` is a name only too, checked against the hub's lists: a push checks it against the lists the push leaves (the stored ones when `contact_lists:` is absent), so a list and the automation naming it can be created in the same push. Renaming a hub list renames it in every automation that names it, unless another list takes the old name in the same change; a hub list an automation names cannot be deleted ([Hub Lists](#hub-lists)).
 
 Automations are matched to the hub's stored ones by `id`, else by `name` (a stored automation another entry names by `id` is that entry's): renaming an entry that carries its `id` renames the automation, while renaming one without it creates a new automation and deletes the old.
 
@@ -160,7 +182,9 @@ Automations are matched to the hub's stored ones by `id`, else by `name` (a stor
 
 While the key is absent, the stored automations still protect what they use — a connection an automation sends through is never deleted as unreferenced. A refused entry is reported, naming the automation, and is not written — its stored automation, if any, stays as it was, and an entry that would take its name is refused too; the rest of the push still applies.
 
-The old `outbound_schedules:` key is no longer read — the CLI warns and pushes none of its entries. Rewrite each schedule as an automation. The same holds for the hub contact and list blocks the contact book replaced: recreate those contacts and lists in the contact book ([The Contact Book](#the-contact-book)).
+`contact_lists:` follows the same rule: no key (or a key with no value) leaves the hub's lists as they are, `contact_lists: []` deletes every list, and a list of entries is the set the hub keeps. While `automations:` is absent, the stored automations still protect the lists they name: a push that would delete one is refused for that list, naming the automations.
+
+The old `outbound_schedules:` key is no longer read — the CLI warns and pushes none of its entries. Rewrite each schedule as an automation. The same holds for the hub contact and list blocks the contact book replaced: recreate those contacts in the contact book ([The Contact Book](#the-contact-book)), and each list as a hub list under `contact_lists:` ([Hub Lists](#hub-lists)) or an organization list.
 
 ---
 
@@ -170,10 +194,10 @@ An automation runs on its schedule while it is **enabled, not paused, and able t
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
-- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled. One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its org list is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled. One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
 - **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
-- **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `org_list` included — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history.
-- A preview hub's automation delivers for real — to the contacts of its org list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
+- **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
+- A preview hub's automation delivers for real — to the contacts of its list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
 - A preview automation whose connections — its own, or its agent's tools' — hold the same credential as production shows a warning in the Automations tab: a run from that preview reaches the same systems production does.
 - Deleting an automation cancels its next run.
 
@@ -199,12 +223,37 @@ Templates are managed on the **preview** hub you publish from. Publishing and sy
 | `instructions` | 10,000 characters |
 | `text` | 4,096 characters |
 | `cron` | 512 characters |
+| Hub lists per hub | 100 |
+
+---
+
+## Hub Lists
+
+A hub list is one of the hub's own segments of the organization's contact book: a **filter** over the contacts' labels and scope tags, which an automation targets by `list`. It is hub config — in `hub.yaml` under `contact_lists:`, or the **Lists** sub-tab of the hub's **Automations** tab — and is copied by publish and sync like the rest of it. It holds no contacts of its own and has no pins: its members are read from the contact book at each fire.
+
+```yaml
+# hub.yaml
+contact_lists:
+  - id: "list-uuid"                # set by pull; never author it
+    name: "lapsed-vips"            # unique per hub; lowercase letters, digits and hyphens
+    description: "VIPs with no order this quarter"   # optional
+    filter:
+      labels: ["vip", "lapsed"]    # contact labels (lowercased); a contact needs one of them
+      scope_tags: ["sao-paulo"]    # organization tag names; a contact needs one of them
+```
+
+- **Members:** a contact carrying one of the filter's labels (when it names labels) and one of its scope tags (when it names scope tags) — the org-list rule without pins. A filter must name at least one label or scope tag.
+- **Never past the hub's visibility:** each fire reaches only the members the firing hub sees, by its tags and environment as they are when it fires ([Visibility](#visibility)) — an organization tag removed from the hub stops reaching the contacts scoped to it, and a preview hub never reaches a `production` contact.
+- **Renaming** a list renames it in every automation that targets it, unless another list takes the old name in the same change (a swap of two names, or a new list under the old one): an automation keeps the name it states. **Deleting** a list an automation targets is refused, naming the automations; point them at another list first. In one push, a list an automation still targets is deleted after the automations are written, so its name and its place are free only on the next push.
+- **Scope tags** are named by their organization tag names; an unknown name is refused. An organization tag cannot be deleted while a hub list's filter names it. If a list still names a tag the organization no longer has, pull writes the tag's id in its place. A push refuses that id and keeps the stored list, because leaving the tag out would reach more contacts; remove the id from `scope_tags` deliberately to push the list again. The app's Lists sub-tab offers the hub's own tags and those its lists already name; `hub.yaml` takes any of the organization's tags.
+- Managed with `hub:write` on a preview hub; a production hub's lists change only by publishing.
+- Every key not shown above is refused, at the entry level and inside `filter`. Limits: 100 lists per hub, 20 labels and 20 scope tags per filter, a 1,000-character description.
 
 ---
 
 ## The Contact Book
 
-Contacts and the lists automations target belong to the **organization**, not to a hub. They are kept in the organization's contact book, managed in the organization's settings (**Contacts** tab) or through its API (`/api/contact-book`). They are not part of `hub.yaml`, and publishing or syncing a hub never copies them.
+Contacts and the organization's lists belong to the **organization**, not to a hub. They are kept in the organization's contact book, managed in the organization's settings (**Contacts** tab) or through its API (`/api/contact-book`). They are not part of `hub.yaml`, and publishing or syncing a hub never copies them. A hub's own lists ([Hub Lists](#hub-lists)) are the exception: they are hub config, in `hub.yaml` under `contact_lists:` and copied by publish and sync — and they hold only a filter over the book, never a contact.
 
 **Who manages it.** Organization admins, or a token holding the `contacts:write` permission over the whole organization (every hub, both environments), read and write every contact and org list. A hub admin can view the contacts their hub sees, but not which lists they are on.
 
