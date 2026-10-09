@@ -185,7 +185,7 @@ WhatsApp message templates belong to a WhatsApp connection and are managed from 
 
 A template is sent only once Meta has approved it, and an automation sends it as-is — no template variables are filled in, so choose a template whose body needs none.
 
-Publishing does not copy message templates yet, so a published WhatsApp `send_message` automation cannot run on production: it is skipped, with the reason shown, until its template exists there.
+Templates are managed on the **preview** hub you publish from. Publishing and syncing copy them to production under the **same id**, so an automation's `template_id` and a follow-up's `template_whatsapp_id` name the same template on both. On production they are read-only: listed and sent, a test send included, never created, edited, submitted or deleted. A sibling or CI branch preview gets no copy: its WhatsApp connection names the same account, so a delete or an edit there would act on the template production sends. Meta approves a template once for the WhatsApp account, which the production connection shares with the preview's — so after Meta approves (or pauses) a template, check its status on the preview and **sync**, so production's copy says so. Deleting a template on the preview deletes it at Meta at once, so production's sends of it fail from then on, and the next sync removes production's copy.
 
 ---
 
