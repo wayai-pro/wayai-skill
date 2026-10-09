@@ -1,6 +1,6 @@
 # Automations
 
-An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent — or, on a task hub, it opens tasks for an agent: one per run, or one per contact of a list ([Task Hubs](#task-hubs)), on a schedule or each time something happens in the hub ([Event Triggers](#event-triggers)). The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
+An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent — or, on a task hub, it opens tasks for an agent: one per run, or one per contact of a list ([Task Hubs](#task-hubs)), on a schedule, each time something happens in the hub ([Event Triggers](#event-triggers)), or on each delivery an external system sends to the automation's own URL ([Webhook Triggers](#webhook-triggers)). The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
 
 ## Table of Contents
 - [Shape](#shape)
@@ -9,6 +9,7 @@ An automation starts work in a hub on its own: on a schedule, for every contact 
 - [What Each Fire Does](#what-each-fire-does)
 - [Task Hubs](#task-hubs)
 - [Event Triggers](#event-triggers)
+- [Webhook Triggers](#webhook-triggers)
 - [Gates](#gates)
 - [References](#references)
 - [Pushing `automations:`](#pushing-automations)
@@ -33,10 +34,12 @@ automations:
     purpose: marketing               # marketing | operational; default marketing — see "Suppressions"
     enabled: false                   # true = runs on its schedule; see "Enabling, Pausing and Run Now"
     trigger:
-      type: schedule                 # schedule | event (task hubs only)
+      type: schedule                 # schedule | event | webhook (event and webhook: task hubs only)
       cron: "0 9 * * 1"              # 5-field cron: minute hour day-of-month month day-of-week
       timezone: "America/Sao_Paulo"  # IANA; default UTC
       # event: conversation.closed   # an event trigger's event, with no cron or timezone — see "Event Triggers"
+      # auth: hmac                   # webhook only: hmac | static_header — see "Webhook Triggers"
+      # header: "X-Account-Key"      # webhook, static_header only: the header that carries the secret
     target:
       type: contact_list             # contact_list | none (task hubs only: one task per run)
       list: "vip-customers"          # one of this hub's lists (`contact_lists:`), by name — or:
@@ -70,13 +73,13 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 | `task` | `none` — one task per run | `run_agent` | none | `agent` + `instructions` |
 | `task` | `contact_list` — one task per contact | `run_agent` | none | `agent` + `instructions` |
 
-- **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target.
+- **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)) — or, on a task hub, `webhook`, with an `auth` of `hmac` or `static_header` (the latter naming its `header`) and no `cron` or `timezone` ([Webhook Triggers](#webhook-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target. A webhook trigger is refused on a chat hub, and a hub-type change that would leave one on a chat hub is refused, naming it.
 - **Target:** `contact_list`, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)). On a task hub the target may also be `none` (`target: { type: none }`, naming no list): each run opens one task. `none` is refused on a chat hub.
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
 - **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel. The `agent` must be a `pilot` or `pilot_specialist` agent, since each task runs it ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
 - **Gate:** `gate.monitor` must name one of the hub's monitors on `trigger: automation_fire` whose model is a decisions model ([Gates](#gates)) — on a push, one of the agents the push leaves; on a publish, one of the preview's. Any other agent is refused, naming the automation. Leave `gate` out (or set it to `null`) for every run to fire.
-- **Not available yet, refused at save:** `webhook` triggers, `event` triggers on a chat hub, and `send_message` on `email` or `instagram`.
+- **Not available yet, refused at save:** `event` and `webhook` triggers on a chat hub, and `send_message` on `email` or `instagram`.
 
 ---
 
@@ -245,6 +248,46 @@ On a task hub, an automation can run each time something happens in the hub inst
 - **An event is not run again later** — except a run whose gate could not decide, which is asked again a few times ([Gates](#gates)). A run the org's operations quota stops is recorded skipped; the automation's next run is on its next event. An automation disabled or paused when the event happens does not run for it, even once resumed.
 - An event automation has no next run to show. **Run now** runs it once with no event: its task receives no event data.
 
+## Webhook Triggers
+
+On a task hub, an automation can run on each **delivery** an external system sends it, instead of on a schedule. Each accepted delivery is one run: it opens one task (a `none` target) or one per contact of its list, exactly as a scheduled run does ([Task Hubs](#task-hubs)), and every task opens with the **delivery's body, exactly as received**, fenced and marked as data, ahead of the instructions and outside them (with a list, the contact's record follows it). Write the instructions about "this delivery" and let the agent read it. No header of the delivery reaches the task.
+
+```yaml
+automations:
+  - name: "Order Paid"
+    enabled: true
+    trigger: { type: webhook, auth: hmac }
+    target: { type: none }
+    action:
+      type: run_agent
+      agent: "Ops Agent"
+      instructions: "An order was paid. Check its items are in stock and tell the team what to ship."
+```
+
+**The URL and the secret.** Each automation receives its deliveries at its own URL — `POST <api origin>/webhooks/automations/<hub_id>/<automation_id>` — and verifies them with its own **secret**. The secret is shown **once**: in the answer to creating the automation in the app or through the API (`POST /api/automations` answers `webhook: { url, secret }`; `GET /api/automations/<automation_id>?hub_id=<hub_id>` answers the `webhook_url` again, never the secret), and in the answer to each **rotate** (the app's **Rotate secret**, or `POST /api/automations/<automation_id>/webhook-secret/rotate?hub_id=<hub_id>`). No read returns it again, and no pull writes it. A rotate replaces it at once: the old secret stops verifying, so update the sender in the same step.
+
+- **Each hub has its own.** A preview hub and its production hub hold different automation ids, so different URLs — and a publish never copies a secret: a webhook automation reaches production with **none**, and an admin of the production hub rotates it there to get one (on production, rotating needs a hub admin; on a preview, `hub:write`). A push creates none either. An enabled webhook automation with no secret takes no delivery, and the hub's **Status** tab shows an alert until one is rotated for it.
+- Switching an automation to another trigger drops its secret; switching it back to `webhook` needs a rotate.
+
+**`auth: hmac`** — the scheme a base's [inbound webhooks](bases/integrations.md#inbound-webhooks) use, so one signer works for both: the published SDK's `signRequest` ([bases/executors.md](bases/executors.md#the-sdk-and-the-wire)) produces exactly these headers.
+
+| Header | Value |
+|---|---|
+| `X-Data-Signature` | `v1,<lowercase-hex HMAC-SHA256>` under the secret over `["v1", id, timestamp, method, path, body].join("\n")` — `path` the URL's path (and query), `body` the exact body sent. A space-separated list of `v1,<hex>` entries is accepted when any one matches |
+| `X-Data-Timestamp` | Unix **seconds**, within **300 seconds** of now either way |
+| `X-Data-Id` | The delivery's id, bound into the signature. Required |
+| `X-Data-Idempotency-Key` | Optional: the intent the delivery carries, kept the same across the sender's retries |
+
+`X-Data-Id` and `X-Data-Idempotency-Key` are each at most **256 characters**; a longer one is refused `401`.
+
+**Repeats.** A delivery is answered as a repeat, and runs nothing, when in the last **10 minutes** a delivery was accepted with the same `X-Data-Id`, or with the same `X-Data-Idempotency-Key` **and the same body** (the key is not signed, so it counts only with the body the signature covers). Past that window a signed delivery's timestamp is stale anyway, but a retry signed afresh under the same id or key is a new delivery and runs again. Give each delivery a stable `X-Data-Id`, or keep its `X-Data-Idempotency-Key` and body across retries — `signRequest` mints a fresh id per call unless it is given one.
+
+**`auth: static_header`** — for a sender that cannot sign: it sends the secret itself in the trigger's `header` (e.g. `X-Account-Key: <secret>`), compared in constant time. Nothing is signed, so there is no time window: a repeat is recognized by its `X-Data-Id`, or its `X-Data-Idempotency-Key` with the same body, within 10 minutes, as above; a delivery carrying neither always runs. The header must be the sender's own — not one the network sets (`Host`, `Content-*`, `CF-*`, `X-Forwarded-*`, …) nor a signing header.
+
+**Answers.** `202 { ok: true, duplicate: false }` when the delivery is accepted (its task opens moments later); `202 { ok: true, duplicate: true }` for a repeat, which runs nothing; `401` when it does not verify (a wrong or stale signature, a missing or wrong header, an id or key over 256 characters); `404` for a URL that takes no delivery (no such automation, not a webhook trigger, or no secret yet); `409` while the automation is disabled, paused or unable to run; `413` for a body over 64 KiB; `429` past a rate limit. An accepted delivery runs only while the automation still may: one paused before its task opens is dropped, not run later. With a [gate](#gates), each accepted delivery's run asks it first: a run it skips opens no task, and one whose gate failed for a reason that may pass is asked again with the same body.
+
+**Limits.** A body of at most **64 KiB**; at most **60 accepted deliveries a minute per automation**, beyond a per-address limit on the URL. Each run is billed as a scheduled run of the same automation is — one operation per task opened, behind the org's operations quota.
+
 ---
 
 ## Gates
@@ -289,14 +332,14 @@ automations:
 ```
 
 - **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter today), which each run checks. A hub may hold one per automation; any number of automations may share one.
-- **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), as `trigger_data`: data, never inside the instructions.
+- **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `webhook`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), and a webhook delivery's run the delivery's body, exactly as received, and when it was received ([Webhook Triggers](#webhook-triggers)), as `trigger_data`: data, never inside the instructions.
 - **What it decides:** the first rule whose conditions all hold, else `fallback`; with no `fallback`, the run is **skipped**. Its conditions read its answer's fields and their `{field}_confidence` directly — a gate needs no `evaluation_variables`.
   - `run` — the run fires as configured.
   - `run_with_agent` — the run fires with the named agent (by agent name) in place of the automation's own. Only a `run_agent` automation can; the agent must exist and be enabled, and on a task hub be a `pilot` or `pilot_specialist`. Otherwise the run does not fire, records `gate_agent_invalid`, and the automation's alert names why.
   - `skip` — the run does not fire.
 - **Each run records the decision** in the run history, with its agent and how sure the gate was: the lowest confidence among the answers the deciding rule read (every answer, when no rule matched).
 - **A gate that cannot decide does not run.** A provider failure or a gate slower than 5 seconds records the run `gate_failed` and nothing is sent. A provider's `4xx` (a revoked key, a model the provider refuses) also raises the connection's alert on the hub's Status & Notices. A scheduled run that failed is not retried: the next run is the schedule's.
-- **An event's run whose gate failed for a reason that may pass** — a timeout, an unreachable provider, a `429` or a `5xx` — is asked again with the same event: a minute after it failed, then 5 minutes after the second failure, then 15 after the third. A fourth failure drops the event: the automation's Automations tab shows why, and the hub's **Status** tab shows an alert until it next runs. Any other `4xx` is not asked again. **Run now** is never asked again.
+- **An event's or a webhook delivery's run whose gate failed for a reason that may pass** — a timeout, an unreachable provider, a `429` or a `5xx` — is asked again with the same event or the same delivery's body: a minute after it failed, then 5 minutes after the second failure, then 15 after the third. A fourth failure drops the event or the delivery: the automation's Automations tab shows why, and the hub's **Status** tab shows an alert until it next runs. Any other `4xx` is not asked again. **Run now** is never asked again.
 - **A gate that can no longer run** — its monitor deleted, disabled, renamed, moved off `automation_fire` or off a decisions model, or on a connection with no decisions endpoint — skips each run with the reason shown in the Automations tab and an alert on the Status tab, as an automation whose agent is gone does ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). Fix the monitor and the next run fires.
 - **Run now** asks the gate too.
 - **Cost.** Gate decisions bill the organization one operation for every so many decisions, a number the platform sets; a gate that failed bills nothing. A run the gate lets through also bills its own work as any run does. Each decision is a model call on the monitor's connection, billed by your provider.
@@ -340,9 +383,10 @@ An automation runs on its schedule — or, with an event trigger, on each of its
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
-- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`), and its gate's monitor can still decide ([Gates](#gates)). One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- A **webhook** automation has no schedule: while it is enabled, not paused and able to run, it takes deliveries ([Webhook Triggers](#webhook-triggers)); disabling or pausing it refuses them at once.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`), and its gate's monitor can still decide ([Gates](#gates)). One that is enabled and not paused but cannot run is skipped at each scheduled run (a webhook automation refuses each delivery instead): the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
 - **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
-- **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
+- **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume**, **Run now** and a webhook automation's **Rotate secret**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
 - A preview hub's automation delivers for real — to the contacts of its list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
 - A preview automation whose connections — its own, or its agent's tools' — hold the same credential as production shows a warning in the Automations tab: a run from that preview reaches the same systems production does.
 - Deleting an automation cancels its next run.
@@ -369,6 +413,9 @@ Templates are managed on the **preview** hub you publish from. Publishing and sy
 | `instructions` | 10,000 characters |
 | `text` | 4,096 characters |
 | `cron` | 512 characters |
+| Webhook delivery body | 64 KiB |
+| Webhook deliveries | 60 accepted per minute per automation |
+| Webhook `header` | 64 characters |
 | Hub lists per hub | 100 |
 
 ---
