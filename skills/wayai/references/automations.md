@@ -314,7 +314,7 @@ automations:
 
 ## Webhook Triggers
 
-On a task hub, an automation can run on each **delivery** an external system sends it, instead of on a schedule. Each accepted delivery is one run: it opens one task (a `none` target) or one per contact of its list, exactly as a scheduled run does ([Task Hubs](#task-hubs)), and every task opens with the **delivery's body, exactly as received**, fenced and marked as data, ahead of the instructions and outside them (with a list, the contact's record follows it). Write the instructions about "this delivery" and let the agent read it. No header of the delivery reaches the task.
+On a task hub, an automation can run on each **delivery** an external system sends it, instead of on a schedule. Each accepted delivery is one run: it opens one task (a `none` target) or one per contact of its list, exactly as a scheduled run does ([Task Hubs](#task-hubs)), and every task opens with the **delivery's body as received** — except that each `<` in it is written `\u003c`, so nothing in it reads as a tag beside the instructions (a JSON body still parses to the same values) — fenced and marked as data, ahead of the instructions and outside them (with a list, the contact's record follows it). Write the instructions about "this delivery" and let the agent read it. No header of the delivery reaches the task.
 
 ```yaml
 automations:
