@@ -99,7 +99,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `state` | `/state` | Conversation/user state schemas |
 | `resource` | `/resource` | Knowledge bases, skill resources |
 | `evals` | `/evals` | Eval scenarios + results |
-| `automations` | `/automations` | Automations — the toggle that arms each one, run now. The contacts and org lists they target are the organization's contact book, not the hub's (see [automations.md](automations.md#the-contact-book)) |
+| `automations` | `/automations` | Automations — enable, pause and run now. The contacts and org lists they target are the organization's contact book, not the hub's (see [automations.md](automations.md#the-contact-book)) |
 | `analytics` | `/analytics` | Hub metrics |
 | `users` | `/users` | Team users, Hub Users, admins (sub-tabs: `admins` \| `users` \| `teams` \| `support_model`) |
 

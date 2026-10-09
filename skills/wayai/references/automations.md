@@ -1,6 +1,6 @@
 # Automations
 
-An automation starts work in a hub on its own: on a schedule, for every contact of one of the organization's lists that the hub can see, it sends a message or runs an agent. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push`; they are switched on from the app. The contacts and lists they target are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
+An automation starts work in a hub on its own: on a schedule, for every contact of one of the organization's lists that the hub can see, it sends a message or runs an agent. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts and lists they target are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
 
 ## Table of Contents
 - [Shape](#shape)
@@ -9,7 +9,7 @@ An automation starts work in a hub on its own: on a schedule, for every contact 
 - [What Each Fire Does](#what-each-fire-does)
 - [References](#references)
 - [Pushing `automations:`](#pushing-automations)
-- [Enabling and Run Now](#enabling-and-run-now)
+- [Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)
 - [Message Templates](#message-templates)
 - [Limits](#limits)
 - [The Contact Book](#the-contact-book)
@@ -26,7 +26,7 @@ automations:
   - id: "automation-uuid"            # set by pull; never author it
     name: "Weekly Check-in"          # unique per hub
     description: "Monday check-in with VIP customers"   # optional
-    enabled: false                   # stored as written; see "Enabling and Run Now"
+    enabled: false                   # true = runs on its schedule; see "Enabling, Pausing and Run Now"
     trigger:
       type: schedule
       cron: "0 9 * * 1"              # 5-field cron: minute hour day-of-month month day-of-week
@@ -160,14 +160,18 @@ The old `outbound_schedules:` key is no longer read — the CLI warns and pushes
 
 ---
 
-## Enabling and Run Now
+## Enabling, Pausing and Run Now
 
-- **An automation is created disabled.** Enabling it — the toggle in the hub's **Automations** tab — arms its schedule and shows the next run; disabling it cancels the pending fire.
-- **`enabled:` in `hub.yaml` is stored as written but arms nothing**, and does not cancel a fire already scheduled. Arm and disarm with the toggle; an automation pushed with `enabled: true` reads as enabled with no next run until it is toggled off and on.
-- **Run now** fires the automation once, immediately, whether or not it is enabled. It is refused while a run of the same automation is still in progress.
-- A preview hub's automation delivers for real once enabled — to the contacts of its org list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
-- Publishing copies automations to production as written, `org_list` included; it arms nothing. Production then reaches the members of that list that production sees.
-- Deleting an automation cancels its pending fire.
+An automation runs on its schedule while it is **enabled, not paused, and able to run** — in every hub, preview or production. Whatever changes one of those — a push, a save in the app, the enable toggle, a publish, pause or resume — reschedules it at once, so `enabled:` in `hub.yaml` means what it says.
+
+- **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
+- **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled. One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its org list is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
+- **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `org_list` included — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history.
+- A preview hub's automation delivers for real — to the contacts of its org list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
+- A preview automation whose connections — its own, or its agent's tools' — hold the same credential as production shows a warning in the Automations tab: a run from that preview reaches the same systems production does.
+- Deleting an automation cancels its next run.
 
 ---
 
@@ -176,6 +180,8 @@ The old `outbound_schedules:` key is no longer read — the CLI warns and pushes
 WhatsApp message templates belong to a WhatsApp connection and are managed from that connection's page in the app (create, submit to Meta for approval, check status, send a test). The same templates are sent by `send_message` on WhatsApp and by kanban follow-ups outside the 24-hour window ([kanban.md](kanban.md)).
 
 A template is sent only once Meta has approved it, and an automation sends it as-is — no template variables are filled in, so choose a template whose body needs none.
+
+Publishing does not copy message templates yet, so a published WhatsApp `send_message` automation cannot run on production: it is skipped, with the reason shown, until its template exists there.
 
 ---
 
