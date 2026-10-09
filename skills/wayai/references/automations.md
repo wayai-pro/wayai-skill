@@ -1,6 +1,6 @@
 # Automations
 
-An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent — or, on a task hub, it opens tasks for an agent: one per run, or one per contact of a list ([Task Hubs](#task-hubs)). The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
+An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent — or, on a task hub, it opens tasks for an agent: one per run, or one per contact of a list ([Task Hubs](#task-hubs)), on a schedule or each time something happens in the hub ([Event Triggers](#event-triggers)). The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
 
 ## Table of Contents
 - [Shape](#shape)
@@ -8,6 +8,7 @@ An automation starts work in a hub on its own: on a schedule, for every contact 
 - [Examples](#examples)
 - [What Each Fire Does](#what-each-fire-does)
 - [Task Hubs](#task-hubs)
+- [Event Triggers](#event-triggers)
 - [References](#references)
 - [Pushing `automations:`](#pushing-automations)
 - [Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)
@@ -31,9 +32,10 @@ automations:
     purpose: marketing               # marketing | operational; default marketing — see "Suppressions"
     enabled: false                   # true = runs on its schedule; see "Enabling, Pausing and Run Now"
     trigger:
-      type: schedule
+      type: schedule                 # schedule | event (task hubs only)
       cron: "0 9 * * 1"              # 5-field cron: minute hour day-of-month month day-of-week
       timezone: "America/Sao_Paulo"  # IANA; default UTC
+      # event: conversation.closed   # an event trigger's event, with no cron or timezone — see "Event Triggers"
     target:
       type: contact_list             # contact_list | none (task hubs only: one task per run)
       list: "vip-customers"          # one of this hub's lists (`contact_lists:`), by name — or:
@@ -65,12 +67,12 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 | `task` | `none` — one task per run | `run_agent` | none | `agent` + `instructions` |
 | `task` | `contact_list` — one task per contact | `run_agent` | none | `agent` + `instructions` |
 
-- **Trigger:** `schedule` only, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`).
+- **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target.
 - **Target:** `contact_list`, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)). On a task hub the target may also be `none` (`target: { type: none }`, naming no list): each run opens one task. `none` is refused on a chat hub.
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
 - **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel. The `agent` must be a `pilot` or `pilot_specialist` agent, since each task runs it ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
-- **Not available yet, refused at save:** `event` and `webhook` triggers, gates, and `send_message` on `email` or `instagram`.
+- **Not available yet, refused at save:** `webhook` triggers, `event` triggers on a chat hub, gates, and `send_message` on `email` or `instagram`.
 
 ---
 
@@ -152,6 +154,20 @@ automations:
       instructions: "Prepare a renewal summary for this customer from their record and our order history."
 ```
 
+**A task when a conversation closes** (task hub):
+
+```yaml
+automations:
+  - name: "Close Review"
+    enabled: true
+    trigger: { type: event, event: conversation.closed }   # no cron, no timezone
+    target: { type: none }               # one task per closed conversation
+    action:
+      type: run_agent
+      agent: "QA Agent"
+      instructions: "Review the closed conversation in your data and note anything the team should follow up on."
+```
+
 **Run an agent by email** (chat hub):
 
 ```yaml
@@ -187,7 +203,7 @@ A fire runs once per contact it reaches: each member of its list — a hub list 
 - `agent` must name one of the hub's agents at save; on a chat hub, a fire does not yet use it to choose which agent takes the turn.
 - `instructions` are sent as written: a `{{…}}` placeholder in them is not filled in, and reaches the agent as typed. Placeholders work in an agent's own instructions and `additional_context_template` ([agents/instructions.md](agents/instructions.md)).
 - **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
-- After the suppression check, a `send_message` fire — and a task hub's fire ([Task Hubs](#task-hubs)) — checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and the next fire is a day later at the soonest.
+- After the suppression check, a `send_message` fire — and a task hub's fire ([Task Hubs](#task-hubs)) — checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and a scheduled automation's next fire is a day later at the soonest. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
 
 ---
 
@@ -202,6 +218,28 @@ On a task hub, each run of an automation opens **tasks**: one for a `none` targe
 - **reads and writes the automation's own user state**: every task of one automation shares one set of user-scope states (`{{state(user, …)}}` in the agent's instructions reads it, `update_state` writes it), and no other automation sees it. Tasks of one run that write the same state at once keep the last write. Keep per-contact notes in the task or the contact, not in user state.
 
 Each run records one target per task in the run history, with the task's conversation (and its contact, for a list). A run checks the org's operations quota before it opens any task: over the quota, no task opens and nothing is billed ([What Each Fire Does](#what-each-fire-does)). Each task opened is one turn initiation — one operation — plus its turn's time, billed to the hub's organization.
+
+---
+
+## Event Triggers
+
+On a task hub, an automation can run each time something happens in the hub instead of on a schedule: `trigger: { type: event, event: <event> }`, with `target: { type: none }` — each event opens one task, about the event's conversation.
+
+| `event` | Runs when |
+|---------|-----------|
+| `conversation.flagged` | One of the hub's conversations is flagged — by its monitor or its evaluator — while it was not flagged before. A flag stays on the conversation (reopening keeps it), so a conversation runs this at most once |
+| `conversation.closed` | One of the hub's conversations closes — and again each time a reopened one closes again |
+
+- **Each event runs each automation of the hub that listens for it once**, at once — every enabled, unpaused automation of that event that can run. Each run opens one task, as any task hub's run for a `none` target does ([Task Hubs](#task-hubs)).
+- **An automation never runs on the events of the tasks it opened**, so one that reviews each closed conversation does not review its own reviews.
+- **Each task receives the event as data, never as instructions** — its first message holds the event (`event`, its id and when it happened) and the conversation it is about (its id, title, status, kanban status, outcome, flag source, channel, when it started and ended), fenced and marked as data, before the instructions. Write the instructions about "the conversation in your data".
+- **The same event never runs an automation twice.** An event is one conversation's one change — its flag, or one close — so a conversation flagged again and again, or a close the hub hears of twice, runs nothing more.
+- **Automations that start each other stop.** A task an automation opens is one step deeper than the conversation whose event started it (a scheduled run's task is one step deep). An event from a conversation three steps deep runs nothing: the automation's Automations tab shows why, and the hub's **Status** tab shows an alert until it next runs. So two automations that answer each other's tasks' closes run three deep, then stop.
+- **Every environment runs its own events:** a preview hub's conversations run that preview's automations, as production's run production's.
+- **Eval runs' conversations run nothing.**
+- An evaluator's flag that the hub's conversation list never shows — it could not be recorded there — runs nothing either.
+- **An event is not run again later.** A run the org's operations quota stops is recorded skipped; the automation's next run is on its next event. An automation disabled or paused when the event happens does not run for it, even once resumed.
+- An event automation has no next run to show. **Run now** runs it once with no event: its task receives no event data.
 
 ---
 
@@ -237,7 +275,7 @@ The old `outbound_schedules:` key is no longer read — the CLI warns and pushes
 
 ## Enabling, Pausing and Run Now
 
-An automation runs on its schedule while it is **enabled, not paused, and able to run** — in every hub, preview or production. Whatever changes one of those — a push, a save in the app, the enable toggle, a publish, pause or resume — reschedules it at once, so `enabled:` in `hub.yaml` means what it says.
+An automation runs on its schedule — or, with an event trigger, on each of its events ([Event Triggers](#event-triggers)) — while it is **enabled, not paused, and able to run** — in every hub, preview or production. Whatever changes one of those — a push, a save in the app, the enable toggle, a publish, pause or resume — reschedules it at once, so `enabled:` in `hub.yaml` means what it says.
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
