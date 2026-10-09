@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.105.0
+version: 6.106.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -332,6 +332,7 @@ Contacts and org lists are **organization data, not hub config**: they live in t
 
 - **Absent vs empty:** no `automations:` key changes nothing; `automations: []` deletes every automation. The old `outbound_schedules:` key, and the hub contact and list blocks the contact book replaced, are no longer read
 - **A list is never looked up at save:** deleting or renaming an org list an automation names is allowed; its next fire records `list_not_found` and raises a hub alert. A fire whose list holds more contacts the hub sees than the platform's cap records `list_over_cap` and reaches none
+- **Suppressions:** the contact book holds who asked not to be sent automations — a phone, email or Instagram id, with scope `marketing` or `all`, kept after its contact is deleted. Each automation's `purpose` (`marketing`, the default, or `operational`) decides which stop it: a marketing send skips both scopes, an operational one (a reminder) only `all`. Managers add and remove them in the Contacts tab or the API. [`references/automations.md`](references/automations.md#suppressions)
 - **Runs while enabled, not paused and able to run:** `enabled:` in `hub.yaml` (or the app's toggle) schedules it, on preview and production hubs alike; Pause in the app stops it, and publishing keeps a production pause. Production is changed only by publishing, apart from pause, resume and run now (hub admins). Run now fires once
 - **Refused at save, naming the automation:** unknown keys, a field the action does not use, event/webhook triggers, gates, and `send_message` on email or Instagram (not available yet)
 

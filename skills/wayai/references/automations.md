@@ -26,6 +26,7 @@ automations:
   - id: "automation-uuid"            # set by pull; never author it
     name: "Weekly Check-in"          # unique per hub
     description: "Monday check-in with VIP customers"   # optional
+    purpose: marketing               # marketing | operational; default marketing — see "Suppressions"
     enabled: false                   # true = runs on its schedule; see "Enabling, Pausing and Run Now"
     trigger:
       type: schedule
@@ -63,6 +64,7 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 - **Target:** `contact_list` only, naming an org list by `org_list` — a list name: lowercase letters, digits and hyphens, at most 64 characters. The name is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)).
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
 - **Task hubs run agents only:** `send_message` is refused there. A hub-type change that would make a stored automation invalid is refused, naming it.
+- **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
 - **Not available yet, refused at save:** `event` and `webhook` triggers, the `none` target, gates, and `send_message` on `email` or `instagram`.
 
 ---
@@ -74,6 +76,7 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 ```yaml
 automations:
   - name: "Appointment Reminder"
+    purpose: operational                 # still sent to those who stopped only marketing
     trigger: { type: schedule, cron: "0 8 * * *", timezone: "America/Sao_Paulo" }
     target: { type: contact_list, org_list: "tomorrows-appointments" }
     action:
@@ -127,9 +130,10 @@ A fire runs once per contact it reaches: each member of the org list that the fi
 | `run_agent` | `whatsapp`, `instagram` | The agent takes a turn on `instructions` in a system conversation that is not addressed to the contact, so its reply does not reach them yet |
 | `run_agent` | `app` | Skipped, as for `send_message` on `app` |
 
+- **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read, the fire sends to no one: every contact is recorded failed, and the next fire is the schedule's.
 - `agent` must name one of the hub's agents at save; a fire does not yet use it to choose which agent takes the turn.
 - **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created) records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
-- A `send_message` fire checks the org's operations quota first. When the org is over its quota, every contact is skipped and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner.
+- After the suppression check, a `send_message` fire checks the org's operations quota for the contacts it did not stop. When the org is over its quota, every one of them is skipped and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner.
 
 ---
 
@@ -227,6 +231,23 @@ An org list has a name — lowercase letters, digits and hyphens, e.g. `vip-cust
 A list with an empty filter holds only its pins. Each fire reaches the members the firing hub sees.
 
 **Deleting or renaming a list an automation names is allowed.** The automation's next fire records `list_not_found` and raises a warning on the hub ([What Each Fire Does](#what-each-fire-does)); point the automation at another list, or delete it.
+
+### Suppressions
+
+A suppression stops automations from sending to one **phone**, **email address** or **Instagram id**. It belongs to the identity, not to a contact: deleting the contact leaves it in force, and it applies to any contact that holds that identity later. The book keeps no phone, address or id for it — only a keyed fingerprint, unique to the organization — so the list of suppressions shows each one's type and scope, never whose it is; a contact's page shows the suppressions held against its own identities. An email address is matched as its mailbox: letter case, a `+tag` and, for Gmail, dots do not make another address.
+
+Each suppression has a **scope**:
+
+| Scope | Stops |
+|-------|-------|
+| `marketing` | automations whose `purpose` is `marketing` |
+| `all` | every automation, `operational` ones included |
+
+Suppressions are only ever widened: suppressing an identity already held at `marketing` with `all` makes it `all`, and suppressing one held at `all` with `marketing` leaves it `all`. To narrow one, remove it and add it again.
+
+**Who writes them.** The organization's contact-book managers, with either scope, in the Contacts tab (Suppressions, or a contact's page) or the API: `POST /api/contact-book/suppressions` with `{ organization_id, identity: { kind: phone | email | instagram, value }, scope }`; `GET /api/contact-book/suppressions?organization_id=<org_id>` to list (paged by `cursor` and `limit`, newest first); `DELETE /api/contact-book/suppressions/<suppression_id>?organization_id=<org_id>` to remove; `GET /api/contact-book/contacts/<contact_id>/suppressions?organization_id=<org_id>` for one contact's. And the person themselves, through an email's one-click unsubscribe link, which suppresses their address with `all` — no sign-in, and their mail app's unsubscribe button does the same. Automation emails do not carry that link yet: until they do, record an email opt-out as a suppression yourself.
+
+Suppressions are checked only on an automation's sends; an agent's replies in a conversation the person is having are never stopped.
 
 ### CSV import
 
