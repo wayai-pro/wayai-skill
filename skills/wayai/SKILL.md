@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.107.0
+version: 6.108.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -325,10 +325,11 @@ Good practice for tool-dependent evals: compose **journey + `fixture:` + `variab
 
 ## Automations
 
-An automation starts work in the hub on its own: a **trigger** (a `schedule` — 5-field cron + timezone), a **target** (a `contact_list` — one of the hub's own lists, named by `list`, or an org list, named by `org_list`) and an **action** run for each contact the fire reaches:
+An automation starts work in the hub on its own: a **trigger** (a `schedule` — 5-field cron + timezone), a **target** (a `contact_list` — one of the hub's own lists, named by `list`, or an org list, named by `org_list`; on a task hub also `none`) and an **action** run for each contact the fire reaches:
 
 - `send_message` (chat hubs only) — a WhatsApp message template on `whatsapp`, or a `text` on `app`
-- `run_agent` — an `agent` and admin-written `instructions` on a `channel` (`whatsapp` / `instagram` / `email` / `app`; `email` also names its connection); each contact's fire hands the instructions to the hub's agent as a system message. The only action a task hub can save
+- `run_agent` — an `agent` and admin-written `instructions`. On a chat hub on a `channel` (`whatsapp` / `instagram` / `email` / `app`; `email` also names its connection); each contact's fire hands the instructions to the hub's agent as a system message. On a task hub — the only action it can save — with **no channel**: each run opens tasks, one per run (`target: { type: none }`) or one per contact, each with no person behind it, run by the named agent (a `pilot` or `pilot_specialist`) on the instructions; a contact's record reaches the task as fenced data, never inside the instructions. [`references/automations.md`](references/automations.md#task-hubs)
+- `instructions` are sent as written: `{{…}}` placeholders are not filled in there (they work in an agent's own instructions)
 
 Contacts and org lists are **organization data, not hub config**: they live in the organization's contact book, managed in the organization's settings (Contacts tab) and its API (`/api/contact-book`), never in `hub.yaml`. An automation names an org list — `target: { type: contact_list, org_list: <list-name> }` — or one of the hub's own lists — `target: { type: contact_list, list: <list-name> }`, a filter over the contact book's labels and scope tags kept in `hub.yaml` under `contact_lists:` — and each fire reaches the members of that list the firing hub can see. Organization admins, or a token holding `contacts:write` over the whole organization, manage the book; a hub admin can view the contacts their hub sees. A contact's visibility (its scope tags, or all hubs, chosen at create/import, plus an environment: `production` by default, so a preview hub sees only `preview` and `all` contacts), org lists and CSV import: [`references/automations.md`](references/automations.md#the-contact-book).
 
@@ -336,7 +337,7 @@ Contacts and org lists are **organization data, not hub config**: they live in t
 - **An org list is never looked up at save** (a hub `list` is: it must name one of the hub's lists): deleting or renaming an org list an automation names is allowed; its next fire records `list_not_found` and raises a hub alert. A fire whose list holds more contacts the hub sees than the platform's cap records `list_over_cap` and reaches none
 - **Suppressions:** the contact book holds who asked not to be sent automations — a phone, email or Instagram id, with scope `marketing` or `all`, kept after its contact is deleted. Each automation's `purpose` (`marketing`, the default, or `operational`) decides which stop it: a marketing send skips both scopes, an operational one (a reminder) only `all`. Managers add and remove them in the Contacts tab or the API. [`references/automations.md`](references/automations.md#suppressions)
 - **Runs while enabled, not paused and able to run:** `enabled:` in `hub.yaml` (or the app's toggle) schedules it, on preview and production hubs alike; Pause in the app stops it, and publishing keeps a production pause. Production is changed only by publishing, apart from pause, resume and run now (hub admins). Run now fires once
-- **Refused at save, naming the automation:** unknown keys, a field the action does not use, event/webhook triggers, gates, and `send_message` on email or Instagram (not available yet)
+- **Refused at save, naming the automation:** unknown keys, a field the action does not use (a `channel` or `connection` on a task hub), the `none` target on a chat hub, event/webhook triggers, gates, and `send_message` on email or Instagram (not available yet)
 
 Not every channel delivers to the contact yet — check what each fire does before promising a result. Shapes, examples, references, what each fire does, message templates, limits: [`references/automations.md`](references/automations.md).
 
@@ -902,7 +903,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Resources** | [`references/resources.md`](references/resources.md) | Knowledge bases, skill resources, agent linkage, provider sync (`wayai sync-skills`) |
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
-| **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule trigger, contact-list target, `send_message` / `run_agent`), valid combinations per hub type, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |
+| **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule trigger, contact-list or no target, `send_message` / `run_agent`), valid combinations per hub type, task-hub tasks, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
 | **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, relationship types, relationships, batch, bulk import |

@@ -1,12 +1,13 @@
 # Automations
 
-An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent. The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
+An automation starts work in a hub on its own: on a schedule, for every contact of a list that the hub can see, it sends a message or runs an agent — or, on a task hub, it opens tasks for an agent: one per run, or one per contact of a list ([Task Hubs](#task-hubs)). The list is one of the hub's own ([Hub Lists](#hub-lists), in `hub.yaml` under `contact_lists:`) or one of the organization's. Automations live in `hub.yaml` under `automations:` and are managed via `wayai push` or the app; an enabled automation runs on its schedule ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). The contacts themselves, and the organization's lists, are organization data, kept in the organization's contact book — not in `hub.yaml` ([The Contact Book](#the-contact-book)).
 
 ## Table of Contents
 - [Shape](#shape)
 - [What a Hub Can Save](#what-a-hub-can-save)
 - [Examples](#examples)
 - [What Each Fire Does](#what-each-fire-does)
+- [Task Hubs](#task-hubs)
 - [References](#references)
 - [Pushing `automations:`](#pushing-automations)
 - [Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)
@@ -34,12 +35,12 @@ automations:
       cron: "0 9 * * 1"              # 5-field cron: minute hour day-of-month month day-of-week
       timezone: "America/Sao_Paulo"  # IANA; default UTC
     target:
-      type: contact_list
+      type: contact_list             # contact_list | none (task hubs only: one task per run)
       list: "vip-customers"          # one of this hub's lists (`contact_lists:`), by name — or:
       # org_list: "vip-customers"    # an org list of the organization's contact book, by name
     action:
       type: run_agent                # run_agent | send_message
-      channel: whatsapp              # whatsapp | instagram | email | app
+      channel: whatsapp              # whatsapp | instagram | email | app; left out on a task hub
       agent: "Support Agent"         # run_agent only (or agent_id)
       instructions: "Check in on the customer's last order."  # run_agent only
       # connection / connection_id   — send_message on whatsapp, run_agent on email
@@ -59,15 +60,17 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 |----------|--------|--------|---------|-------------------------|
 | `chat` | `contact_list` | `send_message` | `whatsapp` | `connection` + `template` (a WhatsApp template of that connection) |
 | `chat` | `contact_list` | `send_message` | `app` | `text` |
-| `chat` or `task` | `contact_list` | `run_agent` | `whatsapp`, `instagram`, `app` | `agent` + `instructions` |
-| `chat` or `task` | `contact_list` | `run_agent` | `email` | `agent` + `instructions` + `connection` (required) |
+| `chat` | `contact_list` | `run_agent` | `whatsapp`, `instagram`, `app` | `agent` + `instructions` |
+| `chat` | `contact_list` | `run_agent` | `email` | `agent` + `instructions` + `connection` (required) |
+| `task` | `none` — one task per run | `run_agent` | none | `agent` + `instructions` |
+| `task` | `contact_list` — one task per contact | `run_agent` | none | `agent` + `instructions` |
 
 - **Trigger:** `schedule` only, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`).
-- **Target:** `contact_list` only, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)).
+- **Target:** `contact_list`, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)). On a task hub the target may also be `none` (`target: { type: none }`, naming no list): each run opens one task. `none` is refused on a chat hub.
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
-- **Task hubs run agents only:** `send_message` is refused there. A hub-type change that would make a stored automation invalid is refused, naming it.
+- **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel. The `agent` must be a `pilot` or `pilot_specialist` agent, since each task runs it ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
-- **Not available yet, refused at save:** `event` and `webhook` triggers, the `none` target, gates, and `send_message` on `email` or `instagram`.
+- **Not available yet, refused at save:** `event` and `webhook` triggers, gates, and `send_message` on `email` or `instagram`.
 
 ---
 
@@ -122,7 +125,34 @@ automations:
 
 This saves and fires, but reaches no one yet — see [What Each Fire Does](#what-each-fire-does).
 
-**Run an agent by email** (chat or task hub):
+**A daily task for an agent** (task hub):
+
+```yaml
+automations:
+  - name: "Daily Review"
+    trigger: { type: schedule, cron: "0 7 * * 1-5", timezone: "America/Sao_Paulo" }
+    target: { type: none }               # one task per run
+    action:
+      type: run_agent                    # no channel on a task hub
+      agent: "Ops Agent"
+      instructions: "Review yesterday's open orders and list the ones that need a person today."
+```
+
+**A task per contact** (task hub):
+
+```yaml
+automations:
+  - name: "Renewal Prep"
+    purpose: operational
+    trigger: { type: schedule, cron: "0 8 1 * *" }
+    target: { type: contact_list, org_list: "renewals-due" }   # one task per contact
+    action:
+      type: run_agent
+      agent: "Account Agent"
+      instructions: "Prepare a renewal summary for this customer from their record and our order history."
+```
+
+**Run an agent by email** (chat hub):
 
 ```yaml
 automations:
@@ -141,6 +171,8 @@ automations:
 
 ## What Each Fire Does
 
+The table is a chat hub's fire; a task hub's opens tasks instead ([Task Hubs](#task-hubs)). The notes under it hold for both.
+
 A fire runs once per contact it reaches: each member of its list — a hub list or an org list — that the firing hub can see ([Visibility](#visibility)), read when the fire runs. A contact without the channel's identifier — `phone` for WhatsApp, `instagram_sid` for Instagram, `email` for email — is skipped. Each fire records a run with its totals (targets, succeeded, failed, skipped) in the automation's run history.
 
 | Action | Channel | Per contact |
@@ -152,9 +184,24 @@ A fire runs once per contact it reaches: each member of its list — a hub list 
 | `run_agent` | `app` | Skipped, as for `send_message` on `app` |
 
 - **A suppressed contact is skipped** (`suppressed`), before anything is sent or counted against the quota: on WhatsApp its `phone` is checked, on email its `email`, on Instagram its `instagram_sid`, and on the app every identity it holds. A `marketing` automation is stopped by a suppression of either scope, an `operational` one only by an `all` suppression ([Suppressions](#suppressions)). If the suppressions cannot be read, the fire sends to no one: every contact is recorded failed, and the next fire is the schedule's.
-- `agent` must name one of the hub's agents at save; a fire does not yet use it to choose which agent takes the turn.
+- `agent` must name one of the hub's agents at save; on a chat hub, a fire does not yet use it to choose which agent takes the turn.
+- `instructions` are sent as written: a `{{…}}` placeholder in them is not filled in, and reaches the agent as typed. Placeholders work in an agent's own instructions and `additional_context_template` ([agents/instructions.md](agents/instructions.md)).
 - **A list a fire cannot use reaches no one.** A fire whose `org_list` names no list of the contact book (deleted, renamed, or never created), or whose `list` names none of the hub's lists, records `list_not_found`; one whose list holds more contacts the hub sees than the platform's per-fire cap records `list_over_cap`. Either records a failed run with no targets and raises a warning on the hub's Status & Notices (`wayai alerts` lists it). Neither is sent again: the next fire is the schedule's.
-- After the suppression check, a `send_message` fire checks the org's operations quota for the contacts it did not stop. When the org is over its quota, every one of them is skipped and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner.
+- After the suppression check, a `send_message` fire — and a task hub's fire ([Task Hubs](#task-hubs)) — checks the org's operations quota for the targets it did not stop. When the org is over its quota, every one of them is skipped (`operations_quota_exceeded`) and the skipped fire is not sent again: the automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, every target is recorded failed (`operations_quota_check_failed`), nothing is sent, and the next fire is a day later at the soonest.
+
+---
+
+## Task Hubs
+
+On a task hub, each run of an automation opens **tasks**: one for a `none` target, or one per contact of its list that the hub sees and no suppression stops (every identity the contact holds is checked, as on the app). Each task:
+
+- **is a conversation of its own in the hub's task list**, titled by the automation (and the contact's name, for a list), with **no person behind it**: it grants no one access to the hub, and the team answers and reviews it like any other task;
+- **is run by the automation's `agent`**, which takes its first turn — so the agent must be a `pilot` or `pilot_specialist` agent. On a hub whose AI mode puts new conversations with the team, the task waits for the team instead;
+- **receives `instructions` as a system message, exactly as written** — placeholders are not filled in;
+- **receives a contact's record as data, never as instructions** — for a list, the task opens with the contact's record from the contact book (its id, name, phone, email, Instagram id, labels and metadata), fenced and marked as data, ahead of the instructions and outside them. A contact's values never reach the instructions, so a name or a metadata field cannot pass for an order to the agent. Write the instructions about "this contact" and let the agent read the record;
+- **reads and writes the automation's own user state**: every task of one automation shares one set of user-scope states (`{{state(user, …)}}` in the agent's instructions reads it, `update_state` writes it), and no other automation sees it. Tasks of one run that write the same state at once keep the last write. Keep per-contact notes in the task or the contact, not in user state.
+
+Each run records one target per task in the run history, with the task's conversation (and its contact, for a list). A run checks the org's operations quota before it opens any task: over the quota, no task opens and nothing is billed ([What Each Fire Does](#what-each-fire-does)). Each task opened is one turn initiation — one operation — plus its turn's time, billed to the hub's organization.
 
 ---
 
@@ -194,7 +241,7 @@ An automation runs on its schedule while it is **enabled, not paused, and able t
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
-- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled. One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`). One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
 - **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
 - **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
 - A preview hub's automation delivers for real — to the contacts of its list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).
