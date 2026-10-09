@@ -9,6 +9,7 @@ An automation starts work in a hub on its own: on a schedule, for every contact 
 - [What Each Fire Does](#what-each-fire-does)
 - [Task Hubs](#task-hubs)
 - [Event Triggers](#event-triggers)
+- [Gates](#gates)
 - [References](#references)
 - [Pushing `automations:`](#pushing-automations)
 - [Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)
@@ -48,9 +49,11 @@ automations:
       # connection / connection_id   — send_message on whatsapp, run_agent on email
       # template / template_id       — send_message on whatsapp
       # text                         — send_message on app
+    gate:                            # optional — decides each run before it starts; see "Gates"
+      monitor: "Holiday Check"       # a monitor on trigger automation_fire, by agent name
 ```
 
-Every key not shown above is refused, never ignored — at the entry level and inside `trigger`, `target` and `action`.
+Every key not shown above is refused, never ignored — at the entry level and inside `trigger`, `target`, `action` and `gate`.
 
 ---
 
@@ -72,7 +75,8 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, or `connection` on a `run_agent` that is not on email.
 - **Task hubs run agents only, with no channel:** `send_message`, a `channel` and a `connection` are refused there — each run opens tasks in the hub, which reach no one through a channel. The `agent` must be a `pilot` or `pilot_specialist` agent, since each task runs it ([Task Hubs](#task-hubs)). A hub-type change that would make a stored automation invalid is refused, naming it — so a hub whose automations name a channel cannot become a task hub, nor a task hub's become a chat hub, until they are rewritten.
 - **Purpose:** `marketing` (the default when `purpose` is left out) or `operational` — any other value is refused. It decides which suppressions stop the automation's sends ([Suppressions](#suppressions)): use `operational` only for messages a person needs whatever they opted out of, such as an appointment reminder.
-- **Not available yet, refused at save:** `webhook` triggers, `event` triggers on a chat hub, gates, and `send_message` on `email` or `instagram`.
+- **Gate:** `gate.monitor` must name one of the hub's monitors on `trigger: automation_fire` whose model is a decisions model ([Gates](#gates)) — on a push, one of the agents the push leaves; on a publish, one of the preview's. Any other agent is refused, naming the automation. Leave `gate` out (or set it to `null`) for every run to fire.
+- **Not available yet, refused at save:** `webhook` triggers, `event` triggers on a chat hub, and `send_message` on `email` or `instagram`.
 
 ---
 
@@ -238,8 +242,64 @@ On a task hub, an automation can run each time something happens in the hub inst
 - **Every environment runs its own events:** a preview hub's conversations run that preview's automations, as production's run production's.
 - **Eval runs' conversations run nothing.**
 - An evaluator's flag that the hub's conversation list never shows — it could not be recorded there — runs nothing either.
-- **An event is not run again later.** A run the org's operations quota stops is recorded skipped; the automation's next run is on its next event. An automation disabled or paused when the event happens does not run for it, even once resumed.
+- **An event is not run again later** — except a run whose gate could not decide, which is asked again a few times ([Gates](#gates)). A run the org's operations quota stops is recorded skipped; the automation's next run is on its next event. An automation disabled or paused when the event happens does not run for it, even once resumed.
 - An event automation has no next run to show. **Run now** runs it once with no event: its task receives no event data.
+
+---
+
+## Gates
+
+A gate decides each run **before it starts**: a decisions monitor answers its own questions about the run, and its rules choose to **run** it, **run it with another agent**, or **skip** it. A skipped run reads no list and sends nothing.
+
+```yaml
+# agents/holiday-check.yaml — the gate's monitor
+name: Holiday Check
+role: monitor
+connection: OpenRouter              # a connection that serves decisions models
+settings:
+  model: jev-latest                 # a decisions model
+instructions: |
+  The company is closed on public holidays in Brazil. Judge the run's date.
+response_format:
+  type: json_schema
+  schema_name: gate
+  schema_json:
+    type: object
+    properties:
+      holiday: { type: boolean, description: "Is the run's local date a public holiday in Brazil?" }
+      urgency: { type: string, enum: [low, high], description: "How urgent is this automation's work?" }
+monitor_config:
+  trigger: automation_fire
+  rules:
+    - when: [{ variable: holiday, operator: "=", value: true }, { variable: holiday_confidence, operator: ">=", value: 0.8 }]
+      action: { kind: skip }
+    - when: [{ variable: urgency, operator: "=", value: high }]
+      action: { kind: run_with_agent, agent: "Senior Agent" }
+  fallback: { kind: run }
+```
+
+```yaml
+# hub.yaml
+automations:
+  - name: "Daily Review"
+    trigger: { type: schedule, cron: "0 7 * * *", timezone: "America/Sao_Paulo" }
+    target: { type: none }
+    action: { type: run_agent, agent: "Ops Agent", instructions: "Review yesterday's open orders." }
+    gate: { monitor: "Holiday Check" }
+```
+
+- **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter today), which each run checks. A hub may hold one per automation; any number of automations may share one.
+- **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), as `trigger_data`: data, never inside the instructions.
+- **What it decides:** the first rule whose conditions all hold, else `fallback`; with no `fallback`, the run is **skipped**. Its conditions read its answer's fields and their `{field}_confidence` directly — a gate needs no `evaluation_variables`.
+  - `run` — the run fires as configured.
+  - `run_with_agent` — the run fires with the named agent (by agent name) in place of the automation's own. Only a `run_agent` automation can; the agent must exist and be enabled, and on a task hub be a `pilot` or `pilot_specialist`. Otherwise the run does not fire, records `gate_agent_invalid`, and the automation's alert names why.
+  - `skip` — the run does not fire.
+- **Each run records the decision** in the run history, with its agent and how sure the gate was: the lowest confidence among the answers the deciding rule read (every answer, when no rule matched).
+- **A gate that cannot decide does not run.** A provider failure or a gate slower than 5 seconds records the run `gate_failed` and nothing is sent. A provider's `4xx` (a revoked key, a model the provider refuses) also raises the connection's alert on the hub's Status & Notices. A scheduled run that failed is not retried: the next run is the schedule's.
+- **An event's run whose gate failed for a reason that may pass** — a timeout, an unreachable provider, a `429` or a `5xx` — is asked again with the same event: a minute after it failed, then 5 minutes after the second failure, then 15 after the third. A fourth failure drops the event: the automation's Automations tab shows why, and the hub's **Status** tab shows an alert until it next runs. Any other `4xx` is not asked again. **Run now** is never asked again.
+- **A gate that can no longer run** — its monitor deleted, disabled, renamed, moved off `automation_fire` or off a decisions model, or on a connection with no decisions endpoint — skips each run with the reason shown in the Automations tab and an alert on the Status tab, as an automation whose agent is gone does ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)). Fix the monitor and the next run fires.
+- **Run now** asks the gate too.
+- **Cost.** Gate decisions bill the organization one operation for every so many decisions, a number the platform sets; a gate that failed bills nothing. A run the gate lets through also bills its own work as any run does. Each decision is a model call on the monitor's connection, billed by your provider.
 
 ---
 
@@ -250,6 +310,7 @@ On a task hub, an automation can run each time something happens in the hub inst
 - `connection` is the connection's display name; `template` is matched among the templates of the action's connection. A template name that matches more than one template is refused — name it by `template_id`.
 - A reference to an agent the same push creates or renames resolves on that push, by the name the push gives it. A push whose agents are refused writes none of them, so an automation naming one of them is refused too.
 - A reference to anything the hub does not hold is refused, naming the automation.
+- `gate.monitor` is an agent name only, with no id twin: publishing copies it unchanged, so it names the production copy of the monitor. A push checks it against the agents the push leaves, so a gate and its monitor can be created in the same push.
 - `org_list` is a name only, with no id twin: an org list belongs to the organization, so a push stores the name as written and never checks it against the contact book, and publishing copies it unchanged.
 - `list` is a name only too, checked against the hub's lists: a push checks it against the lists the push leaves (the stored ones when `contact_lists:` is absent), so a list and the automation naming it can be created in the same push. Renaming a hub list renames it in every automation that names it, unless another list takes the old name in the same change; a hub list an automation names cannot be deleted ([Hub Lists](#hub-lists)).
 
@@ -279,7 +340,7 @@ An automation runs on its schedule — or, with an event trigger, on each of its
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
-- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, and a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`). One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
+- **Able to run** means it still passes the rules it was saved under — its agent, connection and template exist, a `run_agent` automation's agent is enabled (on a task hub, also still a `pilot` or `pilot_specialist`), and its gate's monitor can still decide ([Gates](#gates)). One that is enabled and not paused but cannot run is skipped at each scheduled run: the Automations tab shows why, and the hub's **Status** tab shows an alert until it runs again, or is paused, disabled or fixed. Its list — a hub list or an org list — is read at each run instead: a run that finds none of that name records `list_not_found` and raises its own hub alert.
 - **Run now** runs the automation once, immediately, whether or not it is enabled. It is refused while the automation is paused, while a run of it is still in progress, and when it cannot run (the reason is in the refusal).
 - **Production** hubs change only by publishing: there an automation is read-only in the app, except **Pause**, **Resume** and **Run now**, which need a hub admin. Publishing copies automations as written, `list` and `org_list` included, with the hub's lists beside them — an enabled one starts running on production on its own schedule, reaching the members of that list production sees — and never copies a preview's pause, next run or run history. A publish naming a hub list the preview does not hold is refused, naming the automation.
 - A preview hub's automation delivers for real — to the contacts of its list that the preview hub sees: only those whose environment is `preview` or `all` ([Visibility](#visibility)).

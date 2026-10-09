@@ -45,7 +45,7 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `copilot_specialist` | Multiple | Yes (full transfer) | No | Copilot-track specialist |
 | `pilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Receives `consult_agent`; runs once and returns |
 | `copilot_advisor` | 1 | No (advisory only) | Yes (back to caller) | Copilot-track advisor |
-| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each trigger except `manual`, which takes any number — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
+| `monitor` | 1 per firing trigger | No (silent observer) | n/a | Excluded from message routing. At most one ENABLED monitor on each trigger except `manual` and `automation_fire`, which take any number — see [One enabled monitor per trigger](#one-enabled-monitor-per-trigger) |
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 | `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
@@ -508,7 +508,7 @@ evaluation_variables:           # the fields of this monitor's own answer its co
     enum: [positive, neutral, negative]
 ```
 
-**What a condition can read.** A monitor's `flag_conditions` and `rules` read the monitor's OWN answer — never another agent's — through the fields it declares in its `evaluation_variables`: the same list, with the same types, an evaluator carries (see [Evaluation Variables](#evaluation-variables)). Declare every field a condition names, including a `{field}_confidence` one (`type: number`) on a decisions model. A monitor's declarations are read up to about two million characters of names and enum values in all; any past that are left out. A `boolean` field compares as `true` or `false`. A monitor's variables feed its own conditions only; they are not Analytics columns.
+**What a condition can read.** A monitor's `flag_conditions` and `rules` read the monitor's OWN answer — never another agent's — through the fields it declares in its `evaluation_variables`: the same list, with the same types, an evaluator carries (see [Evaluation Variables](#evaluation-variables)). Declare every field a condition names, including a `{field}_confidence` one (`type: number`) on a decisions model — except on an `automation_fire` gate, whose conditions read its answer directly ([An automation's fire gate](#an-automations-fire-gate--automation_fire)). A monitor's declarations are read up to about two million characters of names and enum values in all; any past that are left out. A `boolean` field compares as `true` or `false`. A monitor's variables feed its own conditions only; they are not Analytics columns.
 
 ### `trigger`
 
@@ -519,6 +519,7 @@ evaluation_variables:           # the fields of this monitor's own answer its co
 | `assistant_reply` | After the answering agent has drafted its reply, before any of it is sent — the **reply gate**. See [The reply gate](#the-reply-gate--assistant_reply). |
 | `manual` | Never on its own — it runs only when another monitor calls it with `run_monitor`. A hub may have any number. |
 | `call_utterance` | On a live voice call, while the call's transcript grows — it can **steer** the voice. See [Steering a live call](#steering-a-live-call--call_utterance). Refused while WayAI has voice calls turned off. |
+| `automation_fire` | Before each run of an automation that names it as its gate — never on a conversation. See [An automation's fire gate](#an-automations-fire-gate--automation_fire). A hub may have any number. |
 
 **Every trigger runs.**
 
@@ -532,7 +533,7 @@ A `user_message` monitor runs **inside** the customer's turn rather than as a tu
 
 ### One enabled monitor per trigger
 
-**A hub runs at most one enabled monitor on each trigger except `manual`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called.
+**A hub runs at most one enabled monitor on each trigger except `manual` and `automation_fire`**, and saving a second one is refused. `manual` is not limited — nothing fires it on its own, so any number of monitors can wait there to be called — and neither is `automation_fire`: each automation names its own gate.
 
 What each surface does with the rule:
 
@@ -548,7 +549,7 @@ What each surface does with the rule:
 
 ### `history_messages` and `include_tool_results`
 
-These shape what a monitor on any trigger but `idle` READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window.
+These shape what a monitor on any trigger but `idle` and `automation_fire` READS, and are refused on an `idle` monitor, which runs as a full turn and takes the ordinary history window, and on an `automation_fire` gate, which reads no conversation.
 
 | Key | Meaning |
 |---|---|
@@ -590,7 +591,7 @@ monitor_config:
 - **`wayai push` refuses its declaration** until the YAML sets a `response_format` or drops the rules, and nothing else in that push is applied until it does. `wayai pull` of such a hub gives you exactly that YAML, so fix it before your next push.
 - **A rule on a variable nothing declares** (a typo, or one deactivated since) can never match, and is not reported as unjudged — declare it.
 
-**Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting. A decisions model reports a calibrated `{field}_confidence` for every field of its answer (declare it in `evaluation_variables` as a number, and leave it out of `schema_json`, which it cannot answer); on any other model, a `{field}_confidence` number exists only if your `schema_json` asks for it, and then it is the model's own estimate.
+**Conditions are the same conditions.** `when` uses the operators `flag_conditions` uses, over the same variables. The difference is quantification: every condition in a `when` must hold, while `flag_conditions` flags on any single match. A threshold is just a condition on a `{field}_confidence` variable — there is no separate threshold setting. A decisions model reports a calibrated `{field}_confidence` for every field of its answer (declare it in `evaluation_variables` as a number — a fire gate needs no declaration — and leave it out of `schema_json`, which it cannot answer); on any other model, a `{field}_confidence` number exists only if your `schema_json` asks for it, and then it is the model's own estimate.
 
 **The model never names a tool or an argument.** It produces values. Your rule decides which tool runs and which argument each value fills — either `from_variable` (something the monitor decided) or `const` (something you wrote). A value coming back as text is passed to the tool as a value and nothing else; it is validated by that tool's own schema exactly as the answering agent's tool calls are.
 
@@ -598,7 +599,7 @@ monitor_config:
 
 **The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
 
-**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone.
+**Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone, and `run`, `run_with_agent` and `skip` to `automation_fire` alone ([An automation's fire gate](#an-automations-fire-gate--automation_fire)).
 
 **What a rule can call.** `update_state`, `schedule_followup`, `insert_note`, `run_monitor`, `transfer_to_agent`, `transfer_to_team`, and this hub's own external HTTP and MCP tools. Nothing else — the list is what rules may call, not what they may not, so a tool is unavailable to a rule unless it is named here. A `call_utterance` rule may call fewer — see [Steering a live call](#steering-a-live-call--call_utterance).
 
@@ -884,3 +885,41 @@ evaluation_variables:
 **Caps, per call.** Each rule acts at most once in a call. A call takes at most **3 steers** — a steer stays in the voice's instructions for the rest of the call — and at most **300 checks** (about half an hour of continuous speech); past that the call goes on unsteered. Once no rule can act again, the call's checks stop. A call that started without a `call_utterance` monitor is never checked: one added during a call steers from the next call.
 
 **Cost.** A check starts no turn and bills no operation of its own — its time is inside the call's minutes — but each check is a model call on the monitor's connection, billed by your provider. A hub with no `call_utterance` monitor is never checked.
+
+### An automation's fire gate — `automation_fire`
+
+A monitor on `trigger: automation_fire` is an automation's **gate** ([`../automations.md` → Gates](../automations.md#gates)): before each run of an automation whose `gate.monitor` names it, it answers its questions about the run, and its rules decide whether the run fires. It never runs on a conversation, and no conversation exists while it decides.
+
+```yaml
+# agents/holiday-check.yaml
+role: monitor
+settings:
+  model: jev-latest                 # a decisions model — required
+response_format:
+  type: json_schema
+  schema_name: gate
+  schema_json:
+    type: object
+    properties:
+      holiday: { type: boolean, description: "Is the run's local date a public holiday?" }
+monitor_config:
+  trigger: automation_fire
+  rules:
+    - when: [{ variable: holiday, operator: "=", value: true }]
+      action: { kind: skip }
+  fallback: { kind: run }
+```
+
+| Action | Does |
+|---|---|
+| `run` | The run fires as configured. |
+| `run_with_agent` | The run fires with `agent` — another of the hub's agents, by name — in place of the automation's own (a `run_agent` automation only). |
+| `skip` | The run does not fire. |
+
+- **Only these three.** A gate has no tools and no conversation, so `none`, `call_tool`, `hold`, `rewrite` and `steer` are refused on it — and its three actions are refused on every other trigger. With no rule matching and no `fallback`, the run is **skipped**.
+- **A decisions model only.** An automation can name the monitor as its gate only while its model is a decisions model — a save, a push and a publish refuse any other. Each run also needs the monitor enabled and on a connection that serves decisions models (OpenRouter today), which only the run checks: a gate moved off a decisions model later, disabled, or on another connection skips every run of the automations it gates with the reason shown, until it is fixed.
+- **Its conditions read its answer directly**: each field of its schema and its `{field}_confidence`. A gate needs no `evaluation_variables`.
+- **Refused on this trigger:** `flag_conditions` (there is no conversation to flag), `history_messages` and `include_tool_results` (there is no conversation to read). Like every monitor with `rules`, it needs a `response_format`.
+- **Not limited per hub**: each automation names its own gate, and several automations may share one.
+- **Cost.** One operation for every so many decisions, a number the platform sets, billed to the organization; each decision is also a model call on the monitor's connection, billed by your provider.
+
