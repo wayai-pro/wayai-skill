@@ -254,6 +254,7 @@ Every send lands in **the contact's own conversation on that channel** — the o
 - After the suppression check, every page checks the org's operations quota before any of its contacts is started. When the org is over its quota, that page's contacts are skipped (`operations_quota_exceeded`), no later page is read, and the run ends `quota_exceeded`: a scheduled automation's next fire is its first scheduled one after the quota resets, or after a day if that is sooner. If the quota cannot be checked, that page's contacts are recorded failed (`operations_quota_check_failed`), nothing is sent to them, the next page checks again, and a scheduled automation's next fire waits a day. An event automation's next fire is its next event, either way ([Event Triggers](#event-triggers)).
 - **Pausing stops a run that is still reading its list** before its next page: it ends `run_stopped`, keeping the contacts it reached. So does deleting the automation, or a change that leaves it unable to run.
 - **Runs of a schedule do not pile up.** A scheduled fire that comes while the automation's previous run is still reading its list is skipped, and the schedule's next fire runs as usual. Run now is refused while a run is still going. A run still shown running two days after it started holds back neither ([Enabling, Pausing and Run Now](#enabling-pausing-and-run-now)).
+- **The run history keeps the last 30 days by default**, a window the platform sets. A run older than that is removed, with its targets, as the hub's automations go on running: the oldest first, a batch at a time. A run still reading its list is kept until it ends; one still shown running two days after it started is removed like any other. A gate decision not yet billed ([Gates](#gates)) stays on its run until it is billed. A hub whose automations no longer run keeps the runs it holds; a deleted automation's runs go like any other's.
 
 ---
 
@@ -532,6 +533,7 @@ Templates are managed on the **preview** hub you publish from. Publishing and sy
 | Webhook `header` | 64 characters |
 | Hub lists per hub | 100 |
 | Other hubs' automations listening to one hub's events | 100 |
+| Run history | 30 days by default |
 
 ---
 
