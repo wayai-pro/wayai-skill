@@ -38,6 +38,7 @@ automations:
       cron: "0 9 * * 1"              # 5-field cron: minute hour day-of-month month day-of-week
       timezone: "America/Sao_Paulo"  # IANA; default UTC
       # event: conversation.closed   # an event trigger's event, with no cron or timezone — see "Event Triggers"
+      # source_hub: "hub-uuid"       # another production hub whose events it runs on — see "Another Hub's Events"
       # auth: hmac                   # webhook only: hmac | static_header — see "Webhook Triggers"
       # header: "X-Account-Key"      # webhook, static_header only: the header that carries the secret
     target:
@@ -75,7 +76,7 @@ Every save — a push, the app, a hub-type change, a publish — is validated, a
 | `task` | `none` — one task per run | `run_agent` | none | `agent` + `instructions` |
 | `task` | `contact_list` — one task per contact | `run_agent` | none | `agent` + `instructions` |
 
-- **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)) — or, on a task hub, `webhook`, with an `auth` of `hmac` or `static_header` (the latter naming its `header`) and no `cron` or `timezone` ([Webhook Triggers](#webhook-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target. A webhook trigger is refused on a chat hub, and a hub-type change that would leave one on a chat hub is refused, naming it.
+- **Trigger:** `schedule`, with a valid 5-field `cron` and an IANA `timezone` (default `UTC`) — or, on a task hub, `event`, naming one `event` (`conversation.flagged` or `conversation.closed`) and no `cron` or `timezone`, with the `none` target ([Event Triggers](#event-triggers)), and optionally a `source_hub`: the id of another production hub whose events it runs on ([Another Hub's Events](#another-hubs-events)) — or, on a task hub, `webhook`, with an `auth` of `hmac` or `static_header` (the latter naming its `header`) and no `cron` or `timezone` ([Webhook Triggers](#webhook-triggers)). An `event` trigger is refused on a chat hub, and with a `contact_list` target; a `source_hub` on another trigger, or naming this hub, is refused. A webhook trigger is refused on a chat hub, and a hub-type change that would leave one on a chat hub is refused, naming it.
 - **Target:** `contact_list`, naming exactly one list — `list` (one of the hub's own lists) or `org_list` (an org list), never both. Either is a list name: lowercase letters, digits and hyphens, at most 64 characters. A `list` must name one of the hub's lists at save — on a push, one of the lists the push leaves ([Hub Lists](#hub-lists)). An `org_list` is not looked up at save: a fire that finds no list of that name records `list_not_found` ([What Each Fire Does](#what-each-fire-does)). On a task hub the target may also be `none` (`target: { type: none }`, naming no list): each run opens one task. `none` is refused on a chat hub.
 - **A field the chosen action does not take is refused** — e.g. `text` on a WhatsApp send, `connection` on the app, or `template` on Instagram.
 - **A `run_agent`'s `agent` must be a `pilot` or `pilot_specialist` agent**, on every hub: the named agent takes the turn — in a contact's conversation on a chat hub, in each task on a task hub — and no other role takes it.
@@ -290,6 +291,27 @@ On a task hub, an automation can run each time something happens in the hub inst
 - **An event is not run again later** — except a run whose gate could not decide, which is asked again a few times ([Gates](#gates)). A run the org's operations quota stops is recorded skipped; the automation's next run is on its next event. An automation disabled or paused when the event happens does not run for it, even once resumed.
 - An event automation has no next run to show. **Run now** runs it once with no event: its task receives no event data.
 
+### Another Hub's Events
+
+An event automation can run on the events of **another production hub of the organization** instead of its own: `trigger: { type: event, event: <event>, source_hub: <hub id> }`. A support hub's closes can open follow-up tasks in a back-office hub, say.
+
+```yaml
+automations:
+  - name: "Refund follow-up"
+    enabled: true
+    trigger: { type: event, event: conversation.closed, source_hub: "support-hub-production-uuid" }
+    target: { type: none }
+    action: { type: run_agent, agent: "Back Office Pilot", instructions: "Check whether the conversation in your data needs a refund, and file it." }
+```
+
+- **Production only.** The automation is written on the preview like any other, and runs nothing there: it starts listening once **publish** copies it to the production hub. `source_hub` names a production hub — never this hub's own (leave it out for those), nor a preview. A preview hub never runs on another hub's events.
+- **The publisher must be able to read the source hub and its conversations**, checked at every publish (and every `wayai publish` or CI sync): its events carry its conversations' status and summary into this hub's tasks. Someone who can publish this hub but cannot read that one's conversations cannot publish the automation (an API token needs `hub:read` and `conversation:read` on it), and the publish is refused whole, naming it. A disabled automation listens to nothing and is not checked.
+- **What reaches the task is bounded.** Each task receives the event (`event`, its id, `source_hub_id` and when it happened) and only this of the conversation, as data: its id, status, flag source, kanban status, and the conversation's summary only when one exists for that close (the one the event's id names), cut to 500 characters. At a close it usually does not exist yet: the conversation evaluator writes it after the close, so a `conversation.closed` event usually carries none, and no later delivery brings it. The same goes for a `conversation.flagged` event the evaluator raises: its flag arrives before its summary, so that event usually carries none either. A reopened conversation's next close never carries the previous close's summary. The source hub's title, outcome, channel and messages never leave it.
+- **Each event runs each listening automation once**, as within a hub, and **automations that start each other stop three steps deep across hubs too**: the depth travels with the event. The automation that would go a step further records why in its own hub.
+- **Delivery is retried.** An event that cannot reach this hub is tried five times over about two and a half hours (after 1 min, 5 min, 30 min and 2 h); if every attempt fails, the automation shows why and this hub's **Status** tab shows an alert, and the source hub's subscriber list shows the error. A paused automation keeps listening and runs nothing until resumed.
+- **The source hub sees who listens, and can say no.** A production hub's Automations tab lists the other hubs whose automations run on its events (`GET /api/automations/event-subscribers?hub_id=<hub>`) — by id, and by name where the reader may read that hub. Its admins can **revoke** a hub (`POST /api/automations/event-subscribers/<hub id>/revoke?hub_id=<hub>`): none of that hub's automations hears its events again — each shows why, with an alert — and that hub's later publishes naming it are refused. A revocation is for good.
+- Disabling or deleting the automation, or pointing it elsewhere, and publishing, stops its subscription; so does deleting either hub.
+
 ## Webhook Triggers
 
 On a task hub, an automation can run on each **delivery** an external system sends it, instead of on a schedule. Each accepted delivery is one run: it opens one task (a `none` target) or one per contact of its list, exactly as a scheduled run does ([Task Hubs](#task-hubs)), and every task opens with the **delivery's body, exactly as received**, fenced and marked as data, ahead of the instructions and outside them (with a list, the contact's record follows it). Write the instructions about "this delivery" and let the agent read it. No header of the delivery reaches the task.
@@ -471,7 +493,7 @@ The old `outbound_schedules:` key is no longer read — the CLI warns and pushes
 
 ## Enabling, Pausing and Run Now
 
-An automation runs on its schedule — or, with an event trigger, on each of its events ([Event Triggers](#event-triggers)) — while it is **enabled, not paused, and able to run** — in every hub, preview or production. Whatever changes one of those — a push, a save in the app, the enable toggle, a publish, pause or resume — reschedules it at once, so `enabled:` in `hub.yaml` means what it says.
+An automation runs on its schedule — or, with an event trigger, on each of its events ([Event Triggers](#event-triggers)) — while it is **enabled, not paused, and able to run** — in every hub, preview or production (one that runs on another hub's events runs in production only: [Another Hub's Events](#another-hubs-events)). Whatever changes one of those — a push, a save in the app, the enable toggle, a publish, pause or resume — reschedules it at once, so `enabled:` in `hub.yaml` means what it says.
 
 - **Enabled** is config: `enabled:` in `hub.yaml` or the toggle in the hub's **Automations** tab. An automation created in the app starts disabled. Disabling it cancels its next run.
 - **Paused** is not config: **Pause** in the Automations tab stops an automation at once, and **Resume** lets it run again. Publishing never changes it, so a production automation stays paused through later publishes.
@@ -509,6 +531,7 @@ Templates are managed on the **preview** hub you publish from. Publishing and sy
 | Webhook deliveries | 60 accepted per minute per automation |
 | Webhook `header` | 64 characters |
 | Hub lists per hub | 100 |
+| Other hubs' automations listening to one hub's events | 100 |
 
 ---
 
