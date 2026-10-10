@@ -8,6 +8,18 @@ hub:
   language: en
   non_app_permission: everyone
   access_approval_role: admin
+  display_names:                  # end-user name per app language; set every language end users use (team views keep `name`)
+    en: Customer Support
+    pt: Atendimento ao Cliente
+    es: Atención al Cliente
+  welcome_messages:               # end-user greeting per app language (see SKILL.md Hub Settings)
+    en: "Hi! I can help with orders, refunds and billing."
+    pt: "Olá! Posso ajudar com pedidos, reembolsos e cobranças."
+    es: "¡Hola! Puedo ayudar con pedidos, reembolsos y facturación."
+  starter_questions:              # suggested first messages, up to 4 per language
+    en: ["Where is my order?", "How do I request a refund?"]
+    pt: ["Onde está meu pedido?", "Como peço um reembolso?"]
+    es: ["¿Dónde está mi pedido?", "¿Cómo solicito un reembolso?"]
   kanban_statuses:
     - slug: new
       name: New

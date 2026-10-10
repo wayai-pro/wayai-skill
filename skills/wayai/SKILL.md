@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.116.0
+version: 6.117.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -402,10 +402,15 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 | `language` | `en`, `pt`, `es` | `en` | Language for hub-sent text (e.g. the pending-access notice on `require_permission` channels) |
 | `access_approval_role` | `admin`, `team` | `admin` | Who may approve/block a pending contact: hub admins only, or also support team members |
 | `access_request_message` | string | — | Optional override for the "your access is pending approval" auto-reply (else a localized default by `language`) |
+| `display_names` | map of `en` / `pt` / `es` → string (≤120 chars) | — | The hub's name as its end users see it, per app language. Team and admin views keep `name` |
+| `welcome_messages` | map of `en` / `pt` / `es` → string (≤1000 chars) | — | The greeting an end user sees before their first message, per app language |
+| `starter_questions` | map of `en` / `pt` / `es` → list of up to 4 strings (≤120 chars each) | — | Suggested first messages an end user can tap to send, per app language |
 | `auto_close_inactive_days` | `1`–`180` | `7` | Days of inactivity (no user/team message) before a conversation is force-closed. Every hub has one |
 | `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` — and an eval call's page ([evals.md → Call evals](references/evals.md#call-evals-voice-calls)) — before cleanup (archival still happens at close) |
 | `ended_index_retention_days` | `1`–`730` | `365` | Days an ended conversation stays listed in the hub index. Bounds the Ended tab and how far back `{{previous_conversations(N)}}` reaches |
 | `eval_retention_days` | `0`–`3650`, or `null` | platform default (90) | Days a finished eval session (its runs, results and eval conversations) is kept before retirement. `0` keeps sessions forever. **Omitting the field leaves the current value unchanged** — write `eval_retention_days: null` to clear an override and go back to the platform default. Retirement deletes transcripts permanently — eval scores in Analytics survive |
+
+**End-user presentation** (`display_names`, `welcome_messages`, `starter_questions`): each viewer gets the entry for their app language, else the hub's `language`, else any language the map holds — so set every language your end users use, or a missing one shows another language's entry; the name falls back to `name` only when `display_names` is empty. Locales other than `en`, `pt` and `es` are refused. Omitting a map leaves it unchanged; `null` or `{}` clears it. They change only what end users see in the app: the agent's instructions, `name` and the `ai_*` notices are not translated by them. **Not shown yet:** the hub stores, validates and publishes them today; the web and mobile apps start showing them in an upcoming release.
 
 ## First-time setup (cold start)
 
@@ -728,6 +733,9 @@ hub:
   # tags: [retail, vip]          # org tag slug names (create in UI first); gate which org credentials this hub can resolve. Omit to leave unchanged; [] clears; only an org admin may change them. See references/connections.md#organization-tags
   # auto_close_inactive_days: 7  # force-close a conversation after N days of inactivity (see Hub Settings)
   # conversation_retention_days: 7  # keep an ended conversation's DO alive N days for post-hoc `annotate` (see Hub Settings)
+  # display_names: { en: Customer Support, pt: Atendimento ao Cliente, es: Atención al Cliente }   # end-user name per app language (see Hub Settings)
+  # welcome_messages: { en: "Hi! How can I help?", pt: "Olá! Como posso ajudar?", es: "¡Hola! ¿Cómo puedo ayudar?" }
+  # starter_questions: { en: ["Where is my order?"], pt: ["Onde está meu pedido?"], es: ["¿Dónde está mi pedido?"] }   # up to 4 per language
   kanban_statuses:               # full field specs + constraints: references/kanban.md
     - slug: new
       name: New
