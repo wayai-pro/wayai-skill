@@ -49,7 +49,7 @@ The Pilot agent's response is delivered through the channel; the Copilot agent's
 | `conversation_evaluator` | 1 | No (async) | n/a | Scores entire conversation after close |
 | `message_evaluator` | 1 | No (async) | n/a | Scores each message |
 | `summarizer` | 1 | No (async post-turn) | n/a | Auto-provisioned with the first pilot/copilot; rolling `conversation_summary` state (see SKILL.md) |
-| `consultant` | Multiple | No (consulted on demand) | n/a | Track-independent; consulted by people (and agents) in visible consult threads. **An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.** Never a track responder and never a `transfer_to_agent`/`consult_agent` target. Configurable today; consult dispatch ships in a follow-up |
+| `consultant` | Multiple | No (consulted on demand) | n/a | Track-independent; consulted by people (and agents) in visible consult threads. **An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.** Never a track responder and never a `transfer_to_agent`/`consult_agent` target. The support team consults one by tagging it in the support composer ([support-inbox.md](../support-inbox.md#consulting-a-consultant)) |
 | `pilot_voice` | Multiple (one answers calls) | No (the voice of live calls) | n/a | Talks with the caller on a live voice call and, as its instructions tell it, hands questions to the conversation's pilot-track agent. Binds only a Realtime connection. Never a text responder, eval responder or delegation target. Calls use the earliest-created enabled one on a usable connection — see [Voice Agent](#voice-agent-pilot_voice-only) |
 
 Background roles (`monitor`, evaluators, `summarizer`), `consultant` and `pilot_voice` are excluded from delegation flows — they cannot be the target of `transfer_to_agent` or `consult_agent`.
@@ -70,7 +70,7 @@ Background roles (`monitor`, evaluators, `summarizer`), `consultant` and `pilot_
 | A dispatcher that routes to domain specialists and re-dispatches | `pilot` as the entry router + `pilot_specialist`s; a specialist transfers back to the `pilot` to re-route a cross-domain request |
 | Conversation quality scoring | `conversation_evaluator` and/or `message_evaluator` |
 | Silent monitoring/logging | `monitor` |
-| A domain expert your support team (or agents) consult in visible threads | Add a `consultant` (configurable now; consult dispatch ships in a follow-up) |
+| A domain expert your support team (or agents) consult in visible threads | Add a `consultant` |
 | Live AI voice calls on a chat hub | Add a `pilot_voice` agent on a Realtime connection; the `pilot` still answers — see [`../calls.md`](../calls.md) |
 
 ---

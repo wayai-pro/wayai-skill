@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.115.0
+version: 6.116.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -16,8 +16,10 @@ description: |
   create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, eval call, evals sql,
   org, init, bases, records, record-types, relationships, files, toolsets, actions, triggers,
   inbound-webhooks, seed); analyzing LLM token/cost spend per message, model, agent, or credential;
-  or interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
-  AI modes, agent roles, journeys, base, record type, promotion, external_id).
+  interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
+  AI modes, agent roles, journeys, base, record type, promotion, external_id); or answering how
+  people use the app: end users (agents, tasks, files, the mobile and desktop apps) and support
+  teams (the inbox, claim, transfer, close, the board, Copilot suggestions, consults).
 ---
 
 # WayAI Skill
@@ -149,7 +151,7 @@ Kanban status is orthogonal to all of this: it tracks *workflow stage* (custom s
 | `conversation_evaluator` / `message_evaluator` | Background | 1 each | Async quality assessment; excluded from normal routing. Their `evaluation_variables` feed Analytics; the `message_evaluator` also scores eval runs |
 | `summarizer` | Background | 1 | Auto-provisioned with the first pilot/copilot. Rolling JSON summary of older messages, stored as conversation state with reserved slug `conversation_summary`. Fires async post-turn when effective input tokens cross the summarizer agent's `summarization_threshold_tokens` (default 120000; see below). Non-background agents see the summary as a `<conversation_summary>` block and can call `expand_summary(section_id)` to fetch original messages. Schema is user-editable but must satisfy the anchor invariant (`sections[].id`, `message_id_start`, `message_id_end`) |
 | `pilot_voice` | Pilot (voice of live calls) | Multiple (one answers calls) | The voice of the hub's live AI voice calls: talks with the caller and, as its instructions tell it, hands questions to the pilot, which answers. Binds only a Realtime connection; no text turn, eval run or transfer ever runs it — see [Voice Calls](#voice-calls) |
-| `consultant` | Track-independent (on-demand) | Multiple | Consulted by people (and agents) in visible consult threads. Never a pilot/copilot responder, never auto-fired, and never a transfer/advisor target. *An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.* Consult turns bill as normal foreground operations. Configurable today; consult dispatch (tagging a consultant from the support composer) ships in a follow-up |
+| `consultant` | Track-independent (on-demand) | Multiple | Consulted by people (and agents) in visible consult threads. Never a pilot/copilot responder, never auto-fired, and never a transfer/advisor target. *An advisor advises an AI mid-turn and is invisible; a consultant is consulted by people (and agents) in visible threads.* Consult turns bill as normal foreground operations. The support team consults one by tagging it in the support composer ([support-inbox.md](references/support-inbox.md#consulting-a-consultant)) |
 
 `transfer_to_agent` targets **any same-track agent** — a `*_specialist` *or* the entry `pilot`/`copilot`, so the pilot can act as a **hub-and-spoke router** (specialists transfer cross-domain requests back to it for re-dispatch). Cross-track, advisor, consultant, and background roles are never transfer targets.
 
@@ -364,8 +366,8 @@ Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--
 
 People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML:
 
-- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab)
-- **Hub Team User** — support team member handling conversations in `/support`; grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
+- **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
+- **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
 
@@ -917,5 +919,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, base credentials, modeling & tool-design principles |
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `resources/` + `evals/` + `journeys/` cross-reference. Read once before generating a new hub from scratch |
-| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL; the mobile apps, and the desktop app (where to get it, what it adds over a browser, its settings) |
+| **Using the app** | [`references/using-the-app.md`](references/using-the-app.md) | Answering an end user (a Hub User): the agent list, chat and task agents, writing and attaching, files, when a person answers, their account, notifications, the mobile and desktop apps |
+| **Support inbox** | [`references/support-inbox.md`](references/support-inbox.md) | Answering a support team member or hub admin: the inbox and its tabs, the board, claim / take over, transfer, close, replying and the 24-hour window, Copilot suggestions, consults, contact approval, notifications, Support in the mobile app |
+| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL; how links open in the mobile apps, and the desktop app (where to get it, what it adds over a browser, its settings) |
 | **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | The per-hub / per-base folder memory pattern — what belongs in an `AGENTS.md`, and which of the two the CLI seeds |

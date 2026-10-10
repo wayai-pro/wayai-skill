@@ -14,7 +14,7 @@ Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace w
 
 ## Top-Level Map
 
-Visiting `/` runs `(app)/page.tsx`, which redirects to the user's `last_viewed_nav` preference if valid, otherwise to a role-default in this order: `/chat` → `/support` → `/settings`.
+Visiting `https://app.wayai.pro/` opens `/chat`; a person with nothing in Chat is sent on to `/support` if they are on a hub's team or administer a hub, otherwise to `/settings`.
 
 | Prefix | Purpose | Who sees it |
 |--------|---------|-------------|
@@ -33,7 +33,6 @@ Access is per-level: an Org Admin who isn't also a Hub Admin gets an auth error 
 | `/callback` | WorkOS OAuth callback — never link directly |
 | `/verify-email` | Magic-code email verification |
 | `/auth-error` | Error landing page from auth flow |
-| `/welcome` | Post-signup landing |
 | `/success` | Post-flow success page |
 | `/oauth/authorize` | Standalone Connect Login URI (CLI / MCP OAuth) — never link directly |
 
@@ -42,26 +41,27 @@ Auth pages use **inline translations** (en/pt/es objects in the same file), not 
 ## Conversation Surfaces
 
 ### Chat
-One list of agents, chat and task hubs alike, most recent activity first. A `task` hub's row shows how many of the user's tasks in it are in progress.
+One list of agents, chat and task hubs alike, most recent activity first. A `task` hub's row shows how many of the user's tasks in it are in progress. What a person can do on these screens: [using-the-app.md](using-the-app.md).
 
 | Path | Purpose |
 |------|---------|
 | `/chat` | All agents |
 | `/chat/[hubId]` | A `chat` hub: its ongoing thread. A `task` hub: its task list (In progress; `?status=ended` for Ended) with New task |
 | `/chat/[hubId]/conversations/[conversationId]` | One conversation of the hub: a task, or a `chat` hub's conversation |
-| `/chat/[hubId]/new/[taskStartId]` | A new task in a `task` hub (`taskStartId` is a fresh id per new task) |
+| `/chat/[hubId]/new/[taskStartId]` | A new task in a `task` hub (`taskStartId` is a fresh id per new task). Never hand it over: each id is good for one new task, so link `/chat/[hubId]` and its **New task** instead |
 
 ### Support
+One inbox across every hub the person supports. What the team can do on these screens: [support-inbox.md](support-inbox.md).
+
 | Path | Purpose |
 |------|---------|
-| `/support` | Default support inbox |
-| `/support/hubs/[hubId]` | Support inbox for one hub (list / kanban) |
-| `/support/hubs/[hubId]/users` | Hub Users directory for one hub |
-| `/support/hubs/[hubId]/users/[hubUserId]` | Individual Hub User profile |
-| `/support/[conversationId]` | Specific support conversation |
+| `/support` | The support inbox, in Agent / Team / Ended tabs (`?status=agent\|team\|ended` opens one) |
+| `/support?view=kanban&hub=[hubId]` | The board for one hub (`&lane=[laneSlug]` narrows it to one lane while the board groups by kanban status) |
+| `/support/[conversationId]` | One conversation, with the team's controls |
+| `/support/hubs/[hubId]/users/[hubUserId]` | One Hub User's open conversation in that hub |
 
 ### Mobile app
-The iOS and Android apps have three tabs: **Chat**, **Support** and **You**. Chat lists the same agents as `/chat`, most recent activity first: a `chat` hub opens its ongoing thread; a `task` hub opens its task list (In progress; Ended, with older tasks behind "See archived conversations"; New task), where each task opens as its own thread titled `hub › task`, the hub name leading back to the list. A `task` hub's row shows how many of the user's tasks in it are in progress. Support is the team inbox of `/support`. The mobile apps have no links to hand over: send the user to a screen with the web links above.
+The iOS and Android apps show the same agents as `/chat` and the team inbox of `/support`; what each tab offers is in [using-the-app.md → The Mobile App](using-the-app.md#the-mobile-app). The mobile apps have no links to hand over: send the user to a screen with the web links above. Inside an agent's message, a link to a screen the app has (among them `/chat`, `/chat/[hubId]`, `/chat/[hubId]/conversations/[conversationId]`, `/support`, `/support/[conversationId]`) opens that screen in the app, and any other page of the web app opens in the phone's browser. That is the app as built today: an older install opens these links in an in-app browser until it is updated.
 
 ### Desktop app
 The desktop app is the web app in its own window, with the same screens, for macOS (Apple silicon and Intel) and Windows; there is none for Linux. Send the person to `https://wayai.pro/download`: it offers the one for their computer, on Windows the Microsoft Store listing plus a direct installer for a PC without the Store (Windows may warn when that installer is opened: choose **More info**, then **Run anyway**). Google, Microsoft and Apple sign-in finish in the computer's browser, then return to the app.
@@ -103,7 +103,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `evals` | `/evals` | Eval scenarios + results |
 | `automations` | `/automations` | Automations — enable, pause and run now — and the hub's own lists (the **Lists** sub-tab, `/automations/lists`, a list at `/automations/lists/<listId>`; see [automations.md](automations.md#hub-lists)). The contacts, and the org lists, are the organization's contact book (see [automations.md](automations.md#the-contact-book)) |
 | `analytics` | `/analytics` | Hub metrics |
-| `users` | `/users` | Team users, Hub Users, admins (sub-tabs: `admins` \| `users` \| `teams` \| `support_model`) |
+| `users` | `/users` | Admins, Hub Users and teams (`?subtab=admins\|users\|teams`; the `teams` sub-tab also holds the support model and who may approve contacts) |
 
 ### Hub sub-entities
 | Path | Purpose |
@@ -166,4 +166,4 @@ https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?co
 - **Always hand over one deep link.** Never describe a breadcrumb path — the one exception is the desktop app's settings, which no link reaches ([Desktop app](#desktop-app)). If the agent doesn't know the `orgId` / `hubId`, run `wayai status --json` first to resolve them.
 - **Never invent paths.** Only use URLs documented here. New routes must be added to this file (and `APP_ROUTE_PREFIXES` if top-level) before they can be linked.
 - **Locale prefix only for marketing.** App routes (`/chat`, `/support`, …) are not locale-prefixed; the user's language preference is read from UserDO.
-- **Most auth routes can be linked to** (e.g. `/login`, `/verify-email`, `/welcome`). The two exceptions in the Auth Routes table — `/callback` and `/oauth/authorize` — cannot, because they require live state from the auth provider.
+- **Most auth routes can be linked to** (e.g. `/login`, `/verify-email`). The two exceptions in the Auth Routes table — `/callback` and `/oauth/authorize` — cannot, because they require live state from the auth provider.
