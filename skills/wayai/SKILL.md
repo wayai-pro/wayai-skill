@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.118.0
+version: 6.119.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -409,6 +409,7 @@ Only preview hubs are editable. `wayai pull` also writes the linked production h
 | `conversation_retention_days` | `1`–`30` | `7` | Days an ended conversation's DO stays alive for post-hoc `annotate` — and an eval call's page ([evals.md → Call evals](references/evals.md#call-evals-voice-calls)) — before cleanup (archival still happens at close) |
 | `ended_index_retention_days` | `1`–`730` | `365` | Days an ended conversation stays listed in the hub index. Bounds the Ended tab and how far back `{{previous_conversations(N)}}` reaches |
 | `eval_retention_days` | `0`–`3650`, or `null` | platform default (90) | Days a finished eval session (its runs, results and eval conversations) is kept before retirement. `0` keeps sessions forever. **Omitting the field leaves the current value unchanged** — write `eval_retention_days: null` to clear an override and go back to the platform default. Retirement deletes transcripts permanently — eval scores in Analytics survive |
+| `end_user_daily_message_limit` | `1`–`10000`, or `null` | no limit | Messages one end user may send the hub in the WayAI app in a 24-hour window, which starts with their first counted message. Past it, their sends are refused until the window ends, and the app tells them why. Only end users are counted — never your team's messages, nor your organization's members or the hub's admins. Other channels are not limited. **Omitting the field leaves the current value unchanged**; `null` removes the limit |
 
 **End-user presentation** (`display_names`, `welcome_messages`, `starter_questions`): each viewer gets the entry for their app language, else the hub's `language`, else any language the map holds — so set every language your end users use, or a missing one shows another language's entry; the name falls back to `name` only when `display_names` is empty. Locales other than `en`, `pt` and `es` are refused. Omitting a map leaves it unchanged; `null` or `{}` clears it. They change only what end users see in the app: the agent's instructions, `name` and the `ai_*` notices are not translated by them. The web and mobile apps show the name on the end user's Chat list (search finds either name) and thread header, and the welcome and starter questions on a thread with no message yet; tapping a question sends it as the first message. Support, Kanban and every team or admin view keep `name`. Hub admins can also edit all three per language in the web app's hub settings (Overview → End-user presentation).
 
@@ -736,6 +737,7 @@ hub:
   # display_names: { en: Customer Support, pt: Atendimento ao Cliente, es: Atención al Cliente }   # end-user name per app language (see Hub Settings)
   # welcome_messages: { en: "Hi! How can I help?", pt: "Olá! Como posso ajudar?", es: "¡Hola! ¿Cómo puedo ayudar?" }
   # starter_questions: { en: ["Where is my order?"], pt: ["Onde está meu pedido?"], es: ["¿Dónde está mi pedido?"] }   # up to 4 per language
+  # end_user_daily_message_limit: 50   # messages one end user may send in the app per 24 hours; null removes it (see Hub Settings)
   kanban_statuses:               # full field specs + constraints: references/kanban.md
     - slug: new
       name: New
