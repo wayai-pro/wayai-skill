@@ -78,7 +78,7 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 
 - the person's name and email;
 - **Language**: English, Português or Español, the language of the app;
-- **Dark Mode**.
+- **Theme**: **System**, **Light** or **Dark**. The account keeps one choice for the web, desktop and mobile apps; **System** makes each follow its own device's light or dark setting.
 
 ## Notifications
 
@@ -90,7 +90,7 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 
 ## The Mobile App
 
-The iOS and Android apps hold the same agents and conversations as the web. This describes the app as it is built today: an older install may lack parts of it (such as the Community tab, the camera and Photo library, links in a message opening in the app, or **Withdraw AI consent**) until it is updated.
+The iOS and Android apps hold the same agents and conversations as the web. This describes the app as it is built today: an older install may lack parts of it (such as the Community tab, the camera and Photo library, links in a message opening in the app, **Withdraw AI consent**, or **Appearance**, where it shows a **Dark mode** switch) until it is updated.
 
 - **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community.
   - **Chat** is the list at `/chat`.
@@ -108,7 +108,7 @@ The iOS and Android apps hold the same agents and conversations as the web. This
   - Links to other sites open in an in-app browser.
   - So hand over the same web links as for the web.
 - **The You tab:**
-  - **Display name**, **Language** and **Dark mode**;
+  - **Display name**, **Language** and **Appearance** (**System**, **Light** or **Dark**, the same choice as the web's **Theme**);
   - **Sign out**;
   - **Withdraw AI consent**: signs the person out, and the AI notice is asked again at the next sign-in;
   - **Delete account**.
