@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.121.0
+version: 6.121.1
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -382,7 +382,7 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 | `production` | Read-only. Serves live traffic. Changes flow from preview via publish/sync |
 
 **Lifecycle:**
-1. New hubs start as `preview` — edit freely. `wayai create --label <l>` (or `wayai push --label <l>` on auto-create) names the first preview at creation
+1. New hubs start as `preview` — edit freely. `wayai create --label <l>` (or `wayai push --label <l>` on auto-create) names the first preview at creation. An API token creates a hub only when its grants cover every hub of the organization in preview with `hub:write`, otherwise `403`. `wayai create` / `wayai push` send no tags when they create the hub, so a token limited by tag cannot create one through the CLI — use an org-wide token or the UI
 2. **Publish** (CLI `wayai publish`, or UI) — first promotion creates a `production` hub cloned from preview
 3. **Sync** (CLI `wayai publish` / alias `wayai sync`, or UI) — pushes subsequent preview changes to the linked production. The one command auto-detects first-publish vs sync; it confirms by default (shows the preview→production diff) and `-y` skips the prompt. Promotes the pushed **preview** state, so `wayai push` first
 4. **Replicate Preview** (CLI `wayai replicate [hub] --label <l>` or UI) — creates a new sibling preview (from a preview or production) for experimentation
