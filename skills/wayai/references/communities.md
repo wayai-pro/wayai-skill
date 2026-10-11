@@ -6,8 +6,8 @@ creates communities; once one exists, the organization's **owners and admins** m
 | Task | Where |
 |------|-------|
 | List the organization's communities; read, rotate or turn off a join link; read the stats | CLI (`wayai communities`) or the web console |
-| Settings, rules, the join link's on/off state and rooms | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the web console |
-| Courses, moderators and moderation | The web console: organization settings → Communities (`/settings/organizations/<org_id>/communities`) |
+| Settings, rules, the join link's on/off state, rooms and courses | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the web console |
+| Moderators and moderation | The web console: organization settings → Communities (`/settings/organizations/<org_id>/communities`) |
 
 ## Sign-in
 
@@ -61,14 +61,18 @@ messages per day.
 
 ## Communities as code
 
-A community's settings, rules, join link state and rooms live as files in the workspace, applied
-with the same `wayai pull` / `wayai push` used for hubs and bases. Courses are not files yet: push
-leaves every course as it is.
+A community's settings, rules, join link state, rooms and courses live as files in the workspace,
+applied with the same `wayai pull` / `wayai push` used for hubs and bases.
 
 ```
 wayai-ws/communities/<folder>/
-├── community.yaml   # identity, settings, join link, rooms
-└── rules.md         # the rules members see (Markdown); empty = none
+├── community.yaml          # identity, settings, join link, rooms, the course folders in order
+├── rules.md                # the rules members see (Markdown); empty = none
+└── courses/
+    └── <course>/
+        ├── course.yaml     # the course, its modules, and each module's lessons in order
+        └── lessons/
+            └── <lesson>.md # the lesson's fields, then its text (Markdown)
 ```
 
 ```bash
@@ -114,19 +118,87 @@ rooms:
     name: Old room
     kind: discussion
     archived: true
+courses: [onboarding, advanced] # course folders under courses/, in the order members see them
+synced:                        # the courses' order as of the last sync, by id: leave it alone
+  courses: [3f1c…, 5d0a…]
 ```
 
 - **`key`** names a room in the workspace. Pull picks it from the room's name (a name already
   used becomes `<name>--<id-prefix>`); you pick it for a new room. Keep it: a rename changes
   `name`, never `key`. A key once used keeps naming its room — a new entry reusing it gets that
   room back, and push changes the room to match the entry.
-- **`id` and `rev`** are written by pull and push. A `rev` records the server state the entry was
-  last synced from; leave it alone, and commit it with the rest of the file.
+- **`id`, `rev` and `synced:`** are written by pull and push. A `rev` records the server state the
+  entry was last synced from, and `synced:` the orders; leave them alone, and commit them with the
+  rest of the file.
+
+### Courses
+
+`courses/<course>/course.yaml`:
+
+```yaml
+id: 3f1c…
+rev: v1:9f2c1a8b0e64           # title, description, published
+title: Onboarding
+description: Your first week   # '' for none
+published: false               # members see a course once it is published
+modules:                       # in the order members see them
+  - key: getting-started       # stable local name; a rename keeps it
+    id: 9a2e…
+    rev: v1:c08e5b1d3f72       # title
+    title: Getting started
+    lessons: [welcome, first-steps]   # files in lessons/, without .md, in order
+  - key: going-further         # no id: push creates it
+    title: Going further
+    lessons: [automations]
+synced:                        # the orders as of the last sync, by id: leave it alone
+  modules: [9a2e…]
+  lessons:
+    9a2e…: [77b0…, 1d4c…]      # each module's lessons, a module left out of modules: included
+```
+
+`courses/<course>/lessons/<lesson>.md`:
+
+```markdown
+---
+id: 77b0…
+rev: v1:3b6e0f9a2d18
+title: Welcome
+published: true                # members see a published lesson of a published course
+room: general                  # a room's key in community.yaml, for its discussion; omit for none
+video_url: https://youtu.be/…  # YouTube only; omit for none
+links:                         # at most 10
+  - title: Setup guide
+    url: https://example.com/setup
+requires_paid_plan: false      # members see the mark; nothing enforces it
+---
+The lesson's text, in Markdown: at most 20,000 characters.
+```
+
+- **Names.** A course folder's name, a module's `key` and a lesson file's name are their names in
+  the workspace. Pull picks them from the title (a name already used becomes `<name>--<id-prefix>`);
+  you pick them for new ones — plain names, no `/`. Keep them: a rename changes `title`, never the
+  name. A name push created a course, module or lesson under keeps naming it: a new folder, entry or
+  file reusing that name gets the same one back, and push changes it to match the files. A name pull
+  gave to one made in the web console carries no such link — reusing it makes a new one.
+- **Order** is list order: `courses:` in `community.yaml`, `modules:` in `course.yaml`, each module's
+  `lessons:`. Moving a lesson's name to another module's list moves the lesson there. Nothing moves to
+  another course: pull and push refuse a module or lesson whose id belongs to another course on the
+  server.
+- **What a list leaves out stays as it is**, where it is: a course, module or lesson the server has
+  and the files do not list. Pull adds it to the files.
+- **Drafts in progress.** A lesson file no module lists, and a course folder `courses:` does not
+  list, are skipped by pull and push, with a warning.
+- **Copies.** A copied folder, entry or file keeps its original's `id`: push and pull refuse an id
+  used twice. Remove the `id` and the revs from the copy to make a new one.
+- **The text** follows the second `---`. The file ends with one newline after it, which is not
+  part of the text; anything else — blank lines, a text that itself starts with `---` — is kept as
+  written.
 
 ### How pull and push decide
 
-For the settings (with `rules.md`), the join link and each room, the files, the server and the
-`rev` are compared:
+For the settings (with `rules.md`), the join link, each room, course, module and lesson, and the
+order of each list — the courses, a course's modules, a module's lessons — the files, the server and
+the `rev` are compared:
 
 | Since the last sync | push | pull |
 |---|---|---|
@@ -138,8 +210,15 @@ For the settings (with `rules.md`), the join link and each room, the files, the 
 So a push does not undo an edit made in the web console before it reads the community, and a pull
 never overwrites an edit you have not pushed. When push asks before applying, it reads the community
 again after your answer and stops, writing nothing, if anything changed while it waited; with `-y` it
-applies right after its read. A room on the server that the files do not list is left as is by push,
-and added to the files by pull.
+applies right after its read. A room, course, module or lesson on the server that the files do not
+list is left as is by push, and added to the files by pull.
+
+A list's order is compared against its `synced:` list — the ids in the server's order as of the last
+sync — apart from what each entry holds: a lesson moved in the web console and its text edited in the
+files are two changes, not a conflict. So is each lesson's module: moved in the files only, push moves
+it; moved on the server only, pull takes it; moved to different modules on both sides, a conflict.
+Only the entries the files list take part: one left out, or made in the web since, is no change to
+either side.
 
 ### What push does, and what to know
 
@@ -148,24 +227,37 @@ and added to the files by pull.
   required when not run in a terminal. `--dry-run` lists the changes and writes nothing.
 - **Nothing is deleted.** Removing a room's entry from the files leaves the room as is; set
   `archived: true` to archive it (it takes no new message, its history stays readable), and remove
-  `archived` to bring it back. A community holds at most 20 rooms, archived ones included; push
-  refuses one past that before writing anything.
+  `archived` to bring it back. Likewise a course, module or lesson left out of the files stays;
+  `published: false` takes a course or a lesson off the community.
+- **Limits, checked before anything is written.** A community holds at most 20 rooms, archived ones
+  included, and 20 courses; a course at most 20 modules and 100 lessons; a community at most 500
+  lessons in all — drafts included. Push refuses a change past one before writing anything.
+- **Publishing comes last.** Push takes courses, then lessons, off the community first, and publishes
+  a course last, once its modules and lessons are in place: a new course is created as a draft, and a
+  new course with `published: true` goes live at the end of the push.
 - **Read-only fields** — `community_id`, `name`, a created room's `kind` — refuse the push when
   changed in the files.
 - **`join_link_enabled: true` over a link that is off makes a new link**: every link shared before
   stays dead. To replace an active link, or turn off a leaked one at once, use
   `wayai communities join-link rotate|off`.
-- **The files are rewritten** after each change push applies and on pull, in a fixed layout:
-  comments in `community.yaml` are not kept. Commit after a push — the files then record the ids
-  and revs it wrote.
+- **The files are rewritten** in a fixed layout: by pull, and by push for each file whose ids or
+  revs a change it applies updates (`community.yaml` on every push that writes). Comments in them
+  are not kept. Commit after a push — the files then record the ids and revs it wrote.
 - **A push stopped part way** (an error, Ctrl-C) keeps what it applied, recorded in the files.
-  Fix the cause and push again: it continues from there, and a room it already created is not
-  created twice.
+  Fix the cause and push again: it continues from there, and a room, course, module or lesson it
+  already created is not created twice. On Ctrl-C push first finishes the write in flight and records
+  it; a second Ctrl-C leaves at once.
+- **The server checks a lesson's text** when it is saved — how deeply lists, quotes and emphasis
+  nest, how far a line is indented, how large it is once formatted. A text it refuses stops the push
+  at that lesson, naming its file.
 - **Pace.** Every request of a pull or push counts against the per-person budget your web console
   and your messages share (60 a minute). Pull and push pace themselves at 50 a minute, and a
   request turned away for the budget is sent again after the wait the server names. A pull or a
-  push reads four times, and a push that asks reads them again after your answer; a push states
-  the requests it will send before it asks.
+  push reads five times plus once per course, and a push that asks reads them again after your
+  answer. A push then writes each entry it creates or changes, each course, module or lesson it
+  moves, and each course it publishes, and states those requests and the time they take before it
+  asks. A first import of a community at the limits — 20 published courses of 20 modules, 500
+  lessons — makes 940 writes after its reads: about 19 minutes.
 
 ## When a command fails
 
@@ -178,3 +270,8 @@ and added to the files by pull.
 | … is not one of the communities of organization … | Pull and push a community from a workspace bound to the organization that owns it |
 | Conflicts — changed in your files and on the server | `wayai pull communities/<folder> --theirs` takes the server's side; make again any edit of yours to keep, then push |
 | Push stopped at … | Fix what the message names and push again: what was applied before it stays applied |
+| Push stopped at lesson …: … change the lesson's text in … | The server refused the lesson's text (nested too deeply, indented too far, or too large once formatted): change it in that file and push again |
+| … is one of course …'s on the server, and a … does not move between courses | Put the module or lesson back in its course. To have it in another course, make a new one there (a new entry or file, without an id) |
+| … id … is also …'s — a copy keeps its original's id | Remove the `id` and its revs from the copy: push then creates it as a new one |
+| … holds at most … | Remove creates from the files: nothing is deleted, and a draft still counts |
+| Skipped: … — no module of the course lists it | A draft in progress: list the lesson in a module's `lessons:` to sync it |
