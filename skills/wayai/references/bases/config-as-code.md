@@ -43,9 +43,10 @@ wayai unbind bases/<base>            # drop that base from this worktree's scope
 ### `pull` / `push` route by subtree, and refuse a mixed invocation
 
 `pull` and `push` are **one verb each**. They resolve to exactly one subtree, in this order: an
-explicit `--hub`/`--base` flag → an explicit positional (`hubs/support`, `bases/crm`) → the folder you
-are `cd`'d into → `wayai-ws/wayai.yaml`'s `default_hub`/`default_base` → the sole candidate folder
-across both subtrees.
+explicit `--hub`/`--base`/`--community` flag → an explicit positional (`hubs/support`, `bases/crm`,
+`communities/acme`) → the folder you are `cd`'d into → `wayai-ws/wayai.yaml`'s
+`default_hub`/`default_base` → the sole candidate folder across the hubs and bases subtrees. A
+community is never reached by the last two ([communities.md](../communities.md)).
 
 An invocation that names targets in **both** subtrees is **refused, never merged** — non-zero exit,
 before any network call and before any file write. So in a workspace holding both a hub folder and a
@@ -83,10 +84,10 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   clones default to `local`) and you will want SQL or change history on it
   ([querying.md](querying.md)).
 - **The worktree scope is a routing guard.** Each git checkout carries one untracked scope file
-  (`<git-dir>/wayai-scope`) holding a set of hubs and a set of bases; the base axis is what applies
+  (`<git-dir>/wayai-scope`) holding a set of hubs, a set of bases and a set of communities; the base axis is what applies
   here. `pull`/`push` refuse to run against a base outside a non-empty set, and the axis is seeded
   automatically on the first successful pull/push into a checkout that has none. It is a routing
-  tripwire for those two verbs only — no other command reads it. `wayai status` reports both axes.
+  tripwire for those two verbs only — no other command reads it. `wayai status` reports every axis.
   **If pull/push errors with a scope refusal, stop and ask the user before doing anything else** —
   it usually means the prompt was meant for a different worktree. A worktree legitimately serving
   several bases widens with `wayai use --add bases/<id>`, but do not run that, `wayai use`, or
