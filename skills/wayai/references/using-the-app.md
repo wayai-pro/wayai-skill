@@ -78,7 +78,7 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 
 - the person's name and email;
 - **Language**: English, Português or Español, the language of the app;
-- **Theme**: **System**, **Light** or **Dark**. The account keeps one choice for the web, desktop and mobile apps; **System** makes each follow its own device's light or dark setting.
+- **Theme**: **System**, **Light** or **Dark**. The account keeps one choice for the web, desktop and mobile apps; **System**, where a new account starts, makes each follow its own device's light or dark setting.
 
 ## Notifications
 
