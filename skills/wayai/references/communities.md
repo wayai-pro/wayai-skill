@@ -125,8 +125,9 @@ synced:                        # the courses' order as of the last sync, by id: 
 
 - **`key`** names a room in the workspace. Pull picks it from the room's name (a name already
   used becomes `<name>--<id-prefix>`); you pick it for a new room. Keep it: a rename changes
-  `name`, never `key`. A key once used keeps naming its room — a new entry reusing it gets that
-  room back, and push changes the room to match the entry.
+  `name`, never `key`. A key push created a room under keeps naming it: a new entry reusing it gets
+  that room back, and push changes the room to match the entry. A key pull gave to a room made in
+  the web console carries no such link — reusing it makes a new room.
 - **`id`, `rev` and `synced:`** are written by pull and push. A `rev` records the server state the
   entry was last synced from, and `synced:` the orders; leave them alone, and commit them with the
   rest of the file.
@@ -240,9 +241,10 @@ either side.
 - **`join_link_enabled: true` over a link that is off makes a new link**: every link shared before
   stays dead. To replace an active link, or turn off a leaked one at once, use
   `wayai communities join-link rotate|off`.
-- **The files are rewritten** in a fixed layout: by pull, and by push for each file whose ids or
-  revs a change it applies updates (`community.yaml` on every push that writes). Comments in them
-  are not kept. Commit after a push — the files then record the ids and revs it wrote.
+- **The files are rewritten** in a fixed layout: by pull, and by push for each file a change it
+  applies records something new in — an id, a rev, a `synced:` order, or the rules as the server
+  saved them. Comments in a rewritten file are not kept; a file push records nothing new in stays
+  as it is. Commit after a push — the files then record the ids and revs it wrote.
 - **A push stopped part way** (an error, Ctrl-C) keeps what it applied, recorded in the files.
   Fix the cause and push again: it continues from there, and a room, course, module or lesson it
   already created is not created twice. On Ctrl-C push first finishes the write in flight and records
