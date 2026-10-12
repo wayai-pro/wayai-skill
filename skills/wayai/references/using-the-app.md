@@ -85,7 +85,7 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 | Where | What notifies the person |
 |-------|--------------------------|
 | A browser tab | Nothing: unread counts show on the Chat nav and on each row. |
-| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | A reply from the agent, an answer the agent sends after a call, and a message the hub sends on its own. A support team member's reply does not notify: it shows as unread when the app is opened. Tapping a notification opens the conversation. |
+| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | A reply from the agent or from a support team member (other than a WhatsApp template the team sends), an answer the agent sends after a call, and a message the hub sends on its own. Tapping a notification opens the conversation. |
 | The desktop app | Its notifications are for support work, never for the person's own conversations ([navigation.md → Desktop app](navigation.md#desktop-app)). |
 
 ## The Mobile App
