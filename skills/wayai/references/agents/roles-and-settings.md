@@ -821,7 +821,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 
 `transfer_to_team` is allowed: the reply is sent, and the conversation then belongs to the team. Nothing a gate's rule calls makes the AI answer again on this message.
 
-**It judges every reply that would reach the customer** — including the reply of an agent a transfer just handed the conversation to, a retried reply, a scheduled follow-up, and replies in an evaluation run. It never judges a Copilot suggestion or any other reply written for your team, which the customer never sees anyway.
+**It judges every reply the agent writes that would reach the customer** — including the reply of an agent a transfer just handed the conversation to, a retried reply, a scheduled follow-up, and replies in an evaluation run. It never judges a Copilot suggestion or any other reply written for your team, which the customer never sees anyway.
 
 **What changes for a hub with a gate.**
 
@@ -830,7 +830,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 - **A rewrite adds a second answering-agent call and a second gate judgement** to that reply, all inside the customer's wait. The files the answering agent was shown are sent to the revision again, so the model's tokens for them are spent a second time.
 - **Cost.** The gate starts no turn of its own; the time it adds is part of the same turn, and a turn is billed for how long it runs.
 
-**What a gate does not cover.** Anything the answering agent's own **tools** send while it works — `send_files` and the message it carries, or an external tool that messages the customer — goes out before any reply exists, so the gate never sees it. Assign such tools with that in mind. Replies from a harness-backed agent are not gated yet.
+**What a gate does not cover.** Anything the answering agent's own **tools** send while it works — `send_files` and the message it carries, or an external tool that messages the customer — goes out before any reply exists, so the gate never sees it. Assign such tools with that in mind. Replies from a harness-backed agent are not gated yet. And when the model provider **refuses** to answer a message, the agent writes no reply, and the gate has nothing to judge and leaves no record: on a text conversation the customer gets WayAI's fixed notice in the hub's language ("An error occurred processing your message. Please try again."); on a voice call the caller hears the voice's own apology instead (see [`../calls.md` → Answers and progress cues](../calls.md#answers-and-progress-cues)).
 
 **One enabled gate per hub**, like the other firing triggers.
 
