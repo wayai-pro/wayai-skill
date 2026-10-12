@@ -333,7 +333,13 @@ wayai bases batch --base <base> --operations '[
 Operation types: `upsert_record`, `delete_record`, `upsert_relationship`, `delete_relationship`,
 `upsert_record_type`, `delete_record_type`. A relationship op addresses each endpoint by internal id
 (`source_id`/`target_id`) or external key (`source_external_id` + optional `source_external_source`) —
-exactly one per endpoint.
+exactly one per endpoint. An `upsert_record` with `"merge": true` changes only the fields its `data`
+sends when its `external_id` names a live record, instead of replacing the record (it creates one
+as usual when there is none). A relationship op
+that names an existing relationship by `id` acts only on one of its own type: an
+`upsert_relationship` fails on an `id` held by another `rel_type` (change a relationship's type with
+`wayai relationships upsert`), and a `delete_relationship` given a `rel_type` fails on a
+relationship of any other type.
 
 Ops run **in order inside one transaction**, so the example above creates two records and links them
 in a single atomic call: the link resolves the external ids the earlier ops just wrote, and a
