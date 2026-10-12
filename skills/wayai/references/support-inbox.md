@@ -95,7 +95,7 @@ What the statuses, transitions, outcomes and lanes are, and how a builder sets t
 **Transfer** is offered while the person holds the conversation:
 
 - **Transfer to Agent** hands the conversation back to one of the hub's AI agents, which answers the customer again. It is offered only on a hub whose AI answers customers (AI mode `pilot` or `pilot+copilot`).
-- **Transfer to Team** releases the conversation, unclaimed, to the hub's team queue. There a member of any of the hub's teams can claim it.
+- **Transfer to Team** releases the conversation, unclaimed, to the team picked: it waits in that team's queue, where one of its members can claim it ([which conversations a team member sees](#the-inbox)).
 
 ## Closing
 
@@ -166,7 +166,7 @@ A flag on a row or a card means the hub's conversation evaluator, a monitor, or 
 |-------|--------------------------|
 | A browser tab | Nothing: the Support count and the unread counts show what is waiting. |
 | The desktop app | System notifications for support work: [navigation.md → Desktop app](navigation.md#desktop-app). |
-| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | "Conversation transferred" when a conversation is handed to the team on a hub the person supports. Tapping it opens the conversation in Support. A customer's new message does not notify. |
+| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | "Conversation transferred" when a conversation is handed to the team on a hub the person supports, and it is one their Support shows ([which conversations a team member sees](#the-inbox)): a handoff to a named team reaches that team's members and hub admins on no team. Tapping it opens the conversation in Support. A customer's new message does not notify. |
 
 ## Support in the Mobile App
 
