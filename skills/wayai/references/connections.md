@@ -240,8 +240,8 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 
 ```
 1. User creates hub in platform UI
-2. wayai init --hub <hub-id>                    → scope repo to the hub
-3. wayai pull -y                                → sync local files
+2. wayai init --org <org-id>                    → scope repo to the hub's organization
+3. wayai pull --hub <hub-id> -y                 → sync local files
 4. Edit hub.yaml and agents/*.yaml — add connections, agents, tools
 5. wayai push -y                                → auto-creates connections, agents, tools
 ```
