@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.122.1
+version: 6.123.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -16,7 +16,8 @@ description: |
   create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, eval call, evals sql,
   org, init, communities, bases, records, record-types, relationships, files, toolsets, actions,
   triggers, inbound-webhooks, seed); managing an organization's communities (list, join link,
-  stats; settings, rules, rooms and courses as code); analyzing LLM token/cost spend per message, model, agent, or credential;
+  stats, the access list of an invite-only community; settings including who may join, rules, rooms
+  and courses as code); analyzing LLM token/cost spend per message, model, agent, or credential;
   interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
   AI modes, agent roles, journeys, base, record type, promotion, external_id); or answering how
   people use the app: end users (agents, tasks, files, the mobile and desktop apps) and support
@@ -74,8 +75,8 @@ WayAI is where AI agents and people work together — serving your customers and
 | Delete eval session(s) / run history | CLI (`wayai eval session delete <session_id>`, or `--all` for every session on the hub) |
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
-| Communities — list an organization's, read / rotate / turn off a join link, read the stats | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
-| Communities — settings, rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md). Moderation: UI |
+| Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list of an invite-only community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
+| Communities — settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md). Moderation: UI |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
 | Publish/sync a preview to production | CLI (`wayai publish`, alias `wayai sync`) or UI |
@@ -585,7 +586,7 @@ wayai eval session delete   # Delete an eval session + its run history (<session
 wayai eval call         # Place scored voice calls for a journey whose responder is the pilot_voice agent (--journey <name|id>, --runs, --clips <dir> or OPENAI_API_KEY, cost caps); needs `npm install -g @roamhq/wrtc@0.10` once — see references/evals.md
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
-wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>; --org, --json, -y. See references/communities.md
+wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>, access list|add|remove <community> [<email>…] (an invite-only community's access list; remove takes out the members the email admitted); --org, --json, -y. See references/communities.md
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error). With --hub, auto-attaches the hub's active alerts so triage sees a credential/connection cause up front — check `wayai alerts` yourself first, it's often not a platform bug
@@ -932,7 +933,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule, event or webhook trigger, contact-list or no target, `send_message` / `run_agent`), webhook deliveries (signing, the secret, rotation), valid combinations per hub type, task-hub tasks, gates, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |
-| **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml`, `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs` |
+| **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats, an invite-only community's access list; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml` (its `admission`), `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs` |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
 | **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, relationship types, relationships, batch, bulk import |

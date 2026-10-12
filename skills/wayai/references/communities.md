@@ -5,8 +5,8 @@ creates communities; once one exists, the organization's **owners and admins** m
 
 | Task | Where |
 |------|-------|
-| List the organization's communities; read, rotate or turn off a join link; read the stats | CLI (`wayai communities`) or the web console |
-| Settings, rules, the join link's on/off state, rooms and courses | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the web console |
+| List the organization's communities; read, rotate or turn off a join link; read the stats; the access list of an invite-only community | CLI (`wayai communities`) or the web console |
+| Settings (including who may join: `admission`), rules, the join link's on/off state, rooms and courses | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the web console |
 | Moderators and moderation | The web console: organization settings → Communities (`/settings/organizations/<org_id>/communities`) |
 
 ## Sign-in
@@ -27,6 +27,9 @@ wayai communities join-link get <community> [--org <org_id>] [--json]
 wayai communities join-link rotate <community> [--org <org_id>] [-y] [--json]
 wayai communities join-link off <community> [--org <org_id>] [-y] [--json]
 wayai communities stats <community> [--org <org_id>] [--json]
+wayai communities access list <community> [--org <org_id>] [--json]
+wayai communities access add <community> <email>... [--org <org_id>] [--json]
+wayai communities access remove <community> <email> [--org <org_id>] [-y] [--json]
 ```
 
 - **`<community>`** is a community id (from `list`), or the community's exact name within the
@@ -35,7 +38,9 @@ wayai communities stats <community> [--org <org_id>] [--json]
 - **The organization** is `--org`, else the repo's (`wayai-ws/wayai.yaml`, set by `wayai init`).
   `list` and a name need one; an id does not.
 - **`--json`** prints the response's `data` as is: the list of communities, the join link
-  (`enabled`, `url`), or the stats.
+  (`enabled`, `url`), the stats, or what an access-list add did (`added`, `already_listed`).
+  `access list --json` prints every entry (`access_id`, `email`, `created_at`); `access remove
+  --json` prints the entry it removed.
 
 ### The join link
 
@@ -50,6 +55,35 @@ command does not run in a terminal.
 To see which channel brings people, post the link with a source tag on each one: add
 `&src=<tag>` (lowercase letters, digits, `_` and `-`, at most 32 characters). `stats` counts the
 joins per tag.
+
+### Invite-only: the access list
+
+A community's `admission` setting decides who its link admits: `link` (the default) admits anyone
+holding it; `invite` admits only the organization's owners and admins and the people whose
+verified email is on the community's **access list** — a forwarded link admits nobody else. Set
+`admission` in `community.yaml` ([Communities as code](#communities-as-code)) or in the web console.
+
+- `access list` prints the emails on the list, oldest first.
+- `access add` adds emails: at most 500 at a time, and a list holds at most 10,000. An email
+  already on the list is left as it is. Each email is checked first, and the command refuses,
+  naming every value that is not an email, before it sends anything.
+- `access remove` takes one email off the list, and **removes from the community anyone that
+  email let in**, whatever the admission. It prints that, on stderr, and asks first; `-y` skips the
+  question (never the warning), and is required when the command does not run in a terminal.
+
+`access list` reads the list 500 emails per request, and `access remove` reads it as far as the
+email it removes; each request counts against the per-person budget every community request shares
+(60 a minute).
+
+An email matches exactly once trimmed and lowercased: `Ana@Example.com` is `ana@example.com`, but
+`ana+news@example.com` is a different email. The list shows only the emails entered, never whom
+they let in. The list is edited only with these commands or in the web console, never as workspace
+files: it holds people's emails. WayAI sends no invitations: share the join link through your own
+channels.
+
+Making a community invite-only removes nobody: current members stay, including anyone who joined
+with a shared link, and the access list decides only who joins from then on. Switching back to
+`link` keeps the list.
 
 ### Stats
 
@@ -101,6 +135,7 @@ settings:                      # settings and rules.md share one rev
   rev: v1:4d1e9a07c2b3
   slow_mode_seconds: 30        # 0 is off
   courses_label: Academy       # '' for the default
+  admission: invite            # link (the default): anyone with the link; invite: owners, admins and the access list
 join_link_enabled: true        # the link itself is never written to disk
 join_link_rev: v1:77ac01e5f9d2
 rooms:
@@ -241,6 +276,10 @@ either side.
 - **`join_link_enabled: true` over a link that is off makes a new link**: every link shared before
   stays dead. To replace an active link, or turn off a leaked one at once, use
   `wayai communities join-link rotate|off`.
+- **`admission: invite`** makes the link admit only the organization's owners and admins and the
+  emails on the access list ([Invite-only](#invite-only-the-access-list)). Push's listing says what
+  the change does before it asks: no member is removed. `admission: link` opens the link to anyone
+  again, and the access list is kept. A file without `admission` reads as `link`.
 - **The files are rewritten** in a fixed layout: by pull, and by push for each file a change it
   applies records something new in — an id, a rev, a `synced:` order, or the rules as the server
   saved them. Comments in a rewritten file are not kept; a file push records nothing new in stays
@@ -269,6 +308,11 @@ either side.
 | … not found, or you are not an owner or admin of … | Check the id or name with `wayai communities list`, and that you are an owner or admin of the organization |
 | Too many requests | Every community request — the web console's and your messages included — shares one per-person budget of 60 a minute. Wait the time the message names |
 | No organization: pass --org | Pass `--org <org_id>`, or run inside a workspace set up with `wayai init` |
+| Not an email / Not emails | Correct the values the message names: nothing was sent |
+| An add takes at most … emails | Add them in batches of up to 500 |
+| Nothing was added: the access list … would hold more than … | A list holds at most 10,000 emails: remove some first |
+| … is not on the access list of … | Check the email with `wayai communities access list` |
+| WayAI has suspended this account | A suspended account changes neither the access list nor the admission |
 | … is not one of the communities of organization … | Pull and push a community from a workspace bound to the organization that owns it |
 | Conflicts — changed in your files and on the server | `wayai pull communities/<folder> --theirs` takes the server's side; make again any edit of yours to keep, then push |
 | Push stopped at … | Fix what the message names and push again: what was applied before it stays applied |
