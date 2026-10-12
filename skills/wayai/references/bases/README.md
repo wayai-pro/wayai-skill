@@ -105,7 +105,7 @@ large or binary content belongs in Files.
 | Integrate something the platform can't call directly | executor | [executors.md](executors.md) |
 | Give an LLM agent safe, domain-named tools | Actions + toolset + toolset-bound token | [toolsets.md](toolsets.md) |
 | Make a state-dependent write race-free | Action `precondition` (compare-and-set) | [toolsets.md](toolsets.md) |
-| Least-privilege machine/CI access | scoped tokens (`bases tokens create-for-toolset`) | [toolsets.md](toolsets.md) |
+| Least-privilege machine/CI access | grant-scoped tokens (`bases tokens create --grants`) — a toolset-bound token calls only its toolset's tools, never the plain API | [toolsets.md](toolsets.md) |
 | Store integration credentials | base credentials (`credential:<name>` references) | [toolsets.md](toolsets.md) |
 | Manage config in git / review in PRs | `wayai pull bases/<base>` / `wayai push bases/<base>` | [config-as-code.md](config-as-code.md) |
 | Deterministic agent evals against known data | a preview with integrations disabled + seed fixtures | [config-as-code.md](config-as-code.md), and [`../evals.md`](../evals.md) for the hub side |
