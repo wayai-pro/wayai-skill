@@ -13,6 +13,13 @@ entity, so changes review cleanly in a pull request.
 > promoted with the base, copied into a new preview), but `pull` never writes them, `push` never applies them, and `--prune`
 > never touches them. Manage them with `wayai file-types` ([files.md](files.md)) and do not assume a
 > committed base folder captures them — it does not.
+>
+> A toolset's **file tools** are not file types: they are the toolset's `files` key in
+> `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike the toolset's other keys,
+> deleting `files` from the file removes nothing** — a push that omits it keeps the file tools the
+> base has. To remove them all, write `files: []` — except on a toolset with no Actions, which
+> needs at least one file tool: remove that toolset's file and `push --prune` instead. The file
+> types they name must already exist on the base, or the push is refused.
 
 ```
 wayai-ws/
