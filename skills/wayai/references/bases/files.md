@@ -59,10 +59,12 @@ contain folders (`q3/summary.pdf`); `--prefix` and `--depth` navigate them on `l
 **Content versions.** Every content change is retained as an immutable version. Read an earlier one
 with `wayai files get --version <n>` (reads return the latest by default), list them with
 `wayai files history`, and compare two with `wayai files diff --from <n> --to <n>` — you get a
-metadata delta plus a line-by-line content diff for text files. Renaming or re-tagging a file —
-metadata only, no new bytes — does not create a version. A file created at a path where one was
-deleted is a new file with its own history, but its version numbers continue past the deleted
-file's rather than starting over at 1.
+metadata delta plus a line-by-line content diff for text files. Re-tagging a file (metadata only)
+does not create a version. Moving it with `mv` does: the same bytes become a new version at the new
+path. A path's version numbers never start over. A file created at a path where another was deleted
+or moved away from is a new file with its own history, but its version numbers continue past the
+earlier file's; a file moved onto such a path does the same. So a version read from one file never
+matches another file later at its path.
 
 **Labels, metadata, and compare-and-set on upload.** A REST upload (`PUT` of a file's path) takes
 three optional request headers:
