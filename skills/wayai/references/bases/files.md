@@ -75,6 +75,23 @@ three optional request headers:
 > `--if-match`: it is an unconditional overwrite that sets no label or metadata. Read them back with
 > `--meta` and `diff`; to write them, use the REST upload.
 
+**Compare-and-set on delete.** A REST delete takes the same optional `If-Match`: the file is removed
+only if its content hash still matches, and the delete is refused with a 409 otherwise. Without it a
+delete is unconditional. (`wayai files rm` does not declare `--if-match` either.)
+
+**Searching.** The REST list takes three optional search parameters, which search the whole folder
+tree under `prefix` (they do not combine with `depth`):
+
+- `query` — case-insensitive text in the file name or in a string `title` in the file's metadata.
+- `tags` — repeatable; matches files whose metadata `tags` array holds any of them.
+- `metadata_filter` — a MongoDB-style filter over the metadata, as JSON (`$eq` `$ne` `$gt` `$gte`
+  `$lt` `$lte` `$in` `$nin` `$contains` `$and` `$or` `$not`). A field the file type's metadata
+  schema does not declare is refused.
+
+`title` and `tags` are ordinary metadata: declare them in the file type's metadata schema to use them.
+A search that reads 5,000 files without filling its page is refused — search a narrower prefix.
+`wayai files list` does not declare these parameters yet.
+
 **Mounting a file type as a filesystem.** `wayai files mount <file_type>` mints an S3-compatible
 credential, so any harness or tool that speaks S3 (s3fs, cloud storage mount SDKs) can mount the
 bucket as a local folder and read files with ordinary filesystem calls — no per-tool integration. It
@@ -91,15 +108,16 @@ them with path-style addressing.
 A `read_write` mount can write files back, and those writes are conflict-safe and versioned: each
 change is checked against the version you started from (a create requires the path be new; an update
 requires the file be unchanged since you read it), so a stale overwrite is refused rather than
-silently clobbering a concurrent change. Every write is a new version with full history.
+silently clobbering a concurrent change. Every write is a new version with full history. A delete
+may carry `If-Match` too, and is refused with 412 if the file changed since you read it.
 
 **Linking files to records.** A relationship can point at a file — its endpoint kind is `file`. If the
 link's relationship type is declared **`cascade`**, deleting the link (or the owning relationship)
 removes the file; a non-cascade link is a plain reference, so a file shared across records survives.
 
-**Agents do not get file tools from a toolset.** A toolset composes Actions (record-type operations),
-relationship tools, batch and SQL — there is no file or file-type tool among them
-([toolsets.md](toolsets.md)). Files are reached by the CLI, the REST surface, or an S3 mount.
+**Agents do not get file tools from a toolset's MCP server.** A toolset's published tools are its
+Actions, relationship tools, batch and SQL ([toolsets.md](toolsets.md)). Files are reached by the CLI,
+the REST surface, or an S3 mount.
 
 ## Attachments
 
