@@ -157,7 +157,7 @@ A file entry is `{ file_type, path_prefix?, operations, name?, names?, descripti
 - **`path_prefix` is the tool's whole reach.** It is a folder (`public` reaches `public/eu/refunds.md`, never `public-old/…`); omit it for the whole file type. Every path a tool takes or returns is the file's full path, and a path outside the folder is refused. No file tool moves a file.
 - **`list`** — searches the folder tree; `path` narrows it to a folder beneath. `query` matches the file name or a `title` in the file's metadata (case-insensitive); `tags` matches files whose metadata `tags` array holds any of them; `metadata_filter` is a MongoDB-style filter over the metadata (`$eq` `$ne` `$gt` `$gte` `$lt` `$lte` `$in` `$nin` `$contains` `$and` `$or` `$not`), and a field the file type's metadata schema does not declare is refused. Declare `title` and `tags` in the metadata schema to search on them. Pages of 50 by default and up to 100 (`limit`, `offset`); a full page may have more after it, so page on with `offset`; a search that reads 5,000 files without filling its page is refused — search a narrower folder.
 - **`get`** — the file with its `content` and `version`: UTF-8 text for a text file, base64 otherwise (`encoding` says which).
-- **`put`** — `path`, `content`, optional `encoding` (`utf-8` default, or `base64`), `content_type`, `metadata`, and `version`. **With `version` it overwrites only while that version is still current** — the one the agent read; **without it, it only creates**, refusing a path that is taken. A write whose version is no longer current is refused (409) and changes nothing. A version counts content: new content becomes a new version in the file's history, a write that changes only metadata keeps the version (so it does not make another reader's version stale), and a file deleted and created again starts over at version 1. A new file with no `content_type` gets one from its extension (`.md` → `text/markdown`), else `text/plain` (or `application/octet-stream` for base64); an existing file keeps its own, and keeps its metadata when `metadata` is omitted.
+- **`put`** — `path`, `content`, optional `encoding` (`utf-8` default, or `base64`), `content_type`, `metadata`, and `version`. **With `version` it overwrites only while that version is still current** — the one the agent read; **without it, it only creates**, refusing a path that is taken. A write whose version is no longer current is refused (409) and changes nothing. A version counts content: new content becomes a new version in the file's history, a write that changes only metadata keeps the version (so it does not make another reader's version stale), and a file deleted and created again at the same path continues past the deleted file's versions rather than starting over, so a version read from the deleted file is refused. A new file with no `content_type` gets one from its extension (`.md` → `text/markdown`), else `text/plain` (or `application/octet-stream` for base64); an existing file keeps its own, and keeps its metadata when `metadata` is omitted.
 - **`delete`** — `path` and a **required `version`**: it removes the file only while that version is current.
 - **Size.** A file tool carries at most 1 MiB of content per call, in either direction.
 - **Permissions.** A token bound to the toolset carries `read:files` for `list`/`get` and `write:files` for `put`/`delete`, so minting one requires those on the base.
@@ -166,9 +166,9 @@ Give a customer-facing agent `list` and `get` only; keep `put` and `delete` for 
 
 **`wayai toolsets upsert` replaces the whole toolset.** Pass `files` on every upsert of a toolset that has file tools — through `--config`, since the flag form has no file option. An upsert without `files` (the flag form included) removes them.
 
-> **Not in config-as-code yet.** `wayai pull` does not write a toolset's `files`, so file tools
-> cannot be managed from a base folder. A `push` leaves the base's file tools as they are: unlike
-> `toolsets upsert`, a pushed toolset that omits `files` keeps them.
+> **In config-as-code.** `wayai pull` writes a toolset's `files` into `toolsets/<id>.yaml`, and
+> `push` applies them. Unlike `toolsets upsert`, a pushed toolset that omits `files` keeps the base's
+> file tools; [config-as-code.md](config-as-code.md) says how to remove them.
 
 ## The MCP connection URL
 

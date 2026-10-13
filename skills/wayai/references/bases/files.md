@@ -60,7 +60,9 @@ contain folders (`q3/summary.pdf`); `--prefix` and `--depth` navigate them on `l
 with `wayai files get --version <n>` (reads return the latest by default), list them with
 `wayai files history`, and compare two with `wayai files diff --from <n> --to <n>` — you get a
 metadata delta plus a line-by-line content diff for text files. Renaming or re-tagging a file —
-metadata only, no new bytes — does not create a version.
+metadata only, no new bytes — does not create a version. A file created at a path where one was
+deleted is a new file with its own history, but its version numbers continue past the deleted
+file's rather than starting over at 1.
 
 **Labels, metadata, and compare-and-set on upload.** A REST upload (`PUT` of a file's path) takes
 three optional request headers:
