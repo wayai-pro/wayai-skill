@@ -9,6 +9,7 @@ An agent connected to a toolset sees `create_invoice`, `list_payments` — its o
 - [Actions](#actions)
 - [Composite Actions](#composite-actions)
 - [Toolsets](#toolsets)
+- [File tools](#file-tools)
 - [The MCP connection URL](#the-mcp-connection-url)
 - [Which base serves a slug](#which-base-serves-a-slug)
 - [Promotion blocking](#promotion-blocking)
@@ -81,7 +82,7 @@ Reference it from a toolset like any Action (`--action place_order`). The genera
 
 ## Toolsets
 
-A **toolset** composes Actions **by reference** and adds the surfaces that are not Actions: relationship tools, batch, and SQL.
+A **toolset** composes Actions **by reference** and adds the surfaces that are not Actions: relationship tools, [file tools](#file-tools), batch, and SQL.
 
 ```bash
 wayai toolsets upsert invoicing-agent --base my-base \
@@ -136,6 +137,39 @@ Relationship tools and `batch` are declared inline on the toolset because they a
 
 **Toolsets and Actions are preview-only config.** Author them against a preview base and promote with the schema change they depend on. Config-as-code round-trips them under `wayai-ws/bases/<base>/` via `wayai pull bases/<base>` / `wayai push bases/<base>` — see [`config-as-code.md`](config-as-code.md).
 
+## File tools
+
+A toolset can give its agent the documents of a file type ([files.md](files.md)): a `files` entry per file type and folder, declared inline like a relationship tool. A toolset of file tools alone is valid (`"actions": []`), the usual shape for an agent that only reads documents.
+
+```bash
+wayai toolsets upsert support-agent --base my-base --config '{
+  "name": "Support Agent",
+  "actions": [],
+  "files": [
+    { "file_type": "policies", "path_prefix": "public", "operations": ["list", "get"] },
+    { "file_type": "policies", "path_prefix": "drafts", "operations": ["put", "delete"], "name": "draft" }
+  ]
+}'
+```
+
+A file entry is `{ file_type, path_prefix?, operations, name?, names?, description_override? }`. Each operation becomes one tool named `<op>_<name>`, where `name` defaults to the file type (`list_policies`, `get_policies`, `put_draft`, `delete_draft`); `names` overrides one operation's tool name.
+
+- **`path_prefix` is the tool's whole reach.** It is a folder (`public` reaches `public/eu/refunds.md`, never `public-old/…`); omit it for the whole file type. Every path a tool takes or returns is the file's full path, and a path outside the folder is refused. No file tool moves a file.
+- **`list`** — searches the folder tree; `path` narrows it to a folder beneath. `query` matches the file name or a `title` in the file's metadata (case-insensitive); `tags` matches files whose metadata `tags` array holds any of them; `metadata_filter` is a MongoDB-style filter over the metadata (`$eq` `$ne` `$gt` `$gte` `$lt` `$lte` `$in` `$nin` `$contains` `$and` `$or` `$not`), and a field the file type's metadata schema does not declare is refused. Declare `title` and `tags` in the metadata schema to search on them. Pages of 50 by default and up to 100 (`limit`, `offset`); a full page may have more after it, so page on with `offset`; a search that reads 5,000 files without filling its page is refused — search a narrower folder.
+- **`get`** — the file with its `content` and `version`: UTF-8 text for a text file, base64 otherwise (`encoding` says which).
+- **`put`** — `path`, `content`, optional `encoding` (`utf-8` default, or `base64`), `content_type`, `metadata`, and `version`. **With `version` it overwrites only while that version is still current** — the one the agent read; **without it, it only creates**, refusing a path that is taken. A write whose version is no longer current is refused (409) and changes nothing. A version counts content: new content becomes a new version in the file's history, a write that changes only metadata keeps the version (so it does not make another reader's version stale), and a file deleted and created again starts over at version 1. A new file with no `content_type` gets one from its extension (`.md` → `text/markdown`), else `text/plain` (or `application/octet-stream` for base64); an existing file keeps its own, and keeps its metadata when `metadata` is omitted.
+- **`delete`** — `path` and a **required `version`**: it removes the file only while that version is current.
+- **Size.** A file tool carries at most 1 MiB of content per call, in either direction.
+- **Permissions.** A token bound to the toolset carries `read:files` for `list`/`get` and `write:files` for `put`/`delete`, so minting one requires those on the base.
+
+Give a customer-facing agent `list` and `get` only; keep `put` and `delete` for curator or back-office toolsets. A file tool needs its file type on the base: a toolset write naming a missing one is refused, and so is a promotion that would leave one missing.
+
+**`wayai toolsets upsert` replaces the whole toolset.** Pass `files` on every upsert of a toolset that has file tools — through `--config`, since the flag form has no file option. An upsert without `files` (the flag form included) removes them.
+
+> **Not in config-as-code yet.** `wayai pull` does not write a toolset's `files`, so file tools
+> cannot be managed from a base folder. A `push` leaves the base's file tools as they are: unlike
+> `toolsets upsert`, a pushed toolset that omits `files` keeps them.
+
 ## The MCP connection URL
 
 ```bash
@@ -158,7 +192,7 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 
 `wayai bases promote <production-id> --from <preview-id>` is blocked if it would break a published toolset:
 
-- removing a record type or relationship type the toolset exposes,
+- removing a record type, relationship type, or file type the toolset exposes,
 - dropping an Action a reference points at,
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects.

@@ -115,9 +115,9 @@ may carry `If-Match` too, and is refused with 412 if the file changed since you 
 link's relationship type is declared **`cascade`**, deleting the link (or the owning relationship)
 removes the file; a non-cascade link is a plain reference, so a file shared across records survives.
 
-**Agents do not get file tools from a toolset's MCP server.** A toolset's published tools are its
-Actions, relationship tools, batch and SQL ([toolsets.md](toolsets.md)). Files are reached by the CLI,
-the REST surface, or an S3 mount.
+**File tools for agents.** A toolset can give its agent `list`, `get`, `put` and `delete` tools over
+one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
+hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools).
 
 ## Attachments
 
