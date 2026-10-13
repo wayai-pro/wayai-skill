@@ -17,6 +17,17 @@ separate.
 A file type is a bucket that configures storage policy — max size, allowed content types — plus an
 optional metadata schema. It is **config**: write it in a preview base, then promote.
 
+- **Promote** adds new file types to production and updates changed ones. A changed policy or
+  metadata schema applies to later writes; existing files are not re-checked.
+- **Files never move with config.** They are data: a promotion or a new preview carries the file
+  type, never its files.
+- **Removing a file type through promote** happens only when production holds no live file of it.
+  Otherwise the promotion is blocked and `--dry-run` names the file type: recreate it in the preview
+  to keep it, or delete its files on production first.
+- **Rollback** restores the file types production had before that promotion. A file type the
+  promotion added is kept if it has gained files since, and the rollback names it.
+- **`create-preview`** copies its origin's file types into the new preview.
+
 Unlike every other config entity, a file type is **not** part of the config-as-code subtree — `pull`
 does not write it, `push` does not apply it, `--prune` does not remove it
 ([config-as-code.md](config-as-code.md)). These commands are the only way to manage one.

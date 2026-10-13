@@ -10,7 +10,7 @@ Actions, seed fixtures — live as version-controlled YAML under `wayai-ws/bases
 entity, so changes review cleanly in a pull request.
 
 > **File types are NOT in this subtree.** They are config in every other sense (preview-only writes,
-> promoted with the base), but `pull` never writes them, `push` never applies them, and `--prune`
+> promoted with the base, copied into a new preview), but `pull` never writes them, `push` never applies them, and `--prune`
 > never touches them. Manage them with `wayai file-types` ([files.md](files.md)) and do not assume a
 > committed base folder captures them — it does not.
 
@@ -138,7 +138,8 @@ landing on someone else's would corrupt both runs.
 **Promotion is human-only.** Surface the command and let the user run it; recommend `--dry-run`
 first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhooks` (omit to promote
 everything). `promotions` lists prior promotions and `rollback` reverts one by id. Promotion is
-blocked if it would break a published toolset — a dry run lists the conflicts. An **inline** source secret does not travel with a
+blocked if it would break a published toolset, or remove a file type production still holds files
+of — a dry run lists the conflicts. An **inline** source secret does not travel with a
 promotion — it is environment-local, so a newly-promoted source carrying one stays unconfigured
 until you set it on production. A `credential:<name>` reference resolves against the credentials of
 the base serving the request, and promotion publishes the preview credentials you opted in
