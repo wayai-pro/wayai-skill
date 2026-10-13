@@ -62,14 +62,18 @@ with `wayai files get --version <n>` (reads return the latest by default), list 
 metadata delta plus a line-by-line content diff for text files. Renaming or re-tagging a file —
 metadata only, no new bytes — does not create a version.
 
-> **Not reachable from the CLI yet: labels, metadata, and compare-and-set on upload.** The storage
-> surface takes a version label, structured metadata, and an `if-match` content hash as request
-> headers, but the backend proxy forwards a fixed header allowlist and drops those three. `wayai
-> files put` therefore does **not** declare `--label`, `--metadata`, or `--if-match`: declaring them
-> would promise a compare-and-set that silently does not happen — a concurrent overwrite the user
-> asked to be refused would be applied instead, and the label and metadata would vanish with no
-> error. Read them back (`--meta`, `diff`) but do not plan a workflow around writing them from the
-> CLI today.
+**Labels, metadata, and compare-and-set on upload.** A REST upload (`PUT` of a file's path) takes
+three optional request headers:
+
+- `X-Data-Label` — a free-string label for the content version the upload creates.
+- `X-Data-Metadata` — the file's structured metadata, as JSON.
+- `If-Match` — compare-and-set: the file's content hash, which a download returns as its `ETag`
+  (`--meta` shows it as `content_sha256`). The upload is refused with a 409 if the file changed
+  since, or no longer exists.
+
+> **Not on the CLI yet.** `wayai files put` does **not** declare `--label`, `--metadata`, or
+> `--if-match`: it is an unconditional overwrite that sets no label or metadata. Read them back with
+> `--meta` and `diff`; to write them, use the REST upload.
 
 **Mounting a file type as a filesystem.** `wayai files mount <file_type>` mints an S3-compatible
 credential, so any harness or tool that speaks S3 (s3fs, cloud storage mount SDKs) can mount the
