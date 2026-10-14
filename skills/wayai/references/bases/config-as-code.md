@@ -12,7 +12,9 @@ entity, so changes review cleanly in a pull request.
 > **File types are NOT in this subtree.** They are config in every other sense (preview-only writes,
 > promoted with the base, copied into a new preview), but `pull` never writes them, `push` never applies them, and `--prune`
 > never touches them. Manage them with `wayai file-types` ([files.md](files.md)) and do not assume a
-> committed base folder captures them — it does not.
+> committed base folder captures them — it does not. The files inside a file type are data, not
+> config: keep them as a folder with `wayai files pull`/`push`
+> ([files.md](files.md#syncing-files-as-a-folder)), which write any base, production included.
 >
 > A toolset's **file tools** are not file types: they are the toolset's `files` key in
 > `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike most of the toolset's keys,
@@ -133,7 +135,7 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
 wayai bases create-preview <origin-id> --name <slug> [--description <d>] [--integrations enabled|disabled] [--create-only]
 wayai bases list-previews <origin-id>
 wayai bases update <preview-id> --integrations enabled|disabled
-wayai bases promote <production-id> --from <preview-id> [--dry-run] [--record-types <ids>] [--triggers <ids>] [--inbound-webhooks <ids>]
+wayai bases promote <production-id> --from <preview-id> [--dry-run] [--record-types <ids>] [--triggers <ids>] [--inbound-webhooks <ids>] [--file-types <ids>]
 wayai bases promotions <production-id>
 wayai bases rollback <production-id> --promotion <promotion-id>
 ```
@@ -147,10 +149,11 @@ Pass `--create-only` to fail instead — which is what you want for a throwaway 
 landing on someone else's would corrupt both runs.
 
 **Promotion is human-only.** Surface the command and let the user run it; recommend `--dry-run`
-first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhooks` (omit to promote
-everything). `promotions` lists prior promotions and `rollback` reverts one by id. Promotion is
-blocked if it would break a published toolset, or remove a file type production still holds files
-of — a dry run lists the conflicts. An **inline** source secret does not travel with a
+first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhooks`/`--file-types`:
+each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists
+prior promotions and `rollback` reverts one by id. Promotion is blocked if it would break a
+published toolset, or remove a file type production still holds files of — a dry run lists the
+conflicts. An **inline** source secret does not travel with a
 promotion — it is environment-local, so a newly-promoted source carrying one stays unconfigured
 until you set it on production. A `credential:<name>` reference resolves against the credentials of
 the base serving the request, and promotion publishes the preview credentials you opted in

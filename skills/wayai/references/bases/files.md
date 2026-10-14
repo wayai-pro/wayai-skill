@@ -19,8 +19,10 @@ optional metadata schema. It is **config**: write it in a preview base, then pro
 
 - **Promote** adds new file types to production and updates changed ones. A changed policy or
   metadata schema applies to later writes; existing files are not re-checked.
+  `wayai bases promote --file-types <ids>` promotes only the file types it names.
 - **Files never move with config.** They are data: a promotion or a new preview carries the file
-  type, never its files.
+  type, never its files. Sync the files themselves with `wayai files pull` and `push`
+  ([below](#syncing-files-as-a-folder)), on any base.
 - **Removing a file type through promote** happens only when production holds no live file of it.
   Otherwise the promotion is blocked and `--dry-run` names the file type: recreate it in the preview
   to keep it, or delete its files on production first.
@@ -43,13 +45,16 @@ wayai file-types delete <id> --base <base> [-y]
 ## Files
 
 ```bash
-wayai files put <file_type> <path> --base <base> --file <local> [--content-type <mime>]
+wayai files put <file_type> <path> --base <base> --file <local> [--content-type <mime>] \
+  [--if-match <hash>] [--label <text>] [--metadata <json|@file>]
 wayai files get <file_type> <path> --base <base> [--to <local>] [--meta] [--version <n>]
 wayai files list <file_type> --base <base> [--prefix <path>] [--depth <n>] [--limit <n>] [--offset <n>]
 wayai files mv <file_type> <from> <to> --base <base>
-wayai files rm <file_type> <path> --base <base> [-y]
+wayai files rm <file_type> <path> --base <base> [--if-match <hash>] [-y]
 wayai files history <file_type> <path> --base <base> [--limit <n>] [--offset <n>]
 wayai files diff <file_type> <path> --base <base> --from <n> --to <n>
+wayai files pull <file_type> --base <base> [--folder <path>] [--dir <local>] [--overwrite] [-y]
+wayai files push <file_type> --base <base> [--folder <path>] [--dir <local>] [--dry-run] [--prune] [--label <text>] [-y]
 wayai files mount <file_type> --base <base> [--mode <read_only|read_write>] [--path <prefix>] [--expires-in <seconds>]
 ```
 
@@ -66,22 +71,23 @@ or moved away from is a new file with its own history, but its version numbers c
 earlier file's; a file moved onto such a path does the same. So a version read from one file never
 matches another file later at its path.
 
-**Labels, metadata, and compare-and-set on upload.** A REST upload (`PUT` of a file's path) takes
-three optional request headers:
+**Labels, metadata, and compare-and-set on upload.** An upload — `wayai files put`, or a REST `PUT`
+of the file's path — takes three optional settings, each a request header:
 
-- `X-Data-Label` — a free-string label for the content version the upload creates.
-- `X-Data-Metadata` — the file's structured metadata, as JSON.
-- `If-Match` — compare-and-set: the file's content hash, which a download returns as its `ETag`
-  (`--meta` shows it as `content_sha256`). The upload is refused with a 409 if the file changed
-  since, or no longer exists.
+- `--label <text>` (`X-Data-Label`) — a free-string label for the content version the upload
+  creates. The CLI takes printable ASCII only, since a header carries nothing else intact.
+- `--metadata <json|@file>` (`X-Data-Metadata`) — the file's structured metadata, a JSON object,
+  checked against the file type's metadata schema. Without it the file keeps the metadata it has.
+- `--if-match <hash>` (`If-Match`) — compare-and-set: the file's content hash, which a download
+  returns as its `ETag` (`--meta` shows it as `content_sha256`). The upload is refused with a 409 if
+  the file changed since, or no longer exists.
 
-> **Not on the CLI yet.** `wayai files put` does **not** declare `--label`, `--metadata`, or
-> `--if-match`: it is an unconditional overwrite that sets no label or metadata. Read them back with
-> `--meta` and `diff`; to write them, use the REST upload.
+Without them, `put` is an unconditional overwrite. Read the label and metadata back with `--meta`
+and `diff`.
 
-**Compare-and-set on delete.** A REST delete takes the same optional `If-Match`: the file is removed
-only if its content hash still matches, and the delete is refused with a 409 otherwise. Without it a
-delete is unconditional. (`wayai files rm` does not declare `--if-match` either.)
+**Compare-and-set on delete.** `wayai files rm --if-match <hash>` (a REST delete's `If-Match`)
+removes the file only if its content hash still matches, and is refused with a 409 otherwise.
+Without it a delete is unconditional.
 
 **Searching.** The REST list takes three optional search parameters, which search the whole folder
 tree under `prefix` (they do not combine with `depth`):
@@ -122,6 +128,69 @@ removes the file; a non-cascade link is a plain reference, so a file shared acro
 **File tools for agents.** A toolset can give its agent `list`, `get`, `put` and `delete` tools over
 one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
 hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools).
+
+## Syncing files as a folder
+
+`wayai files pull` writes a file type — or one folder of it, with `--folder` — into a local folder,
+and `wayai files push` sends that folder's changes back, showing them first. This keeps documents
+(policies, manuals, price sheets) as files in git, reviewed as a diff before they reach a base.
+
+```bash
+wayai files pull policies --base crm                 # → ./policies/
+wayai files pull policies --base crm --folder hr     # → ./policies/hr/, paths relative to hr/
+wayai files push policies --base crm --dry-run       # the diff only
+wayai files push policies --base crm                 # the diff, a question, then the push
+```
+
+- **These are data commands.** They write the base `--base` names, production included: files are
+  data, and promote never carries them. Config is different — `wayai push bases/<base>` still
+  writes previews only. Name the same `--folder` (and `--dir`, if you gave one) on every pull and
+  push of a folder.
+- **Pull records what it saw.** `.wayai-files.json`, at the folder's root, names the base, file
+  type and folder, and each file's version and content hash. Commit it with the files: push checks
+  against it from any checkout, and refuses a folder pulled from another base, file type or folder.
+- **A change on the base is a conflict, not an overwrite.** A file the base changed, deleted or gained
+  since your pull — an agent's edit, say — is a **conflict**: listed, and not written. Each update
+  and delete also carries `If-Match` with the content hash your pull recorded, so one the base
+  changes while the push runs is refused too. The rest of the push goes through, and the command
+  exits non-zero (so does a `--dry-run` that lists a conflict).
+- **The one gap: a new file.** An upload cannot yet ask for "only if absent", so a file new in your
+  folder is checked against the listing push reads first. A file created at the same path in the
+  moment between that read and the upload is replaced — its content stays in the file's history
+  (`wayai files history`).
+- **Resolving a conflict.** Commit your copy, `wayai files pull … --overwrite` to take the base's,
+  merge the two with git, and push again.
+- **Pull keeps your local changes.** It takes the base's changes over files you have not changed,
+  removes files the base deleted that you have not changed, and keeps every file you changed or
+  deleted, at the version you pulled, so a later push of it is still checked — an edit made while
+  the pull runs included. `--overwrite` replaces your changes with the base's copies; it asks
+  first (`-y` skips the question).
+- **Deletions are opt-in.** A file you delete locally stays on the base unless you push with
+  `--prune`, and prune deletes only files your last pull saw and the base has not changed since,
+  under the same check. A file you never pulled is never deleted.
+- **Each version names who pushed it.** Push writes through the same file routes as `put`, under
+  your login. `--label <text>` labels every version it creates — a commit hash, say.
+- **Content, not metadata.** Push uploads content only: a changed file keeps its metadata and
+  content type, and a new file starts with no metadata and its extension's content type
+  (`.md` is `text/markdown`; unknown extensions are `application/octet-stream`). Set metadata with
+  `wayai files put --metadata`.
+- **Left out on both sides:** `.wayai-files.json` itself, `.git` and `.DS_Store`, however a base
+  path spells them (`.GIT` is `.git` on macOS and Windows). A symlink in the folder is refused, and
+  so is a git repository inside it: sync into a folder of its own — a folder inside a repository
+  is fine, a repository's root is not.
+- **One name, one file.** macOS and Windows treat `Leave.md` and `leave.md` as one file, so pull
+  refuses a base holding both, and a name that differs from another only in case — a base file
+  against a local file or folder, or a new local file against any path of the file type, inside
+  your folder or not — is a conflict, never written. So is one path as both a file and a folder
+  (`notes` and `notes/a.md`), whichever side holds which. Rename or remove one of the two to settle
+  it; `--overwrite` cannot. A case-only rename
+  on the base pulls cleanly once nothing else is left under the old name; one in your folder pushes
+  with `--prune`. On Windows, pull and push also refuse names that can stand for another file:
+  8.3 short-name shapes (`GIT~1`, `NOTES~2.MD`) and names with `:`.
+- **Without a terminal**, a push or an `--overwrite` pull needs `-y`; `--dry-run` never asks.
+- **One request per file.** Pull and push pace themselves below the data request budget your other
+  commands and the web console share (120 requests a minute today), and wait out that budget when
+  it is spent: a large file type takes minutes.
 
 ## Attachments
 
