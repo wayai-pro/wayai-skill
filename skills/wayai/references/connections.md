@@ -232,6 +232,17 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
 - **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
 
+### Moving a connection's base URL
+
+A connection's credential only ever goes to its base URL's origin: the scheme, host and port. So moving the base URL to another origin, in the UI or with `wayai push`, does not take the credential along:
+
+- **The stored credential is cleared**, and so is a linked organization credential's link. The organization credential itself stays, and so do its links to other connections. An OAuth connection's authorization is cleared too.
+- **A path-only change keeps both**, for example `https://api.example.com/v1` → `https://api.example.com/v2`.
+- **In the UI**, the connection form asks for the credential again as soon as the host changes. An OAuth connection can't be authorized again in place: add the new host as a new connection and authorize that.
+- **With `wayai push`**, a connection whose `hub.yaml` names `credential:` (and `access_token_credential:`) gets those organization credentials linked again in the same push. Any other credential stored on it, such as a directly-entered access token, is cleared, and the push warns which. A connection that names none is left without a credential, and the push warns too. Set what it names with [`wayai set-connection-credential`](#setting-a-connections-credential-directly-wayai-set-connection-credential), or add `credential:` and push again. An OAuth connection gets the same warning: add the new host as a new connection.
+- **On production**, a sync that moves a connection's base URL clears production's own credential too, unless the sync copies the preview's credential (`sync_credentials_to_production`). Until production's credential is set again, the connection raises the "production credential missing" alert.
+- **Base Toolset connections are not affected:** their token never goes to a base URL.
+
 ### Requirements
 
 - Organization credential must exist (create in UI: Settings → Organization → Credentials)
@@ -533,7 +544,7 @@ Connect to external file storage services for agent file access.
 2. In the **Tool** group, click the **External Resources** card
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
-   - **Storage API URL** (required): External storage service API endpoint (e.g., `https://storage.example.com/api`)
+   - **Storage API URL** (required): External storage service API endpoint (e.g., `https://storage.example.com/api`). The API key is only sent to this URL's origin: a redirect to another origin fails the request, and changing the URL to another origin clears the key
    - **API Key** (required): Your storage service API key
 4. Click Save
 
@@ -611,7 +622,7 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
    - **Bearer Token** — provide a bearer token
 4. Fill the form:
    - **Connection Name** (required): A name to identify this connection
-   - **Base URL**: Base URL for the API (e.g., `https://api.example.com`). The connection's credential is only ever sent to this URL's origin (scheme, host and port), never past a redirect off it, so a connection that holds a credential takes no custom tool without one, and a tool's full-URL path must stay on that origin. A base URL needs a fixed host and scheme: one with a `{{placeholder}}` host, or without an `https://` or `http://` scheme, has no origin, and the credential is sent nowhere
+   - **Base URL**: Base URL for the API (e.g., `https://api.example.com`). The connection's credential is only ever sent to this URL's origin (scheme, host and port), never past a redirect off it, so a connection that holds a credential takes no custom tool without one, and a tool's full-URL path must stay on that origin. A base URL needs a fixed host and scheme: one with a `{{placeholder}}` host, or without an `https://` or `http://` scheme, has no origin, and the credential is sent nowhere. Changing it to another origin clears the stored credential ([Moving a connection's base URL](#moving-a-connections-base-url))
    - Auth credentials (varies by type — see above)
    - **Custom Headers** (optional): Additional headers to include in all requests
 5. Click Save
@@ -642,7 +653,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
    - **OAuth** — complete OAuth 2.0 authorization flow (RFC 9728)
 4. Fill the form:
    - **Connection Name** (required): A friendly name for this MCP connection
-   - **MCP Server URL** (required): The Streamable HTTP endpoint (e.g., `https://mcp.example.com/mcp`)
+   - **MCP Server URL** (required): The Streamable HTTP endpoint (e.g., `https://mcp.example.com/mcp`). The token and custom headers are only sent to this URL's origin: a redirect to another origin fails the request, and changing the URL to another origin clears the token ([Moving a connection's base URL](#moving-a-connections-base-url))
    - For **Bearer Token**: **Bearer Token** (optional), **Custom Headers** (optional)
    - For **OAuth**: **OAuth Client ID** (optional), **OAuth Client Secret** (optional) — leave empty unless the server cannot register a client for us. A client you registered yourself must carry the hub-specific redirect URI `https://api.wayai.pro/oauth/callback/mcp/<hub id>` (the hub id is in the settings URL); there is no longer one shared platform callback URI
 5. Click Save → Tools auto-discovered (OAuth connections complete authorization flow first)

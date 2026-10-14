@@ -15,7 +15,7 @@ Create custom API integrations for agents using REST API connections (`type: Too
 ## Overview
 
 Custom tools allow agents to call external APIs. They require:
-1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI. Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one
+1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI. Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
 ---
