@@ -222,7 +222,7 @@ A base left with any of these problems refuses the customer-scoped calls they af
 
 - **Its write tools leave the owner out.** The create and update tools of an `owned` record type do not offer its `owner` field: the owner of a record a customer-scoped call writes is the customer the call serves.
 - **What it reaches.** `wayai toolsets get --resolved` reports `customer_scope` and `record_type_scopes`: what each record type the toolset can reach is — `root`, `owned` or `shared`, or `null` for one that declares none — including every record type its relationship tools and composite relationship steps can link (every record type, when a relationship type names none on an end).
-- **Calls serve reads only, for now.** A call reads what its customer reaches; every write tool is refused with `CUSTOMER_SCOPE_UNSUPPORTED`. See [Serving a customer](#serving-a-customer).
+- **Calls read and write within their customer.** A call reaches only what its customer reaches, and writes only there. See [Serving a customer](#serving-a-customer).
 - **Turning it off.** A toolset write that omits `customer_scope` keeps the stored value — unlike `files` on `toolsets upsert` — so an older client writing a toolset back never turns a scope off. Send `"customer_scope": false` to turn it off.
 
 ### Serving a customer
@@ -246,11 +246,23 @@ What a call reaches:
 - **`root`:** the customer's own record. `get` answers another customer's record as not found, and `list` returns only the customer's own.
 - **`owned`:** the records whose `owner` holds the customer record's key — the key the owner's `x-fk` names (`external_id` by default). The same applies to `get` and `list` as for the root.
 - **`shared`:** every record, as far as the tool allows.
-- **File tools:** served as configured.
+- **File tools:** `list` and `get` as configured. `put` and `delete` are refused: under a customer scope, files are shared documents.
 
 The rule applies to every filter an agent sends, archived records included.
 
 **Relationship `list` tools.** These answer only links whose other end the customer reaches: its own record, a record it owns, a shared record, or a file. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link.
+
+**Writes.** A record tool's `create`, `update` and `delete`, a relationship tool's `create` and `delete`, and every step of a composite write only inside the customer's reach:
+
+- **An owned record is the customer's.** Its `owner` is set to the customer record's key, whether or not the call names it. A call naming another owner is refused.
+- **Another customer's record is not there.** An `update` or `delete` of a record the customer does not reach is answered as not found. A `create` whose `external_id` such a record holds — or a link `create` whose `external_id` a link outside the reach holds — is refused with `CONFLICT` (409), and a composite `update` step whose `external_id` such a record holds is answered as not found. A free key creates in both cases, so either answer does tell the call that a record or link outside its reach holds the key, though nothing of it.
+- **References stay inside.** Every `x-fk` a written record holds must name a record the customer reaches: its own, one it owns, or a shared one. A reference to any other record is refused exactly as a reference to a record that does not exist (400), on a shared record too.
+- **The customer record is updated, never created or deleted.** A call writes only the customer's own: a write of any other customer record, or one that would create one, is answered as not found. Its `external_id`, its `external_source`, and every field an `owned` type's owner matches on (the owner's `x-fk.key`) never change, and its delete is refused.
+- **Both ends of a link are inside.** A link joins only records the customer reaches, as a `list` reads them, and a call deletes or overwrites only such a link. Any other end, or a delete of any other link, is answered as one that does not exist. Deleting a link of a `cascade` relationship type to a file is refused, since it would delete the file.
+- **A composite is all or nothing.** A step refused under these rules rolls back every step of the call, which answers `BATCH_OPERATION_FAILED`, naming the refused step, with the refusal's code as its `details.original_error.code`.
+- **A source-backed record type** is written only when it is `shared`.
+
+These rules confine what the toolset's own tools write. A [trigger](integrations.md#triggers) fired by such a write runs as configured: an `internal_write` patches the record its `match` names, whoever's it is. To keep it inside the customer, match it on an `x-fk` field that names the trigger's own `target` and `target_key`, which a customer-scoped write can only point inside its customer's reach.
 
 A call is refused when:
 
@@ -260,7 +272,7 @@ A call is refused when:
 | `CUSTOMER_SCOPE_MISMATCH` | 403 | The call names a customer, and the toolset is not customer-scoped. |
 | `CUSTOMER_NOT_FOUND` | 404 | No live record of the root type matches the customer. |
 | `CUSTOMER_SCOPE_UNAVAILABLE` | 409 | The base declares no root record type, or more than one. |
-| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call writes, or reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. |
+| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. A write is also refused when it writes a file, names another owner, deletes the customer record or changes one of its keys, deletes a `cascade` link to a file, or writes a source-backed type that is not `shared`. |
 
 The customer record is read from the base's live records. Once its record type is declared `root`, archival keeps every record of the type there. A customer record archival had already moved out before then, by whichever rule moved it, is not found.
 
