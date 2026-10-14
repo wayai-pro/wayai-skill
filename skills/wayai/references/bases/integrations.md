@@ -369,7 +369,7 @@ wayai triggers delete <id> --base <base> [-y]
 
 **Delivery.** Webhook and `external_write` deliveries are HMAC-signed with the same scheme described under [Inbound webhooks](#inbound-webhooks) — a request signature plus a timestamp the receiver checks for freshness and an idempotency key (falling back to the message id) for dedupe — so one signer serves both directions. Verify with the published SDK, never by hand ([executors.md](executors.md)). Failed attempts are retried with backoff and dead-lettered after repeated failure; inspect with `wayai triggers deliveries`.
 
-**Loop guards.** By default writes that arrive from an inbound webhook don't re-fire triggers, and `--skip-cascade-writes <bool>` (default `true`) keeps a trigger from firing on writes an `internal_write` cascade produced. Both round-trip in config-as-code as `skip_inbound_webhook_writes` and `skip_cascade_writes` on the trigger file. Triggers can only be created and deleted in **preview** bases.
+**Loop guards.** By default writes that arrive from an inbound webhook don't re-fire triggers, and `--skip-cascade-writes <bool>` (default `true`) keeps a trigger from firing on writes an `internal_write` cascade produced. Both round-trip in config-as-code as `skip_inbound_webhook_writes` and `skip_cascade_writes` on the trigger file. On a record type that an `internal_write` set off by a [customer-scoped](toolsets.md#customer-scope) write patches, `skip_cascade_writes: false` is refused. Triggers can only be created and deleted in **preview** bases.
 
 ---
 
