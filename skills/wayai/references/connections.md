@@ -662,7 +662,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 
 > **MCP OAuth is UI-only.** `wayai push` auto-creates only the **Bearer Token** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connections & Credentials → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
 
-**Features:** OAuth connections include automatic token refresh (1 hour).
+**Features:** OAuth connections include automatic token refresh (1 hour). The authorization and every refresh send their code, verifier, client secret or refresh token only to the authorization server's token endpoint: a redirect to another origin fails the exchange instead of resending them.
 
 ---
 
