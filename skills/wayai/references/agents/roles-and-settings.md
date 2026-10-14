@@ -241,6 +241,29 @@ Notes:
 - Billing: each delivered preamble is a normal delivered message (+1 operation; +1 TTS operation on voice turns when spoken replies are enabled).
 - Set `deliver_preamble: false` for agents that shouldn't narrate progress or whose channel UX wants exactly one message per turn (only pilot-track agents deliver to users; copilot/background roles never deliver preambles regardless).
 
+### Code sandbox (all LLM connectors)
+
+Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox` and `copy_from_sandbox` (add them under the agent's tools; see [Native Tools › Code Sandbox Tools](native-tools.md#code-sandbox-tools)). The sandbox is one disposable Linux container per conversation: it starts on the first command, keeps its files between commands, and ends after 10 minutes without use, 60 minutes in all, or when the conversation closes. The next command then starts an empty one.
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| `code_execution_enabled` | `true` / `false` | `false` | The sandbox tools run only while this is on, on every LLM connector. On Anthropic and OpenAI it also enables `download_file`/`upload_file`, which use the provider's own sandbox. |
+| `sandbox_network` | `none` / `allowlist` / `web` | `none` | What code in the sandbox can reach (below). |
+| `sandbox_allowed_hosts` | list of host names | — | Under `allowlist`, the exact hosts the sandbox may reach (`api.example.com`): no wildcards, IP addresses, ports or paths; at most 50. |
+
+What each network setting allows:
+- **`none` ("No network")**: nothing leaves the sandbox.
+- **`allowlist` ("Allowlist")**: HTTP and HTTPS to the listed hosts only, through WayAI. No DNS or other protocol leaves, but data can still be sent to those hosts.
+- **`web` ("Web")**: HTTP and HTTPS to any public host, through WayAI. Data can be sent to any of them.
+
+WayAI adds no credentials to the sandbox's requests, and no credential is ever placed inside the sandbox. A host the allowlist cannot hold (a wildcard, an IP address, a URL) makes every command fail until it is fixed, and the agent is told why.
+
+Notes:
+- **Who can use it**: only the pilot and copilot tracks' responders (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`) can hold the sandbox tools; background, advisor, consultant and voice agents cannot.
+- **One network setting per sandbox**: the sandbox runs under one network setting for its whole life. When an agent with a different setting runs a command or copies a file in (after a transfer, or once the setting changes), it starts over empty, so nothing started under one setting reaches the network under another. Copying a file out reads the running sandbox whatever the setting.
+- **Billing**: a command runs inside the agent's turn, so its time is the turn's time, billed like any tool's; a sandbox waiting between turns is not billed.
+- Each command runs for at most 9 minutes (2 by default) and never past the turn's own time limit; long output keeps only its first and last parts.
+
 ### Copilot suggestion trigger (all LLM + harness connectors)
 
 Controls *when* a Copilot-track agent drafts its suggestion. Consulted **only** for an agent running on the Copilot track (status `team` under `copilot` / `pilot+copilot`); ignored for Pilot and background agents.

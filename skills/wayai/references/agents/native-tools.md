@@ -31,6 +31,7 @@ Other native fields (schema, instructions, operation) come from the platform cat
 - [Conversation Tools](#conversation-tools)
 - [State Tools](#state-tools)
 - [Resource & File Tools](#resource--file-tools)
+- [Code Sandbox Tools](#code-sandbox-tools)
 - [Skill Tools](#skill-tools)
 - [History & Summary Tools](#history--summary-tools)
 - [Meta Tools](#meta-tools)
@@ -345,6 +346,45 @@ In CREATE mode, a `resource_id` naming no resource the agent is linked to is ref
 
 ---
 
+## Code Sandbox Tools
+
+Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts an empty sandbox, while `copy_from_sandbox` reads the running one whatever the setting.
+
+### bash
+
+Run a Bash command in the sandbox. The sandbox starts on the first command and keeps its files between commands in the conversation; it ends after 10 minutes without use, 60 minutes in all, or when the conversation closes, and the next command then starts an empty one (its result says so).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `command` | string | Yes | The script to run, as with `bash -c`, in `/workspace` |
+| `timeout_seconds` | integer | No | Time limit: 120 by default, at most 540; never past the turn's own time limit |
+
+**Response.** `{ exit_code, timed_out, timeout_seconds, stdout, stderr, duration_ms }`. Each stream keeps its first and last parts; `stdout_omitted_bytes` / `stderr_omitted_bytes` say how much was cut. `new_sandbox` appears when the command started an empty sandbox, and `stopped` (with `exit_code: null`) when a command outlived its limit and the sandbox was stopped. A sandbox that cannot run the command (the organization runs as many sandboxes as it may, the sandbox could not start, the network setting is invalid) returns a tool error saying so.
+
+### copy_to_sandbox
+
+Copy one of the conversation's files into the sandbox, so commands can read or edit it there. WayAI copies the file; the sandbox needs no network for it. The files are those `read_file` opens from the conversation's own files: this conversation's attachments and an earlier conversation's of the same user (never a consult attachment). Hub resource files cannot be copied. A file larger than 25 MiB is refused.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `path` | string | Yes | The file, as `read_file` names it: `conversation/<name>` (a shorter unambiguous form or the file's id also works) or `conversations/<conversation_id>/<name>` |
+| `sandbox_path` | string | No | Where the copy lands, under `/workspace` (a relative path is taken from `/workspace`); defaults to the file's name in `/workspace`. Replaces any file there |
+
+**Response.** `{ sandbox_path, bytes }`, with `new_sandbox` when the copy started an empty sandbox.
+
+### copy_from_sandbox
+
+Copy a file out of the sandbox into the conversation, so what commands produced (a chart, a converted document) is kept after the sandbox ends. The file is stored for the support team on an internal note, which the customer never sees; it reaches the customer only when the agent sends it with `send_files`, by the path the result gives. A file larger than 25 MiB is refused, and when no sandbox is running there is nothing to copy (its workspace is gone), so none is started.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sandbox_path` | string | Yes | The file to copy, under `/workspace` (a relative path is taken from `/workspace`) |
+| `name` | string | No | The stored file's name, with no folders; defaults to the file's name in the sandbox |
+
+**Response.** `{ path, file_id, bytes, note }`: `path` is the file's address under `conversation/`, which `read_file` and `send_files` accept. As with every file stored in a conversation, the stored name is made safe for storage and timestamped, so use the `path` returned.
+
+---
+
 ## Skill Tools
 
 Read [skill-resource](../resources.md#skill-resources) content on demand (tool-based execution mode). `skill_id` = the skill's `resource_id`; the ids of the skills linked to the agent are injected into the `skill_id` parameter description at turn time, so the agent can discover them without any hand-written ids. (The handler also resolves a skill by name.)
@@ -476,6 +516,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 | Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only), `run_monitor` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Resource & File | `list_files`, `read_file`, `send_files`, `download_file`, `upload_file` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
+| Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
 | Meta | `get_tool_schema`, `execute_tool` |
