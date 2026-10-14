@@ -110,7 +110,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 - Channel connectors with API Key auth (Resend, Telegram)
 - Tool / custom variant (REST API)
 - Tool / mcp variant (MCP Server — Bearer Token auth)
-- Tool / native variant (External Resources)
+- Tool / native variant (External Resources, Base Toolset)
 - STT (Groq STT, OpenAI STT, ElevenLabs STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS)
 - Realtime (OpenAI GPT-Live — voice calls; see [Realtime](#realtime))
@@ -211,6 +211,7 @@ connections:
 ```
 
 - **Default is `true`** (copy on publish/sync) — omit the field to keep that behavior.
+- **Base Toolset connections ignore it:** their token is never copied, whatever the flag says ([Base Toolset](#base-toolset)).
 - **Non-secret config field:** it lives in `hub.yaml`, is set by `wayai push`, and round-trips on `wayai pull` (emitted only when `false`). It is **not** a secret — the credential itself never goes in YAML.
 
 ### Setting a connection's credential directly (`wayai set-connection-credential`)
@@ -264,7 +265,7 @@ The **category**, not the HTTP status, says what to fix. A rejected key shows as
 |------|-------------|
 | `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI) |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
-| `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
+| `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources, Base Toolset); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
 | `TTS` | Text-to-speech services (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS) |
 | `Realtime` | The voice of live AI voice calls (OpenAI GPT-Live) |
@@ -505,6 +506,7 @@ See [agents/native-tools.md](agents/native-tools.md) for available tools and the
 |-----------|--------------|------|--------|-------------|
 | **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | None | **Auto-enabled** | Native tools for conversation management, file handling, skills, and tool orchestration. |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | API Key | Enabled | Connect to external file storage services. |
+| Base Toolset | `2cf279bf-29ae-4983-a67f-bf619e391586` | Bearer Token | Enabled | Give agents one toolset of a base, through a token bound to that toolset. |
 
 #### Wayai (Auto-enabled)
 
@@ -534,6 +536,39 @@ Connect to external file storage services for agent file access.
 4. Click Save
 
 **Agent tools:** `get_external_files`, `send_external_files`
+
+#### Base Toolset
+
+Connects the hub to one [toolset](bases/toolsets.md) of a base through a [toolset-bound token](bases/toolsets.md#api-tokens). The token is the only secret the connection stores.
+
+> **Agents cannot call its tools through this connection yet.** It stores and checks the token, and publish and sync treat it as described below. Until agent calls arrive, connect an agent to a toolset with the [MCP Server](#mcp-server) connector and the toolset's MCP URL ([toolsets.md](bases/toolsets.md#the-mcp-connection-url)).
+
+**Setup:**
+1. Mint a toolset-bound token for a base in **this hub's environment**: a preview base's for a preview hub, the production base's for a production hub (`wayai bases tokens create-for-toolset <slug> --base <base-id>`)
+2. Settings → Organizations → Hub → Connections → in the **Tool** group, click **Base Toolset**
+3. Fill the form:
+   - **Connection Name** (required)
+   - **Toolset** (required): the toolset's slug, as in its MCP URL (`…/t/<slug>/mcp`)
+   - **Toolset Token** (required): the token from step 1
+4. Click Save
+
+```yaml
+connections:
+  - name: support-knowledge
+    type: Tool
+    service: Base Toolset
+    credential: support-toolset-preview   # a Bearer Token org credential holding the toolset-bound token
+    settings:
+      toolset: support
+```
+
+**Checked when stored.** Every write of the token asks which toolset it reaches: creating or editing the connection, linking an org credential, and rotating a linked credential. The write is refused unless the token is bound to that toolset, on a base of this organization, in the hub's environment.
+
+**Customer-facing agents.** A pilot, pilot specialist or pilot advisor can hold a tool on this connection only when its toolset exposes files alone: no record, composite or relationship tools, and neither `sql_query` nor `batch`. A write that would break this is refused, publish and sync included. That covers attaching the tool, changing the agent's role, and storing a token whose toolset reaches more.
+
+**Publish, sync and new previews.** The token stays in its own hub. Publishing, syncing and creating a preview from a hub never copy the token, its org credential link or what it reaches, whatever `sync_credentials_to_production` says. Set production's own production-base token with [`wayai set-connection-credential`](#setting-a-connections-credential-directly-wayai-set-connection-credential) (`--org-credential`, or `--field access_token --stdin`) or in the UI. Until it is set, the connection raises a "production credential missing" alert. If the preview names a different toolset, the next sync clears production's token, because that token is bound to the old toolset.
+
+**When production's tools differ.** After a sync, each toolset connection that holds a token in both hubs has its tools compared. If production's toolset lacks a tool the preview's has, or has one the preview's lacks, the sync still completes and shows a warning (a toast in the UI, a line in `wayai publish`'s output). Promote the base (`wayai bases promote`) so production's toolset matches.
 
 ### Custom variant (REST API)
 
@@ -806,6 +841,7 @@ connections:
 | Telegram | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000002` | Channel | API Key |
 | **Wayai** | `b17d9f3a-4e1b-46c9-b648-a2f0c3611aa4` | Tool | None (auto-created) |
 | External Resources | `e8f9a0b1-2c3d-4e5f-6789-0abcdef12345` | Tool | API Key |
+| Base Toolset | `2cf279bf-29ae-4983-a67f-bf619e391586` | Tool | Bearer Token |
 | REST API | `b15fb991-63e1-4a79-a174-d10aa66f4414` | Tool | API Key, Basic Auth, Bearer Token |
 | MCP Server | `f1a2b3c4-d5e6-7890-abcd-ef1234567890` | Tool | Bearer Token, OAuth |
 | Groq STT | `78328cbf-19d5-4310-9c37-fea2d792f356` | STT | API Key |
