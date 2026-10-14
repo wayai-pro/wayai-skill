@@ -45,6 +45,7 @@ connections:
   - name: my-api
     type: Tool
     service: REST API
+    base_url: https://api.example.com   # Where its credential may be sent (custom tools)
 ```
 
 **Benefits:**
@@ -137,6 +138,7 @@ connections:
   - name: my-custom-api
     type: Tool
     service: REST API
+    base_url: https://api.example.com   # Required for custom tools when it holds a credential
   - name: mcp-server
     type: Tool
     service: MCP Server
@@ -595,7 +597,7 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
    - **Bearer Token** — provide a bearer token
 4. Fill the form:
    - **Connection Name** (required): A name to identify this connection
-   - **Base URL** (optional): Base URL for the API (e.g., `https://api.example.com`)
+   - **Base URL**: Base URL for the API (e.g., `https://api.example.com`). The connection's credential is only ever sent to this URL's origin (scheme, host and port), never past a redirect off it, so a connection that holds a credential takes no custom tool without one, and a tool's full-URL path must stay on that origin. A base URL needs a fixed host and scheme: one with a `{{placeholder}}` host, or without an `https://` or `http://` scheme, has no origin, and the credential is sent nowhere
    - Auth credentials (varies by type — see above)
    - **Custom Headers** (optional): Additional headers to include in all requests
 5. Click Save

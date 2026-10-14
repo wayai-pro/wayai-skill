@@ -15,7 +15,7 @@ Create custom API integrations for agents using REST API connections (`type: Too
 ## Overview
 
 Custom tools allow agents to call external APIs. They require:
-1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI
+1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI. Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
 ---
@@ -52,6 +52,7 @@ connections:
   - name: my-api-connection
     type: Tool
     service: REST API
+    base_url: https://api.example.com   # Required for tools on a connection that holds a credential
 ```
 
 Then run `wayai push` to create the tools on the hub.
@@ -70,7 +71,7 @@ Then run `wayai push` to create the tools on the hub.
 |-------|-------------|
 | `tool_name` | Display name for the tool |
 | `tool_method` | HTTP method: GET, POST, PUT, DELETE, PATCH |
-| `tool_path` | URL path — either relative to connection base_url (e.g., `/orders/{{order_id}}`) or a full URL (e.g., `https://api.example.com/orders`). Full URLs are used as-is, ignoring base_url. Supports `{{placeholders}}` |
+| `tool_path` | URL path — either relative to connection base_url (e.g., `/orders/{{order_id}}`) or a full URL (e.g., `https://api.example.com/orders`). Full URLs are used as-is, ignoring base_url. A connection's credential is only ever sent to its base URL's origin (scheme, host and port), never past a redirect off it: on a connection that holds a credential, creating a tool whose URL leaves that origin, or editing a tool's path or connection so that it does, is refused (UI or `wayai push`); an existing such tool can still be edited in every other field, and its calls go out without the credential. A connection with no base URL takes no such tool — nor does one whose base URL has no fixed host (a `{{placeholder}}` host, or no `https://` or `http://` scheme), which has no origin, so its credential is sent nowhere. Publishing, syncing or replicating a hub copies an existing such tool as it is, and its calls go out without the credential. Supports `{{placeholders}}` |
 | `tool_config` | OpenAI function schema (auto-generated or custom) |
 | `tool_headers` | Additional headers array: `[{key, value}]` |
 | `tool_body_format` | Body encoding: `json` (default) or `form` (`application/x-www-form-urlencoded`) |
@@ -223,11 +224,12 @@ connections:
   - name: my-api
     type: Tool
     service: REST API
+    base_url: https://api.example.com/v1
 ```
 
-**Connection setup (UI — org credential):**
+**Connection setup (UI, or the org credential `wayai push` binds):**
 - Auth type: API Key
-- Base URL: `https://api.example.com/v1`
+- Base URL: `https://api.example.com/v1` (on the connection: `base_url:` in `hub.yaml`, or the connection form)
 - API Key: `sk-xxx`
 
 **Headers (connection level):**

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.125.0
+version: 6.126.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -808,6 +808,7 @@ connections:
   - name: my-api-connection
     type: Tool
     service: REST API
+    base_url: https://api.example.com   # Its credential is only sent to this origin: required for custom tools while it holds one
   - name: elevenlabs-tts
     type: TTS
     service: ElevenLabs TTS
