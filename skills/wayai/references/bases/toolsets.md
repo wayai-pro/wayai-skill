@@ -222,8 +222,45 @@ A base left with any of these problems refuses the customer-scoped calls they af
 
 - **Its write tools leave the owner out.** The create and update tools of an `owned` record type do not offer its `owner` field: the owner of a record a customer-scoped call writes is the customer the call serves.
 - **What it reaches.** `wayai toolsets get --resolved` reports `customer_scope` and `record_type_scopes`: what each record type the toolset can reach is — `root`, `owned` or `shared`, or `null` for one that declares none — including every record type its relationship tools and composite relationship steps can link (every record type, when a relationship type names none on an end).
-- **Calls are refused for now.** A call to a customer-scoped toolset must name the customer it serves, and no caller can name one yet, so every call is refused with `CUSTOMER_SCOPE_REQUIRED`. Its tools are still listed.
+- **Calls serve reads only, for now.** A call reads what its customer reaches; every write tool is refused with `CUSTOMER_SCOPE_UNSUPPORTED`. See [Serving a customer](#serving-a-customer).
 - **Turning it off.** A toolset write that omits `customer_scope` keeps the stored value — unlike `files` on `toolsets upsert` — so an older client writing a toolset back never turns a scope off. Send `"customer_scope": false` to turn it off.
+
+### Serving a customer
+
+Every call to a customer-scoped toolset names the customer it serves. A token bound to the toolset carries it: mint one per customer session, naming the customer under `toolset_binding.customer`. Name the customer record by its id, or by its `external_id` (with its `external_source`, if it has one):
+
+```bash
+curl -X POST "https://data.wayai.pro/v1/tokens" \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  --data '{"name": "support session", "expires_at": "2026-12-31T23:59:59Z",
+           "toolset_binding": {"base_id": "my-base", "toolset_id": "support-agent",
+                               "customer": {"external_id": "cus_123", "external_source": "crm"}}}'
+```
+
+A token naming a customer must be bound to a customer-scoped toolset. A WayAI contact's customer record is the root record whose `external_id` is the contact id and whose `external_source` is `wayai_contact`.
+
+What a call reaches:
+
+- **`root`:** the customer's own record. `get` answers another customer's record as not found, and `list` returns only the customer's own.
+- **`owned`:** the records whose `owner` holds the customer record's key — the key the owner's `x-fk` names (`external_id` by default). The same applies to `get` and `list` as for the root.
+- **`shared`:** every record, as far as the tool allows.
+- **File tools:** served as configured.
+
+The rule applies to every filter an agent sends, archived records included.
+
+**Relationship `list` tools.** These answer only links whose other end the customer reaches: its own record, a record it owns, a shared record, or a file. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link.
+
+A call is refused when:
+
+| Code | Status | When |
+|---|---|---|
+| `CUSTOMER_SCOPE_REQUIRED` | 403 | The call names no customer. |
+| `CUSTOMER_SCOPE_MISMATCH` | 403 | The call names a customer, and the toolset is not customer-scoped. |
+| `CUSTOMER_NOT_FOUND` | 404 | No live record of the root type matches the customer. |
+| `CUSTOMER_SCOPE_UNAVAILABLE` | 409 | The base declares no root record type, or more than one. |
+| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call writes, or reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. |
+
+The customer record is read from the base's live records. Once its record type is declared `root`, archival keeps every record of the type there. A customer record archival had already moved out before then, by whichever rule moved it, is not found.
 
 ## The MCP connection URL
 
