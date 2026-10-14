@@ -175,6 +175,35 @@ missing reference is rejected with an actionable error instead of landing as sil
   reference rejects the whole batch). That ordering helps `external_id`/data keys only.
 - Use foreign keys for **reference data** (patients, plans, products), not high-volume event logs.
 
+### Customer scope (`x-customer-scope`)
+
+A record type can say what it is to a [customer-scoped toolset](toolsets.md#customer-scope) — one that serves a single customer per call — with `x-customer-scope` at the root of its schema:
+
+```jsonc
+// customers — the customer record type
+{ "type": "object", "properties": { "name": { "type": "string" } }, "x-customer-scope": { "role": "root" } }
+// orders — each order belongs to the customer its customer_id names
+{ "type": "object",
+  "properties": { "customer_id": { "type": "string", "x-fk": { "record_type": "customers" } }, "total": { "type": "number" } },
+  "x-customer-scope": { "role": "owned", "owner": "customer_id" } }
+// products — no customer data
+{ "type": "object", "properties": { "title": { "type": "string" } }, "x-customer-scope": { "role": "shared" } }
+```
+
+- `root` — the customer record type. A base has at most one.
+- `owned` — `owner` names a top-level property declaring `x-fk` into the root record type.
+- `shared` — holds no customer data.
+- `root` and `owned` need a native record type (`sources: []`); a source-backed type can only be `shared`.
+- A record type that declares none is unreachable from a customer-scoped toolset.
+
+Checked at config write and at promotion: the declaration's shape on the record type itself, and across the base, one root and every owner pointing at it.
+
+- A single write or a batch that would leave two roots, or an owner pointing elsewhere, is refused.
+- A preview clone copies its source as it is, problems included, so it is refused only for a problem the source did not already have. A re-clone that brings the origin's root back beside the root the preview moved elsewhere is one example.
+- A `wayai push` is judged on the config its files describe: what it would remove counts as gone. One push can therefore move the root to another record type, or remove a root together with the types it owns, when it runs with `--prune`. Without `--prune` the removed types stay on the base.
+- A single delete is not checked, since `--prune` deletes one record type at a time.
+- A base left with two roots or an owner without one refuses the customer-scoped calls that depend on it, and a promotion refuses it.
+
 ### Field constraints
 
 The schema's own keywords are enforced on every write — they are not documentation. Reach for these

@@ -10,6 +10,7 @@ An agent connected to a toolset sees `create_invoice`, `list_payments` — its o
 - [Composite Actions](#composite-actions)
 - [Toolsets](#toolsets)
 - [File tools](#file-tools)
+- [Customer scope](#customer-scope)
 - [The MCP connection URL](#the-mcp-connection-url)
 - [Which base serves a slug](#which-base-serves-a-slug)
 - [Promotion blocking](#promotion-blocking)
@@ -170,6 +171,60 @@ Give a customer-facing agent `list` and `get` only; keep `put` and `delete` for 
 > `push` applies them. Unlike `toolsets upsert`, a pushed toolset that omits `files` keeps the base's
 > file tools; [config-as-code.md](config-as-code.md) says how to remove them.
 
+## Customer scope
+
+A **customer-scoped** toolset serves one customer per call. It is for an agent that talks to customers, where each call must stay inside the records of the customer it serves. Two declarations make it up.
+
+**Each record type it reaches says what it is**, with `x-customer-scope` at the root of its schema ([records.md](records.md#customer-scope-x-customer-scope)):
+
+- `{ "role": "root" }` — the customer record type itself (`customers`). A base has one.
+- `{ "role": "owned", "owner": "customer_id" }` — each record belongs to one customer, named by `owner`: a top-level property that declares `x-fk` into the root record type ([records.md](records.md#referential-integrity-x-fk)).
+- `{ "role": "shared" }` — no customer data: a catalog, a plan, a price list. Every call may reach it, as far as the toolset's tools allow.
+
+A record type that declares none cannot be reached by a customer-scoped toolset. `root` and `owned` need a native record type; a source-backed one can only be `shared`.
+
+**The toolset says it is scoped**, with `customer_scope`:
+
+```bash
+wayai toolsets upsert support-agent --base my-base --config '{
+  "name": "Support Agent",
+  "customer_scope": true,
+  "actions": [
+    { "action": "get_my_account" },
+    { "action": "list_my_orders" },
+    { "action": "list_products" }
+  ],
+  "files": [
+    { "file_type": "policies", "path_prefix": "public", "operations": ["list", "get"] }
+  ]
+}'
+```
+
+A customer-scoped toolset is refused when it:
+
+- exposes `sql_query` or `batch` — both reach any record;
+- reaches, through an Action or a composite step, a record type that declares no role;
+- creates or deletes the customer record (`root`): it may read and update it.
+
+A base is refused a second `root`, and an `owned` type whose `owner` does not point at the root.
+
+- **Where each rule is checked:**
+  - when the toolset, or a record type or Action it reaches, is written;
+  - for the config a `wayai push` (as its files describe it) or a batch of record type writes leaves as a whole;
+  - for the whole production config at [promotion](#promotion-blocking), which refuses any of these problems, including one production already has.
+- **What is not checked when written:**
+  - A single record type delete ([records.md](records.md#customer-scope-x-customer-scope) says why).
+  - A preview clone copies its source as it is, problems included: a scoped toolset reaching a record type without a role carries over. It is refused only for a problem its source did not already have.
+  - A rollback restores the snapshot as it was.
+  - A relationship tool or a composite's relationship step names its endpoints per call, so the record types it reaches are not checked when the toolset is written.
+
+A base left with any of these problems refuses the customer-scoped calls they affect, and its promotion is refused.
+
+- **Its write tools leave the owner out.** The create and update tools of an `owned` record type do not offer its `owner` field: the owner of a record a customer-scoped call writes is the customer the call serves.
+- **What it reaches.** `wayai toolsets get --resolved` reports `customer_scope` and `record_type_scopes`: what each record type the toolset can reach is — `root`, `owned` or `shared`, or `null` for one that declares none — including every record type its relationship tools and composite relationship steps can link (every record type, when a relationship type names none on an end).
+- **Calls are refused for now.** A call to a customer-scoped toolset must name the customer it serves, and no caller can name one yet, so every call is refused with `CUSTOMER_SCOPE_REQUIRED`. Its tools are still listed.
+- **Turning it off.** A toolset write that omits `customer_scope` keeps the stored value — unlike `files` on `toolsets upsert` — so an older client writing a toolset back never turns a scope off. Send `"customer_scope": false` to turn it off.
+
 ## The MCP connection URL
 
 ```bash
@@ -195,7 +250,8 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - removing a record type, relationship type, or file type the toolset exposes,
 - dropping an Action a reference points at,
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
-- removing a named write binding an Action's `binding` selects.
+- removing a named write binding an Action's `binding` selects,
+- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, or a customer-scoped toolset left reaching a record type without a role.
 
 So promote the Actions and the toolset **together with** the schema change. `--dry-run` lists any such conflicts first. Promotion is human-run.
 

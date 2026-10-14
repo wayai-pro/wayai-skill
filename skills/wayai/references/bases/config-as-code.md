@@ -15,11 +15,15 @@ entity, so changes review cleanly in a pull request.
 > committed base folder captures them — it does not.
 >
 > A toolset's **file tools** are not file types: they are the toolset's `files` key in
-> `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike the toolset's other keys,
+> `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike most of the toolset's keys,
 > deleting `files` from the file removes nothing** — a push that omits it keeps the file tools the
 > base has. To remove them all, write `files: []` — except on a toolset with no Actions, which
 > needs at least one file tool: remove that toolset's file and `push --prune` instead. The file
 > types they name must already exist on the base, or the push is refused.
+>
+> `customer_scope` works the same way: a push that omits it keeps the toolset's
+> [customer scope](toolsets.md#customer-scope) as the base has it. Write `customer_scope: false` to
+> turn it off.
 
 ```
 wayai-ws/
