@@ -208,8 +208,10 @@ A customer-scoped toolset is refused when it:
 
 A base is refused a second `root`, and an `owned` type whose `owner` does not point at the root.
 
+An `internal_write` [trigger](integrations.md#triggers) that fires on a record type a customer-scoped toolset can write (`create` or `update`, by an Action or a composite step) must locate its target through a field that declares `x-fk` into that target: `match.source_field` names one top-level field, `data.<field>`, whose `x-fk.record_type` is the trigger's `target` and whose key (`x-fk.key`, `external_id` by default) is its `match.target_key`. A customer-scoped write keeps every `x-fk` within its customer's reach, so such a trigger patches only a record the customer reaches. Matched on any other field (a plain string, the record's own `id`), it is refused, naming the trigger, the field, the record type and the toolsets that write it. A trigger fires on a record type when its `record_type_scope` names it or is omitted; an empty scope fires on none. A disabled trigger is judged when it is enabled.
+
 - **Where each rule is checked:**
-  - when the toolset, or a record type or Action it reaches, is written;
+  - when the toolset, a record type or Action it reaches, or a trigger is written;
   - for the config a `wayai push` (as its files describe it) or a batch of record type writes leaves as a whole;
   - for the whole production config at [promotion](#promotion-blocking), which refuses any of these problems, including one production already has.
 - **What is not checked when written:**
@@ -262,7 +264,7 @@ The rule applies to every filter an agent sends, archived records included.
 - **A composite is all or nothing.** A step refused under these rules rolls back every step of the call, which answers `BATCH_OPERATION_FAILED`, naming the refused step, with the refusal's code as its `details.original_error.code`.
 - **A source-backed record type** is written only when it is `shared`.
 
-These rules confine what the toolset's own tools write. A [trigger](integrations.md#triggers) fired by such a write runs as configured: an `internal_write` patches the record its `match` names, whoever's it is. To keep it inside the customer, match it on an `x-fk` field that names the trigger's own `target` and `target_key`, which a customer-scoped write can only point inside its customer's reach.
+**Triggers.** An `internal_write` [trigger](integrations.md#triggers) that such a write sets off is located through an `x-fk` into its target ([Customer scope](#customer-scope)), which the write has kept within reach, so it patches a record the customer reaches. A base that holds one located otherwise — stored before the rule, cloned from such a source, or kept by a push that `--prune` did not finish — refuses a customer-scoped write on that record type with `CUSTOMER_SCOPE_UNSUPPORTED`, naming the trigger. A trigger the patch then sets off on the target (one with `skip_cascade_writes: false`) runs as configured, as any trigger does: it reaches the record its own `match` names, whoever's it is.
 
 A call is refused when:
 
@@ -272,7 +274,7 @@ A call is refused when:
 | `CUSTOMER_SCOPE_MISMATCH` | 403 | The call names a customer, and the toolset is not customer-scoped. |
 | `CUSTOMER_NOT_FOUND` | 404 | No live record of the root type matches the customer. |
 | `CUSTOMER_SCOPE_UNAVAILABLE` | 409 | The base declares no root record type, or more than one. |
-| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. A write is also refused when it writes a file, names another owner, deletes the customer record or changes one of its keys, deletes a `cascade` link to a file, or writes a source-backed type that is not `shared`. |
+| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. A write is also refused when it writes a file, names another owner, deletes the customer record or changes one of its keys, deletes a `cascade` link to a file, writes a source-backed type that is not `shared`, or writes a record type an `internal_write` fires on that is not located through an `x-fk` into its target. |
 
 The customer record is read from the base's live records. Once its record type is declared `root`, archival keeps every record of the type there. A customer record archival had already moved out before then, by whichever rule moved it, is not found.
 
@@ -302,7 +304,7 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - dropping an Action a reference points at,
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects,
-- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, or a customer-scoped toolset left reaching a record type without a role.
+- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role, or an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target.
 
 So promote the Actions and the toolset **together with** the schema change. `--dry-run` lists any such conflicts first. Promotion is human-run.
 
