@@ -180,10 +180,12 @@ wayai bases promote <base-id> --from <base-id>--dev --dry-run
 Two paths work today, and neither is the same thing as the hub's own config:
 
 - **Agent tools** — build a toolset ([toolsets.md](toolsets.md)), mint a toolset-bound `rec_` token,
-  and add it to the hub as an ordinary **MCP Server** connection (Streamable HTTP, Bearer Token)
-  pointed at `https://data-mcp.wayai.pro/t/<slug>/mcp`. The agent then sees your domain tools
-  (`book_appointment`, `list_invoices`), not generic data operations. See
-  [`../connections.md`](../connections.md) for the connection mechanics.
+  and add it to the hub as a **Base Toolset** connection
+  ([`../connections.md`](../connections.md#base-toolset)). Native agents then see your domain tools
+  (`book_appointment`, `list_invoices`), not generic data operations, and the connection holds the
+  rules a customer-facing agent's toolset must meet. A harness-backed agent uses an ordinary
+  **MCP Server** connection (Streamable HTTP, Bearer Token) pointed at
+  `https://data-mcp.wayai.pro/t/<slug>/mcp` instead.
 - **Eval seeding** — an eval set or journey names a `fixture:` and a `target_base:`, and the hub's
   seed connection supplies the API origin and a `write:seeds` token. See [`../evals.md`](../evals.md).
 

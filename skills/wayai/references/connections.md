@@ -541,9 +541,9 @@ Connect to external file storage services for agent file access.
 
 #### Base Toolset
 
-Connects the hub to one [toolset](bases/toolsets.md) of a base through a [toolset-bound token](bases/toolsets.md#api-tokens). The token is the only secret the connection stores.
+Connects the hub to one [toolset](bases/toolsets.md) of a base through a [toolset-bound token](bases/toolsets.md#api-tokens). The token is the only secret the connection stores, and agents never see it: they call the toolset's tools through the platform, which confines every call to that toolset.
 
-> **Agents cannot call its tools through this connection yet.** It stores and checks the token, and publish and sync treat it as described below. Until agent calls arrive, connect an agent to a toolset with the [MCP Server](#mcp-server) connector and the toolset's MCP URL ([toolsets.md](bases/toolsets.md#the-mcp-connection-url)).
+> **Harness-backed agents don't get a toolset's tools yet.** Until they do, connect one to a toolset with the [MCP Server](#mcp-server) connector and the toolset's MCP URL ([toolsets.md](bases/toolsets.md#the-mcp-connection-url)).
 
 **Setup:**
 1. Mint a toolset-bound token for a base in **this hub's environment**: a preview base's for a preview hub, the production base's for a production hub (`wayai bases tokens create-for-toolset <slug> --base <base-id>`)
@@ -564,9 +564,23 @@ connections:
       toolset: support
 ```
 
+**Giving agents its tools.** Saving the token catalogs the toolset's tools: their names, descriptions and parameters, as the toolset publishes them. Assign them to agents like an MCP server's tools: in the UI (hub → **Agents** → the agent → **Add tool**), or under an agent's `tools.mcp` with the connection's name ([MCP tools](agents/native-tools.md#mcp-tools)). Only these catalogued tools can be on the connection, each under its catalogued name: any other tool on it, a custom tool included, is refused, and so is a call to a tool the toolset has since dropped. After the toolset changes (a promote adds or reshapes a tool), click **Sync toolset tools** on the connection or run `wayai sync-mcp --connection "<name>"` to refresh the catalog; `wayai push` also catalogs a tool it doesn't know yet.
+
+```yaml
+# agents/<agent>.yaml
+tools:
+  mcp:
+    - name: list_files              # the toolset's tool name
+      connection: support-knowledge # the Base Toolset connection's name
+```
+
+**If the base was deleted and created again.** A call is refused when the toolset's base was deleted and created again since the token was saved. The agent gets a tool error, and the connection raises a tool credential alert. Mint a new token for the new base and save it on the connection; that clears the alert.
+
 **Checked when stored.** Every write of the token asks which toolset it reaches: creating or editing the connection, linking an org credential, and rotating a linked credential. The write is refused unless the token is bound to that toolset, on a base of this organization, in the hub's environment.
 
-**Customer-facing agents.** A pilot, pilot specialist or pilot advisor can hold a tool on this connection only when its toolset exposes files alone: no record, composite or relationship tools, and neither `sql_query` nor `batch`. A write that would break this is refused, publish and sync included. That covers attaching the tool, changing the agent's role, and storing a token whose toolset reaches more.
+**Customer-facing agents.** A pilot, pilot specialist or pilot advisor can hold a tool on this connection only when its toolset exposes files alone: no record, composite or relationship tools, and neither `sql_query` nor `batch`. A write that would break this is refused, publish and sync included. That covers attaching the tool, changing the agent's role, and storing a token whose toolset reaches more. Syncing the connection's tools re-reads what the toolset exposes first: if it now reaches more than files while a customer-facing agent holds its tools, the sync is refused and catalogs nothing.
+
+**Customer-scoped toolsets.** A toolset that serves one customer per call can't be called through this connection yet: every call is refused, the agent gets a tool error, and the connection raises a tool credential alert. Use a toolset that isn't customer-scoped.
 
 **Publish, sync and new previews.** The token stays in its own hub. Publishing, syncing and creating a preview from a hub never copy the token, its org credential link or what it reaches, whatever `sync_credentials_to_production` says. Set production's own production-base token with [`wayai set-connection-credential`](#setting-a-connections-credential-directly-wayai-set-connection-credential) (`--org-credential`, or `--field access_token --stdin`) or in the UI. Until it is set, the connection raises a "production credential missing" alert. If the preview names a different toolset, the next sync clears production's token, because that token is bound to the old toolset.
 

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.126.0
+version: 6.127.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -310,7 +310,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
-- **Connecting a hub:** today via an ordinary MCP Server connection pointed at a toolset, or as an eval `target_base:`. Hub-local `resources/` files are a *different* surface and stay hub-local
+- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. Hub-local `resources/` files are a *different* surface and stay hub-local
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
 
@@ -571,7 +571,7 @@ wayai conversations     # List or inspect conversations (default text view omits
                         # `wayai conversations <id> annotate --set key=value [--type numeric|categorical|text]` — set a post-hoc business outcome (e.g. customer_purchased=true) on an ended conversation as an analytics dimension; repeat --set for multiple keys (needs the hub within its conversation_retention_days window)
 wayai delete-history    # Clear conversation history (testing). Full history (no --conversation-id) ALSO clears the user's user-scoped hub state, so the next send-message is a true cold-open; --conversation-id <id> deletes just one conversation and never touches state
 wayai sync-skills       # Sync skills to provider connections; --connection-id <uuid> to scope
-wayai sync-mcp          # Re-discover an MCP connection's tools (refresh stale schemas); --connection <name|uuid>; --check reports drift read-only (CI, exit 1 on drift)
+wayai sync-mcp          # Re-discover an MCP or Base Toolset connection's tools (refresh stale schemas); --connection <name|uuid>; --check reports drift read-only (CI, exit 1 on drift)
 wayai analytics         # Summary + per-variable aggregates; --metric, --filter, --period, --json
 wayai analytics query   # Structured ClickHouse query (multi-variable, group_by, correlations)
 wayai analytics sql     # Raw single-SELECT SQL over `conversation` (one row per conversation) and `message` (per-message tokens/cost/operations — the surface for cost analysis); --schema prints both catalogs + the message-grain rules (`data.*` paths need `toFloat64OrNull(toString(...))` for numerics, `toString(...)` for grouping); --limit, --json
