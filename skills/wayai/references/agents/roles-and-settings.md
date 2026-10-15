@@ -135,7 +135,7 @@ Top-level `agents/<slug>.yaml` fields that affect agent behavior (independent of
 | `enabled` | boolean | `true` | Whether the agent is active for new conversations, transfers, and consultations. Disabled agents are skipped during routing |
 | `include_message_timestamps` | boolean | `false` | When `true`, appends `[2026-04-30 14:30:00 (America/New_York), Thursday, afternoon]` to user messages (same line, after the content) in the LLM history. Useful when temporal context affects responses |
 | `response_format` | object | omitted (text) | Structured output. When set: `{ schema_name: "...", schema_json: {...} }` (both required). Omit for plain text |
-| `connection` | string | required | Display name of the agent's `Agent` connection (LLM provider) |
+| `connection` | string | required | Display name of the agent's `Agent` connection (LLM provider). An evaluator, a monitor or a consultant takes a model connection only, never a hosted agent connection (`Claude Agent (Managed)`), as its own or in an experiment arm: every surface refuses it (`An evaluator, monitor or consultant agent runs only on a native model connection, never on a hosted agent connection`) |
 | `settings` | object | varies | Connector-specific settings (model, temperature, max_tokens, etc.) — see [Per-Connector `settings`](#per-connector-settings) |
 
 Default omission: `enabled: true` is omitted in pulled YAML. `include_message_timestamps: false` is omitted. `response_format` is omitted when the agent is text-only.
@@ -440,7 +440,7 @@ Nothing fails when that chain is broken — the block simply arrives without sum
 
 | Reported | Meaning |
 |---|---|
-| `no_conversation_evaluator` | The hub has none. Auto-provisioning fires on **pilot** creation, so a copilot-only hub never gets one. |
+| `no_conversation_evaluator` | The hub has none. Auto-provisioning fires on **pilot** creation, on the pilot's connection, so a copilot-only hub never gets one, and neither does a hub whose pilot is on a hosted agent connection (an evaluator runs only on a model connection — add one by hand). |
 | `evaluator_disabled` | It exists but is switched off. |
 | `evaluator_no_connection` | It has no connection, so it throws at every conversation close — provisioned, but no more useful than absent. |
 | `evaluator_summary_not_emitted` | The evaluator no longer emits the summary field — free-text output, a cleared schema, or a schema whose properties dropped that name. The close path reads that key out of the evaluator's structured output, so it finds nothing. The settings UI shows an agent's response format read-only, so this one is fixed through `wayai push`. |

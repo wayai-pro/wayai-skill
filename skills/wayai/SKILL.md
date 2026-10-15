@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.131.0
+version: 6.132.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -261,8 +261,8 @@ Lets a **non-background agent** put a question to a configured consultant (or pa
   target: Billing Expert     # a `consultant`-role agent on this hub
 ```
 
-- **The mode follows the target.** A same-hub, non-harness consultant answers inside the tool call; a partner hub or a harness-backed consultant answers **asynchronously** — the asking agent ends its turn ("I'll check and get back to you") and is brought back automatically when the answer lands. A slow sync consult converts to async by itself, so agent instructions must handle "the answer will follow" for any target.
-- **Consultant→consultant chains are off by default, and sync-only when enabled** — set `allow_consultant_chain: true` on the tool to permit them, against a same-hub, non-harness consultant. `monitor`, the evaluators, and `summarizer` can never initiate.
+- **The mode follows the target.** A same-hub consultant answers inside the tool call; a partner hub answers **asynchronously** — the asking agent ends its turn ("I'll check and get back to you") and is brought back automatically when the answer lands. A slow sync consult converts to async by itself, so agent instructions must handle "the answer will follow" for any target. A consultant, like an evaluator or a monitor, runs only on a model connection, never on a hosted agent connection (`Claude Agent (Managed)`): saving one there is refused, and one consulted there is refused before anything is sent.
+- **Consultant→consultant chains are off by default, and sync-only when enabled** — set `allow_consultant_chain: true` on the tool to permit them, against a same-hub consultant. `monitor`, the evaluators, and `summarizer` can never initiate.
 - **Budgets are enforced**: consult chain depth, plus cycle refusal in both directions (agent A → B → A inside a hub, hub A → B → A across hubs), a cap per LLM call, and a durable cap per conversation. Every consult turn bills a foreground operation, so these caps are what stop an agent multiplying cost unattended.
 - **Nothing stays pending forever**: an unanswered consult expires and brings the asker back with a timeout notice; a consult outstanding when the conversation closes is recorded `cancelled_at_close`.
 - **A team member posting in an agent-started thread takes it over permanently** — the AI is no longer brought back for that thread, and further consults into it return a fixed "taken over by the team" notice.
