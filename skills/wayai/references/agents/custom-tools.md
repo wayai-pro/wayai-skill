@@ -87,22 +87,26 @@ Then run `wayai push` to create the tools on the hub.
 A turn can be interrupted while a tool call is out (a restart, say), and then whether the call acted
 is not known. The platform records, in an agent's turn, each call that may act before it runs, and
 what came back after. An interrupted turn can resume from its last finished step, and the calls it
-finished are not run again. Today a resumed turn runs a lost call again only when the call is a read
-or its tool sets `replay_override: rerun`. A turn the platform cannot resume safely is handed to your
-team instead, and nothing is run again. That includes a turn that lost any other call, one
-interrupted while its `user_message` monitor was judging the message or while a harness-backed
-agent's turn was starting, one interrupted once its reply was under way, a turn that continues the
-one before it (an agent's turn after a transfer to it, say), and one already resumed three times. A
-resumed turn does not transcribe a voice message or run its `user_message` monitor again: it keeps
-what the interrupted turn got from them. These settings classify the tool
-for what a resumed turn may do with such a call:
+finished are not run again. A turn the platform cannot resume safely is handed to your team instead,
+and nothing is run again: one interrupted while its `user_message` monitor was judging the message or
+while a harness-backed agent's turn was starting, one interrupted once its reply was under way, a
+turn that continues the one before it (an agent's turn after a transfer to it, say), and one already
+resumed three times. A resumed turn does not transcribe a voice message or run its `user_message`
+monitor again: it keeps what the interrupted turn got from them. These settings classify the tool for
+what a resumed turn does with a lost call:
 
-| What the tool is | What a resumed turn may do with a lost call |
-|------------------|---------------------------------------------|
-| A read (`GET`, `HEAD`, `OPTIONS`), or `replay_override: rerun` | Run it again. |
-| A write with an `idempotency_header` | Run it again with the same key, which your API recognizes as the repeat. |
-| Any other write, or `replay_override: reconcile` | Never run it again blindly. |
-| `irreversible: true` | Nothing on its own: a person decides. |
+| What the tool is | What a resumed turn does with a lost call |
+|------------------|-------------------------------------------|
+| A read (`GET`, `HEAD`, `OPTIONS`), or `replay_override: rerun` | Runs it again. |
+| A write with an `idempotency_header` | Runs it again with the same key, which your API recognizes as the repeat. |
+| Any other write, or `replay_override: reconcile` | Never runs it again. The agent is told the call's outcome is unknown, and goes on from there. |
+| `irreversible: true` | Never runs it again. Unless the platform had recorded that the call took effect (the agent is then told so), the conversation goes to your team, whose notice names the call and its arguments, so a person checks whether it took effect. |
+
+In the resumed turn, while a lost call's outcome is unknown, the agent's identical call (the same tool,
+the same arguments) is not run either: it is answered that an identical call's outcome is unknown. A
+later turn is never refused: there the identical call runs, so a write your API cannot recognize as a
+repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was not
+interrupted (your API answered 5xx, say) is not affected: retrying it runs it.
 
 Set `replay_override: rerun` only on a tool whose second run leaves what the first left (a lookup sent
 as POST, an update that sets a fixed value). A write with an `idempotency_header` keeps sending its key
