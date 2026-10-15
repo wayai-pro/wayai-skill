@@ -62,7 +62,7 @@ Hand off the conversation to a human support team. The result returns to the cal
 
 ### consult_agent
 
-Consult another agent for advice without transferring; the advice returns to the caller.
+Consult another agent for advice without transferring; the advice returns to the caller. An advisor on a hosted agent connection is refused before it is asked: advisors run only on model connections ([roles-and-settings.md → Agent Settings](roles-and-settings.md#agent-settings)).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -124,7 +124,7 @@ Ask the **consultant configured on the tool** a question, in a consult thread th
   context_boundary: summary       # same meaning and defaults as delegate_to_hub
 ```
 
-- **Two modes, and the target decides which.** A same-hub consultant answers **inside the tool call**. A partner hub answers **asynchronously**: the calling agent must end its turn (tell the customer you are checking) and is **brought back automatically** when the answer arrives. A sync consult that overruns its turn-time budget converts to async on its own, so an agent must handle "the answer will follow" on any target. A consultant on a hosted agent connection is refused before anything is sent — consultants run only on model connections ([roles-and-settings.md → Agent Settings](roles-and-settings.md#agent-settings)).
+- **Two modes, and the target decides which.** A same-hub consultant answers **inside the tool call**. A partner hub answers **asynchronously**: the calling agent must end its turn (tell the customer you are checking) and is **brought back automatically** when the answer arrives. A sync consult that overruns its turn-time budget converts to async on its own, so an agent must handle "the answer will follow" on any target. A consultant on a hosted agent connection, or with no connection, is refused before anything is sent — consultants run only on model connections ([roles-and-settings.md → Agent Settings](roles-and-settings.md#agent-settings)).
 - **Assignable to any non-background agent** (pilot, copilot, specialists). `monitor`, the evaluators, and `summarizer` can never start a consult.
 - **Consultant→consultant chains are OFF by default, and SYNC-ONLY when enabled.** A `consultant`-role agent may start a consult only with the explicit opt-in below, and only against a same-hub consultant — a chained consult must answer inside the call, because a consultant has no responder track to be brought back on:
 
