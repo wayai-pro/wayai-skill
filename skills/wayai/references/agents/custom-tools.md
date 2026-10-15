@@ -86,9 +86,16 @@ Then run `wayai push` to create the tools on the hub.
 
 A turn can be interrupted while a tool call is out (a restart, say), and then whether the call acted
 is not known. The platform records, in an agent's turn, each call that may act before it runs, and
-what came back after. Today an interrupted turn is not resumed: nothing is run again, and the
-conversation is handed to your team. These settings classify the tool for what a resumed turn may do
-with such a call:
+what came back after. An interrupted turn can resume from its last finished step, and the calls it
+finished are not run again. Today a resumed turn runs a lost call again only when the call is a read
+or its tool sets `replay_override: rerun`. A turn the platform cannot resume safely is handed to your
+team instead, and nothing is run again. That includes a turn that lost any other call, one
+interrupted while its `user_message` monitor was judging the message or while a harness-backed
+agent's turn was starting, one interrupted once its reply was under way, a turn that continues the
+one before it (an agent's turn after a transfer to it, say), and one already resumed three times. A
+resumed turn does not transcribe a voice message or run its `user_message` monitor again: it keeps
+what the interrupted turn got from them. These settings classify the tool
+for what a resumed turn may do with such a call:
 
 | What the tool is | What a resumed turn may do with a lost call |
 |------------------|---------------------------------------------|
