@@ -172,7 +172,7 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 | _(none)_ | One matching credential for the auth type | Auto-bound implicitly. If **multiple** match, push errors and asks you to add `credential:` |
 | `credential: "<name>"` | Pin a specific org credential by its display name | Binds that credential. Errors if the name doesn't resolve among the hub-visible credentials of the chosen auth type |
 | `access_token_credential: "<name>"` | Dual-credential connectors (API Key auth **plus** a Bearer Token access token) | Binds the named **Bearer Token** credential as the secondary secret. Requires `authentication_type: api_key`. **Push-only** — not echoed on pull (see Round-trip note) |
-| `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server) | Creates the connection with no bound credential and **no warning**. Cannot be combined with `credential:`; rejected if the connector mandates a secret |
+| `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server) | Creates the connection with no bound credential and **no warning**. On an existing connection it clears the org credential it uses and its secret. A connection holding a secret [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential) is refused instead, and left as it is: a `hub.yaml` pulled before pulls told the two apart may say `no_auth: true` for it, so pull again or remove the line. Cannot be combined with `credential:`; rejected if the connector mandates a secret |
 
 ```yaml
 connections:
@@ -195,7 +195,7 @@ connections:
 
 > **No silent unbound connections.** If an optional-auth connector (MCP Server) ends up with **no** resolvable credential and you didn't set `no_auth: true`, `wayai push` still creates it but prints a yellow **warning** telling you to bind a credential or declare `no_auth: true`. Bind a credential, or make the no-auth intent explicit — never leave it ambiguous.
 
-> **Round-trip.** `wayai pull` writes the bound credential back as `credential: "<name>"` (or `no_auth: true` for an intentional no-auth endpoint) so the binding is visible in review and GitOps diffs. The secret itself is never exported. **Only the primary `credential` round-trips** — a dual-credential connection's secondary `access_token_credential` is push-only (the connection stores a single credential reference), so re-add it by hand if you recreate such a connection from a pulled file. `headers` likewise remain write-only (may carry an `Authorization` value) and are not echoed on pull.
+> **Round-trip.** `wayai pull` writes the bound credential back as `credential: "<name>"` (or `no_auth: true` for an intentional no-auth endpoint: one that names no org credential and stores no credential; a connection whose secret was [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential) gets neither line) so the binding is visible in review and GitOps diffs. The secret itself is never exported. **Only the primary `credential` round-trips** — a dual-credential connection's secondary `access_token_credential` is push-only (the connection stores a single credential reference), so re-add it by hand if you recreate such a connection from a pulled file. `headers` likewise remain write-only (may carry an `Authorization` value) and are not echoed on pull.
 
 ### Credential propagation to production (`sync_credentials_to_production`)
 
@@ -231,6 +231,9 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 - `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`.
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
 - **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
+- **A raw secret switches that field to Direct Input**, on preview and production, whether it comes from `--field`, the UI's Direct Input or the API. The org credential that supplied that field is unlinked from the connection, so its next rotation no longer overwrites the secret you set. Only that field's link goes: a connection that takes its API key from one org credential and its access token from another keeps the other one linked. The org credential itself, and its links to other connections, stay.
+- **Linking an org credential to a field replaces that field's link the same way**: from `--org-credential`, the UI, or a push's `credential:` / `access_token_credential:`. A field the write leaves alone keeps its link.
+- **A preview's `hub.yaml` that still names the old credential links it again on the next `wayai push`.** After setting a secret directly, remove the line that names its credential: `access_token_credential:` for a token, or `credential:` for the connection's own secret (and with it `access_token_credential:`, which needs a `credential:`; a token linked that way keeps its link).
 
 ### Moving a connection's base URL
 

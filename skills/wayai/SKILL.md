@@ -539,7 +539,7 @@ wayai org pull          # Org-as-code: fetch org-level shared resources → waya
 wayai org push          # Org-as-code: apply local org resources to the platform (fans out to linked hubs); `wayai org diff` previews
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
-wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret). Works on preview + production (the sanctioned production-credential write)
+wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
 wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/, and copy a root .wayai.yaml org binding into wayai-ws/wayai.yaml (the root file is KEPT — older CLIs still need it)
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
