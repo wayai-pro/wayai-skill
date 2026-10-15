@@ -78,6 +78,44 @@ Then run `wayai push` to create the tools on the hub.
 | `tool_instructions` | AI guidance for when/how to use the tool |
 | `keep_in_history` | When `true`, this tool's call and result are kept in the agent's message history across turns. Default `false` — call/result are dropped after the turn to keep context lean. Enable for tools whose output the agent should reference later (e.g. fetched order details). When invoked via a meta tool (`get_tool_schema` or `execute_tool`), this flag AND-combines with the meta tool's own — both must be `true` to remain in history. See [native-tools.md](native-tools.md#meta-tools). |
 | `expose_schema_to_llm` | When `false`, the tool's schema is excluded from the agent's inline tool list. Default `true`. This is a prompt-token optimization — the tool stays executable via `execute_tool` (no access-control gating). Set this on the deferred tool itself; the meta tools stay exposed inline. See [native-tools.md](native-tools.md#meta-tools). |
+| `idempotency_header` | A header your API reads to recognize a repeated request (e.g. `Idempotency-Key`). A write's call (any method but GET, HEAD, OPTIONS) that the platform records sends a key in it, unique to that call, so your API can tell a repeat of the call from a new one. A header name: letters, digits and dashes, at most 64; not one the platform sets (`Authorization`, `Content-Type`, `Host`, `Cookie`, …). The key replaces a `tool_headers` entry of the same name. See [If a call is interrupted](#if-a-call-is-interrupted). |
+| `replay_override` | `rerun` or `reconcile`: what may follow a call of this tool whose outcome was lost, when you know better than its method. See [If a call is interrupted](#if-a-call-is-interrupted). |
+| `irreversible` | When `true`, a call whose outcome was lost is never repeated automatically: a person decides. Default `false`. |
+
+### If a call is interrupted
+
+A turn can be interrupted while a tool call is out (a restart, say), and then whether the call acted
+is not known. The platform records, in an agent's turn, each call that may act before it runs, and
+what came back after. Today an interrupted turn is not resumed: nothing is run again, and the
+conversation is handed to your team. These settings classify the tool for what a resumed turn may do
+with such a call:
+
+| What the tool is | What a resumed turn may do with a lost call |
+|------------------|---------------------------------------------|
+| A read (`GET`, `HEAD`, `OPTIONS`), or `replay_override: rerun` | Run it again. |
+| A write with an `idempotency_header` | Run it again with the same key, which your API recognizes as the repeat. |
+| Any other write, or `replay_override: reconcile` | Never run it again blindly. |
+| `irreversible: true` | Nothing on its own: a person decides. |
+
+Set `replay_override: rerun` only on a tool whose second run leaves what the first left (a lookup sent
+as POST, an update that sets a fixed value). A write with an `idempotency_header` keeps sending its key
+under `replay_override: rerun`; `replay_override: reconcile` takes precedence over the header. All
+three are a custom tool's fields, in its YAML and in its form in the console.
+
+```yaml
+tools:
+  custom:
+    - name: create_order
+      method: post
+      path: /orders
+      connection: shop-api
+      idempotency_header: Idempotency-Key   # each call sends its own key in this header
+    - name: refund_payment
+      method: post
+      path: /refunds
+      connection: shop-api
+      irreversible: true                    # never run again on its own after a lost call
+```
 
 ### tool_config Schema
 
