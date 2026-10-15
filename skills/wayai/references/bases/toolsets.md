@@ -610,7 +610,7 @@ Tokens enforce a privilege ceiling: you can only create tokens with equal or nar
 
 ### Revoking and pruning
 
-Revoking a token that was used in the last 7 days, or that is toolset-bound (a consumer token an MCP connection likely holds), is refused with a warning; `--force` overrides. Off a TTY the command prints the reason and exits 1 rather than auto-confirming. Do **not** `--force` (or prune with `--include-bound`) unless a human has confirmed nothing depends on the token — revocation is permanent and breaks live traffic immediately. Expired tokens revoke without friction.
+Revoking a token that was used in the last 7 days, or that is toolset-bound (a consumer token an MCP connection likely holds), is refused with a warning; `--force` overrides. Off a TTY the command prints the reason and exits 1 rather than auto-confirming. Do **not** `--force` (or prune with `--include-bound`) unless a human has confirmed nothing depends on the token — revocation is permanent and breaks live traffic immediately, a hub's Base Toolset connection holding it included, with one exception for older connections ([connections.md](../connections.md#base-toolset)). Expired tokens revoke without friction.
 
 ```bash
 wayai bases tokens prune                        # expired tokens only (preview)
