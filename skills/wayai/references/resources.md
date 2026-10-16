@@ -90,7 +90,7 @@ resources:
     use_native_integration: false   # skill-only — see Execution Modes below
 ```
 
-Higher `priority` means higher precedence when multiple resources apply.
+Higher `priority` means higher precedence when multiple resources apply. A link's `write_enabled` is still accepted but does nothing: no agent tool writes a knowledge resource. Agents write documents in a base through its Base Toolset's file tools (`write_file`, `edit_file`).
 
 ---
 

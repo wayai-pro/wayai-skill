@@ -237,7 +237,7 @@ Reset a state to its initial value (deletes the persisted row; reads fall back t
 
 ## Resource & File Tools
 
-Discover and read knowledge-resource content, exchange files with the user, write the documents of the agent's toolset under `data/` (`write_file`, `edit_file`), and (optionally) edit resource files through the provider's code-execution sandbox. `list_files` is the one discovery tool: the mounts an agent may browse are injected into its `path` parameter description at turn time, so it discovers what exists in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
+Discover and read knowledge-resource content, exchange files with the user, and write the documents of the agent's toolset under `data/` (`write_file`, `edit_file`). Knowledge resources are read-only to agents. `list_files` is the one discovery tool: the mounts an agent may browse are injected into its `path` parameter description at turn time, so it discovers what exists in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
 
 **Files are addressed by path.** Every resource file has a canonical path, `resources/<resource-slug>/<folders…>/<file-name>`, where the slug is the kebab-cased resource name (skill name for skills). `read_file` takes that path, `list_files` returns it on every row, and `{{files('tree')}}` lists it under each resource. Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
 
@@ -288,9 +288,9 @@ Browse what the agent can reach, by path. Discovery is a drill-down: no `path` l
 
 **Mount semantics.** The mounts are always `conversation` plus one `resources/<slug>` per **enabled** resource **and skill** linked to the agent — a skill's files live under `resources/` too — and one `data/<file-type>` per file type of its toolset documents. Disabling a resource withdraws its mount even while the agent link stands, matching what `{{files()}}` and the injected mount list announce. `conversation` is listed even when it holds nothing, because it is a real mount; its row carries `file_count` (absent, not `0`, when the count could not be read). Consult-thread attachments are excluded here exactly as they are from `read_file` (see above). There is deliberately **no `conversations/` (plural) mount**: a past conversation's files are announced by its own archived transcript and counted by `get_conversations_summary`, so they are addressable without being browsable.
 
-**Response.** `{ path, entries, total, limit, offset }`, where `path` is the resolved location and `total` is the count the page was drawn from. Each entry is a `mount`, `folder`, or `file` row carrying its own `path`; `folder` rows carry the folder's `description`, and `file` rows carry `file_id` alongside the path, because `download_file` / `upload_file` still address by id. A `data/` listing differs as described above: `has_more` in place of `total`, and each row the toolset's own.
+**Response.** `{ path, entries, total, limit, offset }`, where `path` is the resolved location and `total` is the count the page was drawn from. Each entry is a `mount`, `folder`, or `file` row carrying its own `path`; `folder` rows carry the folder's `description`, and `file` rows carry `file_id` alongside the path, because `read_file` and `send_files` also take an id. A `data/` listing differs as described above: `has_more` in place of `total`, and each row the toolset's own.
 
-**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `resources/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which resources a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a resource is named in a `resource_id` parameter (`read_file`'s, `upload_file`'s, and the deprecated listing tools'), and there it reads the same for an unlinked resource and one that does not exist. `read_file` and `upload_file` take a linked resource's id or slug there; the deprecated listing tools take only its id. **Admin note:** if an agent reports "no such path" for a resource you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
+**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `resources/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which resources a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a resource is named in a `resource_id` parameter (`read_file`'s and the deprecated listing tools'), and there it reads the same for an unlinked resource and one that does not exist. `read_file` takes a linked resource's id or slug there; the deprecated listing tools take only its id. **Admin note:** if an agent reports "no such path" for a resource you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
 
 ### list_resource_files *(deprecated — use `list_files`)*
 
@@ -357,33 +357,11 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 | `folder_ids` | array | No | Resource folder IDs — sends all files in them (alternative to `file_ids`) |
 | `message_text` | string | No | Accompanying text (WhatsApp caption / email body) |
 
-### download_file
-
-Mount a **text** resource file into the provider's code-execution sandbox for editing (Anthropic: `/tmp/<filename>`; OpenAI: `/mnt/data/<filename>` — use the returned `sandbox_path`). Returns `{ sandbox_path, filename, sandbox_file_id }`. Bytes never enter conversation context. Like `upload_file`, it needs `write_enabled` on a **knowledge** resource: a skill's file is refused.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `file_id` | string | Yes | Resource file to mount (binary files rejected) |
-
-### upload_file
-
-Persist a sandbox file back to the resource library. Two modes: **UPDATE** (pass `file_id` of the existing resource file) or **CREATE** (pass `resource_id` + `filename`, optional `folder_id`). Requires `write_enabled` on the agent↔resource binding, and a **knowledge** resource: a skill is refused whatever its link's `write_enabled` says, because skills are changed only by people. `write_enabled` applies to knowledge resources only, and the Platform UI offers its **Edit** toggle on them alone.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sandbox_file_id` | string | Yes | Provider-specific ID of the file inside the sandbox |
-| `file_id` | string | UPDATE mode | Existing resource file to overwrite |
-| `resource_id` | string | CREATE mode | Resource the new file belongs to, named by its id or its slug (`product-docs`, or `resources/product-docs`) |
-| `filename` | string | CREATE mode | Filename (MIME inferred from extension; text only) |
-| `folder_id` | string | No | CREATE mode: target folder (omit for root) |
-
-In CREATE mode, a `resource_id` naming no resource the agent is linked to is refused as "Access denied: resource is not linked to the current agent", whether or not that resource exists; "Write access denied" then means only that the link lacks "Allow editing".
-
 ---
 
 ## Code Sandbox Tools
 
-Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts an empty sandbox, while `copy_from_sandbox` reads the running one whatever the setting.
+Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. It is the only place a native agent runs code or edits a binary or large file, on every LLM connector: copy a file in, change it with a command, and copy the result out. (A skill run with native integration on Anthropic or OpenAI runs in that provider's own skill container instead; see [Skill Execution Modes](../resources.md#skill-execution-modes).) These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts an empty sandbox, while `copy_from_sandbox` reads the running one whatever the setting.
 
 ### bash
 
@@ -550,7 +528,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 |--------|-------|
 | Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only), `run_monitor` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
-| Resource & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files`, `download_file`, `upload_file` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
+| Resource & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` (deprecated aliases: `list_resource_files`, `list_resource_folders`) |
 | Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |

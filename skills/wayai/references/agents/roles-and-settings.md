@@ -247,7 +247,7 @@ Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox`
 
 | Setting | Values | Default | Effect |
 |---|---|---|---|
-| `code_execution_enabled` | `true` / `false` | `false` | The sandbox tools run only while this is on, on every LLM connector. On Anthropic and OpenAI it also enables `download_file`/`upload_file`, which use the provider's own sandbox. |
+| `code_execution_enabled` | `true` / `false` | `false` | The sandbox tools run only while this is on, on every LLM connector. |
 | `sandbox_network` | `none` / `allowlist` / `web` | `none` | What code in the sandbox can reach (below). |
 | `sandbox_allowed_hosts` | list of host names | — | Under `allowlist`, the exact hosts the sandbox may reach (`api.example.com`): no wildcards, IP addresses, ports or paths; at most 50. |
 
