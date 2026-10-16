@@ -163,7 +163,7 @@ A file entry is `{ file_type, path_prefix?, operations, name?, names?, descripti
 - **Size.** A file tool carries at most 1 MiB of content per call, in either direction.
 - **Permissions.** A token bound to the toolset carries `read:files` for `list`/`get` and `write:files` for `put`/`delete`, so minting one requires those on the base.
 
-Give a customer-facing agent `list` and `get` only; keep `put` and `delete` for curator or back-office toolsets. A file tool needs its file type on the base: a toolset write naming a missing one is refused, and so is a promotion that would leave one missing.
+Give a customer-facing agent `list` and `get` only: a hub refuses a pilot, pilot specialist or pilot advisor a toolset with `put` or `delete` ([Base Toolset](../connections.md#base-toolset)). Keep those for curator or back-office toolsets. A file tool needs its file type on the base: a toolset write naming a missing one is refused, and so is a promotion that would leave one missing.
 
 **`wayai toolsets upsert` replaces the whole toolset.** Pass `files` on every upsert of a toolset that has file tools — through `--config`, since the flag form has no file option. An upsert without `files` (the flag form included) removes them.
 
