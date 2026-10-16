@@ -129,7 +129,8 @@ removes the file; a non-cascade link is a plain reference, so a file shared acro
 one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
 hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools). A hub agent
 connected to the toolset, and holding both `list_files` and `read_file`, reads these documents at
-`data/<file-type>/<path>` with those two tools ([native-tools.md](../agents/native-tools.md#resource--file-tools)).
+`data/<file-type>/<path>` with those two tools, and writes them there with `write_file` and `edit_file`
+through the toolset's `put`, when it holds those too ([native-tools.md](../agents/native-tools.md#resource--file-tools)).
 
 ## Syncing files as a folder
 
