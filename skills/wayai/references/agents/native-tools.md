@@ -374,14 +374,14 @@ A sandbox whose network setting reaches a package index can `pip install` more. 
 
 ### bash
 
-Run a Bash command in the sandbox. The sandbox starts on the first command and keeps its files between commands in the conversation; it ends after 10 minutes without use, 60 minutes in all, or when the conversation closes, and the next command then starts an empty one (its result says so). A command, with everything it starts, can run at most 512 processes and threads at once: past that, starting another fails, so a runaway command (a fork bomb, say) stops there and the next command runs normally. What a command leaves running in the background stays, within that command's limit, until it exits or the sandbox ends.
+Run a Bash command in the sandbox. The sandbox starts on the first command and keeps its files between commands in the conversation; it ends after 10 minutes without use, 60 minutes in all, or when the conversation closes, and the next command then starts an empty one (its result says so). A command, with everything it starts, can run at most 512 processes and threads at once: past that, starting another fails, so a runaway command (a fork bomb, say) stops there and the next command runs normally. Nothing a command starts outlives it: when it returns, everything it left running ends with it, a background process, a `setsid` one or one moved elsewhere alike. So a server and the requests that use it go in one command, and a file is the way to hand data to the next.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `command` | string | Yes | The script to run, as with `bash -c`, in `/workspace` |
 | `timeout_seconds` | integer | No | Time limit: 120 by default, at most 540; never past the turn's own time limit |
 
-**Response.** `{ exit_code, timed_out, timeout_seconds, stdout, stderr, duration_ms }`. Each stream keeps its first and last parts; `stdout_omitted_bytes` / `stderr_omitted_bytes` say how much was cut. `new_sandbox` appears when the command started an empty sandbox, and `stopped` (with `exit_code: null`) when a command outlived its limit and the sandbox was stopped. A sandbox that cannot run the command (the organization runs as many sandboxes as it may, the sandbox could not start, the network setting is invalid) returns a tool error saying so.
+**Response.** `{ exit_code, timed_out, timeout_seconds, stdout, stderr, duration_ms }`. Each stream keeps its first and last parts; `stdout_omitted_bytes` / `stderr_omitted_bytes` say how much was cut. `new_sandbox` appears when the command started an empty sandbox, and `stopped` (with `exit_code: null`) when a command outlived its limit and the sandbox was stopped. A sandbox that cannot run the command (the organization runs as many sandboxes as it may, the sandbox could not start, the network setting is invalid, or it could not limit the command's processes) returns a tool error saying so, and the command does not run.
 
 ### copy_to_sandbox
 
@@ -390,7 +390,7 @@ Copy one of the conversation's files into the sandbox, so commands can read or e
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `path` | string | Yes | The file, as `read_file` names it: `conversation/<name>` (a shorter unambiguous form or the file's id also works) or `conversations/<conversation_id>/<name>` |
-| `sandbox_path` | string | No | Where the copy lands, under `/workspace` (a relative path is taken from `/workspace`); defaults to the file's name in `/workspace`. Replaces any file there |
+| `sandbox_path` | string | No | Where the copy lands, under `/workspace` (a relative path is taken from `/workspace`); defaults to the file's name in `/workspace`. Replaces any file there. A path through a symbolic link is refused, whatever the link points at |
 
 **Response.** `{ sandbox_path, bytes }`, with `new_sandbox` when the copy started an empty sandbox.
 
@@ -400,7 +400,7 @@ Copy a file out of the sandbox into the conversation, so what commands produced 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `sandbox_path` | string | Yes | The file to copy, under `/workspace` (a relative path is taken from `/workspace`) |
+| `sandbox_path` | string | Yes | The file to copy, under `/workspace` (a relative path is taken from `/workspace`). A path through a symbolic link is refused, whatever the link points at |
 | `name` | string | No | The stored file's name, with no folders; defaults to the file's name in the sandbox |
 
 **Response.** `{ path, file_id, bytes, note }`: `path` is the file's address under `conversation/`, which `read_file` and `send_files` accept. As with every file stored in a conversation, the stored name is made safe for storage and timestamped, so use the `path` returned.
