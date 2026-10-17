@@ -245,6 +245,8 @@ curl -X POST "https://data.wayai.pro/v1/tokens" \
 
 A token naming a customer must be bound to a customer-scoped toolset. It expires within 24 hours: 24 hours from the mint when `expires_at` is omitted. A later `expires_at` is refused.
 
+A WayAI hub's agents name their customer on their own: a [Base Toolset](../connections.md#base-toolset) connection's call to a customer-scoped toolset names the contact the turn's WhatsApp phone, Instagram id or app account names, and is refused on any other channel.
+
 A WayAI contact's customer record is the root record whose `external_id` is the contact id and whose `external_source` is `wayai_contact`. That source is reserved. Only a person signed in to WayAI keys a record under it, or a seed fixture on a preview base, so an eval can seed a customer. Any other write that would key a record under it — a new record, or one re-keyed onto it — is refused, a tool call included. A single write answers `RESERVED_EXTERNAL_SOURCE` (403). A batch or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `RESERVED_EXTERNAL_SOURCE` as its `details.original_error.code`. Updating a record that already holds such a key, without changing the key, is not refused.
 
 What a call reaches:
