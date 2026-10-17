@@ -87,7 +87,10 @@ Then run `wayai push` to create the tools on the hub.
 A turn can be interrupted while a tool call is out (a restart, say), and then whether the call acted
 is not known. The platform records, in an agent's turn, each call that may act before it runs, and
 what came back after. An interrupted turn can resume from its last finished step, and the calls it
-finished are not run again. An agent's turn after a transfer to it resumes this way too. A turn the
+finished are not run again. An agent's turn after a transfer to it resumes this way too, and so do a
+Copilot suggestion your team asked for and an agent's turn when a consult it started comes back. When
+that consult's turn would have to wait behind another turn, or another turn has answered since, the
+consult's answer (or the notice that it timed out) goes to your team instead. A turn the
 platform cannot resume safely is handed to your team instead, and nothing is run again: one
 interrupted while its `user_message` monitor was judging the message or while a harness-backed agent's
 turn was starting, one interrupted once its reply was under way, a turn that continues the one before
