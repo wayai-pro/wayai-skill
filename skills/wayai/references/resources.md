@@ -24,6 +24,12 @@ Resources are knowledge bases (documents) or skills (versioned agent capability 
 
 `knowledge` is the default — `type` can be omitted in YAML when the resource is a knowledge base.
 
+**Knowledge is moving into a base.** An organization's documents belong in its knowledge base, as
+files agents read and edit at `data/<file type>/<path>`. `wayai knowledge migrate` moves an
+organization's knowledge resources there, then each hub's own, keeping their folders, paths and
+metadata ([`bases/files.md`](bases/files.md#moving-knowledge-resources-into-a-base)). Skills stay
+resources.
+
 ---
 
 ## Directory Structure

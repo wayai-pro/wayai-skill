@@ -8,9 +8,10 @@ rejected. Binary content goes in **Files** (versioned, path-addressed, mountable
 case, **attachments** (record-scoped uploads). Files are the richer evolution; prefer them for
 anything you will version, diff, describe with metadata, or mount.
 
-These are a different surface from a hub's knowledge/skill **resources**, which stay hub-local and
-sync through hub config-as-code ([`../resources.md`](../resources.md)). The two are deliberately
-separate.
+Files are where an organization's documents live. A hub's or an organization's **knowledge
+resources** move into an organization's knowledge base as file types with
+`wayai knowledge migrate` ([below](#moving-knowledge-resources-into-a-base)); **skills** stay
+resources ([`../resources.md`](../resources.md)).
 
 ## File types
 
@@ -194,6 +195,72 @@ wayai files push policies --base crm                 # the diff, a question, the
 - **One request per file.** Pull and push pace themselves below the data request budget your other
   commands and the web console share (120 requests a minute today), and wait out that budget when
   it is spent: a large file type takes minutes.
+
+## Moving knowledge resources into a base
+
+`wayai knowledge migrate` moves knowledge resources into the organization's knowledge base, the
+base its agents' documents live in: first the organization's, then each hub's own.
+
+```bash
+wayai knowledge migrate --org <org_id> --base <knowledge base> --dry-run   # what it would write, and why it would stop
+wayai knowledge migrate --org <org_id> --base <knowledge base>             # the organization's resources
+wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   # then a hub's own
+```
+
+- **One file type per resource.** An organization resource becomes the file type named by its
+  slug (`policies`); a hub resource becomes `<hub-slug>--<resource-slug>` (`support--faq`), the hub
+  part taken from the hub's name when it first moves. The file type's schema names the resource it
+  came from, so the id is kept after a rename of the resource or its hub: a later run finds it. A
+  hub's copies of organization resources are the organization's, and move with them. Skills stay
+  resources.
+- **Paths are kept.** A file agents read at `resources/<slug>/<path>` moves to
+  `data/<file type>/<path>`. A folder with a description gains an `_index.md` holding it.
+- **Metadata is kept.** The resource's folder metadata schema is folded into its file metadata
+  schema, beside `title` and `tags`, and each file carries its folders' values (the nearest folder
+  winning), its own over them, and its title and tags. When a file type is first created, a field
+  that would refuse a value a file holds is widened to accept it, and a field no schema declared is
+  declared, so no value is lost and a filter on any of them is answered. The dry run lists each
+  such field.
+- **Schema refs: plain local ones only.** A schema moves with its `$ref`s only in the form
+  `#/$defs/<name>` or `#/definitions/<name>`, where `<name>` needs no escaping (no `~`, `/`, `%`,
+  brackets or other characters a URI encodes). Any other `$ref` (`#`, a URI, a relative ref, a
+  pointer into `properties` or below a definition), any `$id` (or a draft-4 `id`, read as one),
+  `$anchor` or `$recursiveRef` — in an `x-` annotation too — a definition name that needs
+  escaping, and a definition both schemas name with different content stop the run, naming the
+  resource and the field: simplify the schema by hand (inline what the ref names, or rename
+  the definition and the refs to it), then run again. A definition both schemas hold alike is kept
+  once.
+- **Where it writes.** `--base` names the knowledge base: its production base, or the preview its
+  file types are written in. The file types are written in the preview and promoted, with no other
+  config section; like every promotion, it also publishes the preview's credentials opted in to
+  production. The files are written in production only: the preview gets none of them.
+- **A long id gets an alias.** A file type id past 57 characters is named by a short alias (its
+  first 50 characters and 6 hex digits), so a toolset's tools for it (`delete_<name>`) fit 64
+  characters: name the toolset's file tool by it.
+- **Org first.** `--hub` moves the hub's own resources, read from its production hub, and refuses
+  until the organization's have moved.
+- **It stops before writing** on: two resources whose file types would take one id (two hubs whose
+  names give the same slug, each with a resource of the same name), an id production holds for
+  another resource (a hub named as another hub was when it moved) or that this command did not
+  write, a folder description whose `_index.md` a file already holds, two described folders sharing
+  a path, a file whose metadata title or tags disagree with its own, a resource schema whose refs
+  are not plain local ones (above), a schema a file type refuses (an `x-validate` anywhere but a
+  field's top level, where the move drops it with the field's other `x-` annotations, or a field
+  whose schema is `null`), a new file its file type would refuse (a content-type or size limit, or
+  its metadata under the whole schema — a moved file type keeps an admin's later limits and
+  constraints), and a production file that differs
+  from its source. That last one was edited after it moved, so it is never overwritten: remove
+  it from production to move it again. Separately, the promotion is first run as a dry run: one
+  that would change anything but these file types, or report a failing check, stops with the file
+  types written in the preview and nothing in production.
+- **Run it again freely.** What has moved is not written again; a run with nothing left to move
+  writes nothing. A file type already in production is never changed by a later run — its name,
+  description, limits and schema stay as they are, an edit made after the move included. A new
+  file its schema refuses stops the run, naming the field and the value: widen the file type
+  yourself (in the preview, then promote it), or change the file's metadata. Each version it writes
+  is labelled `wayai knowledge migrate`.
+- **Without a terminal** it needs `-y`; `--dry-run` never asks. It paces itself below the request
+  budgets it shares with your other commands and the web console, like `wayai files push`.
 
 ## Attachments
 
