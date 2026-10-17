@@ -249,6 +249,24 @@ A WayAI hub's agents name their customer on their own: a [Base Toolset](../conne
 
 A WayAI contact's customer record is the root record whose `external_id` is the contact id and whose `external_source` is `wayai_contact`. That source is reserved. Only a person signed in to WayAI keys a record under it, or a seed fixture on a preview base, so an eval can seed a customer. Any other write that would key a record under it — a new record, or one re-keyed onto it — is refused, a tool call included. A single write answers `RESERVED_EXTERNAL_SOURCE` (403). A batch or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `RESERVED_EXTERNAL_SOURCE` as its `details.original_error.code`. Updating a record that already holds such a key, without changing the key, is not refused.
 
+#### Linking a contact to its customer record
+
+An organization admin signed in to WayAI links a contact to an existing record of the base's customer record type (the one `root` type), and unlinks it, with the CLI or the API:
+
+```bash
+wayai login                                   # a browser sign-in: an API token is refused
+wayai contacts link-customer <contact_id> --base <base_id> --record <record_id>
+wayai contacts unlink-customer <contact_id> --base <base_id>
+# API: PUT    /api/contact-book/contacts/<contact_id>/customer?organization_id=<org_id>  {"base_id": "...", "record_id": "..."}
+#      DELETE /api/contact-book/contacts/<contact_id>/customer?organization_id=<org_id>&base_id=<base_id>
+```
+
+- **Who.** A person signed in to WayAI who manages the organization's contact book and may write its data: an organization admin. An API token is refused, whatever its permissions, including one holding `contacts:write`. `wayai login --token` and `WAYAI_TOKEN` are tokens, so these commands need `wayai login` without `--token`.
+- **Link** keys the record under the contact: `external_id` is the contact id and `external_source` is `wayai_contact`. The record must hold no external key, or the contact id under another source (an unlinked record: only the source changes). A record keyed under another `external_id`, such as a CRM's id, is refused with `customer_record_keyed_elsewhere`: re-keying it would orphan its owned records, whose `owner` holds the old key. Link a record holding no key instead, or create the customer record under the contact (`wayai records upsert <type> --base <base_id> --data <json|@file> --external-id <contact_id> --external-source wayai_contact`). A contact is linked to at most one record of a base; linking another is refused with `contact_customer_taken` until the first is unlinked. A base that declares no customer record type, or more than one, is refused with `customer_root_unavailable`.
+- **Unlink** moves the record's `external_source` to `wayai_contact_unlinked` and keeps its `external_id`, the contact id. Conversations with the contact then name a customer no record holds, so their calls are refused. The record and its owned records stay as they are: an owned record's `owner` matches `external_id` under any source. Linking the same record again moves the source back.
+- **Linking an unlinked contact to a different record** leaves two customer records holding the contact id: the unlinked one and the new one. The new one serves the contact, but its owned record types are unreachable, since an `owner` value two customer records hold belongs to neither. Re-key or delete the unlinked record to clear it. Unlinking the new one is refused with `customer_unlinked_key_taken` while the old one holds the unlinked key.
+- A record changed between the read and the write is refused with `customer_record_changed`: run the command again.
+
 What a call reaches:
 
 - **`root`:** the customer's own record. `get` answers another customer's record as not found, and `list` returns only the customer's own.
