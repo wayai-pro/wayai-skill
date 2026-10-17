@@ -74,7 +74,7 @@ evaluator_instructions: |
   The agent MUST call cancel_order with the correct order_id.
 ```
 
-**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions`, `variables`, `fixture`/`target_base`, and `initial_state` are optional.
+**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions`, `variables`, `fixture`/`target_base`, `initial_state`, and `customer_contact_id` are optional.
 
 **`input.role` is `user` or `system` only** — push rejects anything else. `input` is the turn *trigger*: it is what the responder answers. An `assistant` role would ask the agent to answer its own utterance, and a `tool` result arrives stripped of the `tool_call` it was answering — neither gives the agent anything to respond to. **Always declare `role`** — a role-less `input` is still accepted, but the turn kind it fires as is then the producer's default rather than something your file states. `history` is deliberately unconstrained — a `tool` result there answers a preceding assistant `tool_calls`, which is what history is for.
 
@@ -217,6 +217,29 @@ Rules:
 - **What it enables:** the returning-patient shortcut, the family gate (more than one patient in state), "I changed plans", and the anti-bias rule (the agent must NOT write `confirmed` before the user says yes — visible to the evaluator as the agent's `update_state` tool call). The agent reads the seed via `<user_state>` and can write it back during the run exactly as in production.
 
 Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per run, so each run can seed a distinct patient.
+
+### Name the customer (`customer_contact_id`) — customer-scoped toolsets
+
+**When the agent under test calls a [customer-scoped toolset](bases/toolsets.md#customer-scope), declare `customer_contact_id:`** — the contact id of the customer the scenario's runs serve. Each of the toolset's calls in the run then names that customer, as a live channel names the contact behind the customer's phone or account, so the agent reads and writes only that customer's records and the shared ones. Without it, an eval names no customer, and every call to a customer-scoped toolset is refused with a tool error.
+
+```yaml
+# evals/orders/where-is-my-order.yaml
+fixture: orders-baseline            # seeds the customer's records on the preview base
+target_base: orders-preview
+customer_contact_id: 7f3c2a10-8d4e-4b6a-9c1f-2e5d8a7b6c40
+input:
+  role: user
+  content: "where is my order?"
+expected:
+  role: assistant
+  content: "..."                    # e.g. the status of THIS customer's order, never another's
+```
+
+Rules:
+- **Preview hubs only.** A production hub's eval names no customer, whatever its scenario declares, so its calls to a customer-scoped toolset are refused. On production, a declared id would let an eval author act as any real customer.
+- **A contact id (a UUID).** Anything else is refused at `wayai push` and on save. The id is used as declared, so it need not be a contact in the contact book: in the base, the customer is the root record keyed by that id under the reserved `wayai_contact` source — seed it with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base ([Serving a customer](bases/toolsets.md#serving-a-customer)).
+- **Frozen per run.** A session's runs keep the customer their scenario named when the session started.
+- **Scenarios only.** A journey's steps name no customer yet.
 
 **The recommended pattern for tool-dependent evals** — anywhere the agent's correctness hinges on values its tools read or write — is **[journey](#journeys-hub-as-code) + `fixture:` + per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals)** together, and its whole point is **repeatable and parallel session runs**. The **journey** captures the multi-turn tool flow (one graded eval per turn); the **`fixture:`** makes each session **repeatable** (reset-before / clear-after → a known baseline every run, not last run's residue); disjoint **`variables`** make the runs **parallel** (each run mutates its own leased row) — collision-free as long as each run's write footprint fits its row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handles the baseline automatically. For a stateless text/tone eval that touches no tools, none of the three is needed — the pattern earns its place precisely when tool values are in play.
 
