@@ -258,6 +258,8 @@ What each network setting allows:
 
 WayAI adds no credentials to the sandbox's requests, and no credential is ever placed inside the sandbox. A host the allowlist cannot hold (a wildcard, an IP address, a URL) makes every command fail until it is fixed, and the agent is told why.
 
+Under `allowlist` or `web`, one sandbox may make up to 1,000 requests and send up to 100 MB (its requests' addresses, headers and bodies) over its life; what it downloads is never limited. Past either limit a request is refused with a 403 that names it (`request_cap` or `byte_cap`), and a streamed upload that runs past the byte limit is cut. A new sandbox (after 10 minutes without use, 60 minutes in all, or a new network setting) starts with its own limits. The count is kept in memory, so a sandbox running while WayAI restarts its servers (a release) starts it over.
+
 Notes:
 - **Who can use it**: only the pilot and copilot tracks' responders (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`) can hold the sandbox tools; background, advisor, consultant and voice agents cannot.
 - **One network setting per sandbox**: the sandbox runs under one network setting for its whole life. When an agent with a different setting runs a command or copies a file in (after a transfer, or once the setting changes), it starts over empty, so nothing started under one setting reaches the network under another. Copying a file out reads the running sandbox whatever the setting.
