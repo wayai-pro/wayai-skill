@@ -361,11 +361,20 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 
 ## Code Sandbox Tools
 
-Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. It is the only place a native agent runs code or edits a binary or large file, on every LLM connector: copy a file in, change it with a command, and copy the result out. (A skill run with native integration on Anthropic or OpenAI runs in that provider's own skill container instead; see [Skill Execution Modes](../resources.md#skill-execution-modes).) These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts an empty sandbox, while `copy_from_sandbox` reads the running one whatever the setting.
+Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. It is the only place a native agent runs code or edits a binary or large file, on every LLM connector: copy a file in, change it with a command, and copy the result out.
+
+Python comes with libraries for the files customers send, already installed, so they work with no network:
+- **Spreadsheets:** `openpyxl` reads and edits `.xlsx` workbooks.
+- **Word and PowerPoint:** `python-docx` and `python-pptx` read and edit `.docx` and `.pptx` files.
+- **PDFs:** `pypdf` reads, splits, merges, rotates, fills and extracts text from them.
+- **Images:** `Pillow` opens, converts, resizes and edits PNG, JPEG, WebP, GIF, TIFF and BMP.
+- **Tables:** `pandas` reads and writes CSV and `.xlsx`, and filters, joins and aggregates them.
+
+A sandbox whose network setting reaches a package index can `pip install` more. (A skill run with native integration on Anthropic or OpenAI runs in that provider's own skill container instead; see [Skill Execution Modes](../resources.md#skill-execution-modes).) These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts an empty sandbox, while `copy_from_sandbox` reads the running one whatever the setting.
 
 ### bash
 
-Run a Bash command in the sandbox. The sandbox starts on the first command and keeps its files between commands in the conversation; it ends after 10 minutes without use, 60 minutes in all, or when the conversation closes, and the next command then starts an empty one (its result says so).
+Run a Bash command in the sandbox. The sandbox starts on the first command and keeps its files between commands in the conversation; it ends after 10 minutes without use, 60 minutes in all, or when the conversation closes, and the next command then starts an empty one (its result says so). A command, with everything it starts, can run at most 512 processes and threads at once: past that, starting another fails, so a runaway command (a fork bomb, say) stops there and the next command runs normally. What a command leaves running in the background stays, within that command's limit, until it exits or the sandbox ends.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
