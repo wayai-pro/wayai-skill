@@ -243,7 +243,7 @@ Notes:
 
 ### Code sandbox (all LLM connectors)
 
-Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox` and `copy_from_sandbox` (add them under the agent's tools; see [Native Tools › Code Sandbox Tools](native-tools.md#code-sandbox-tools)). With them the agent edits the files customers send (spreadsheets, Word and PowerPoint documents, PDFs and images), and the documents of its Base Toolset, through Python libraries the sandbox already has, with no network needed: WayAI copies each file in and out, and a document goes back through the toolset with its version check. The sandbox is a disposable Linux container: the conversation's, or the agent's own (`sandbox_scope`, below). It starts on the first command, keeps its files between commands, and ends after 10 minutes without use, 60 minutes in all, or when the conversation closes. The next command then starts an empty one.
+Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox` and `copy_from_sandbox` (add them under the agent's tools; see [Native Tools › Code Sandbox Tools](native-tools.md#code-sandbox-tools)). With them the agent edits the files customers send (spreadsheets, Word and PowerPoint documents, PDFs and images), and the documents of its Base Toolset, through Python libraries the sandbox already has, with no network needed: WayAI copies each file in and out, and a document goes back through the toolset with its version check. The sandbox is a disposable Linux container: the conversation's, or the agent's own (`sandbox_scope`, below). It starts on the first command, keeps its files between commands, and ends after 10 minutes without use, 60 minutes in all, or when the conversation closes. The next command then starts a new one with the files under `/workspace` from the last save, but nothing that was running (see [Native Tools › bash](native-tools.md#bash) for what is kept).
 
 | Setting | Values | Default | Effect |
 |---|---|---|---|
@@ -254,7 +254,7 @@ Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox`
 
 What each scope means:
 - **`conversation` ("Conversation", shared with the conversation's other agents)**: the conversation's sandbox, shared by every agent in it whose scope is `conversation`. Every agent sharing it sees its files, so delegations and file handoffs between those agents work through it.
-- **`agent` ("Agent", private to this agent)**: the agent's own sandbox in the conversation. No other agent sees its files, whatever that agent's scope. Set an agent that handles files others must not see to `agent`, such as a copilot working with internal documents its Base Toolset reaches.
+- **`agent` ("Agent", private to this agent)**: the agent's own sandbox in the conversation. No other agent sees its files, whatever that agent's scope, and its saved files are restored only into its own next sandbox. Set an agent that handles files others must not see to `agent`, such as a copilot working with internal documents its Base Toolset reaches.
 
 What each network setting allows:
 - **`none` ("No network")**: nothing leaves the sandbox.
@@ -267,7 +267,7 @@ Under `allowlist` or `web`, one sandbox may make up to 1,000 requests and send u
 
 Notes:
 - **Who can use it**: only the pilot and copilot tracks' responders (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`) can hold the sandbox tools; background, advisor, consultant and voice agents cannot.
-- **One network setting per sandbox**: the sandbox runs under one network setting for its whole life. When an agent with a different setting runs a command or copies a file in (after a transfer, or once the setting changes), it starts over empty, so nothing started under one setting reaches the network under another. Copying a file out reads the running sandbox whatever the setting. So agents sharing the conversation's sandbox need the same network setting, or a command from one ends the sandbox and starts an empty one.
+- **One network setting per sandbox**: the sandbox runs under one network setting for its whole life. When an agent with a different setting runs a command or copies a file in (after a transfer, or once the setting changes), it starts over as a new sandbox with the `/workspace` files kept, so nothing started under one setting reaches the network under another. Copying a file out reads the running sandbox whatever the setting. So agents sharing the conversation's sandbox need the same network setting, or a command from one ends the sandbox and starts a new one, without what it was running.
 - **Each agent sandbox is its own container**: it counts toward the organization's limit on running sandboxes beside the conversation's (a conversation whose agents run their own sandboxes holds several at once), and it ends with the conversation.
 - **Billing**: a command runs inside the agent's turn, so its time is the turn's time, billed like any tool's; a sandbox waiting between turns is not billed.
 - Each command runs for at most 9 minutes (2 by default) and never past the turn's own time limit; long output keeps only its first and last parts.
