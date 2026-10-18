@@ -582,6 +582,12 @@ connections:
 
 **Documents as files.** For an agent that also holds `list_files` and `read_file`, the file types its assigned `list` and `get` tools reach are mounted under `data/<file-type>/` in those file tools: `list_files` lists them and `read_file` reads them, with their version, through the same toolset tools ([Resource & File Tools](agents/native-tools.md#resource--file-tools)). The agent is then offered `list_files` and `read_file` in place of those `list` and `get` tools. An agent that also holds `write_file` and `edit_file` writes them there too, by their `data/` paths, through its assigned `put` tools and their version check, and is offered those two in place of those file types' `put` tools. Without both of them, a file type the agent holds a `put` tool for isn't mounted and keeps all its toolset tools as they are; so does one it holds a `delete` tool for, since the mount doesn't delete. A `put` for a file type the agent can't `list` or `get`, or on a connection to another base than the one the mount reads, stays offered as it is. A file type on several bases is mounted from one: the first connection's, by connection id, among those the agent can `list` or `get` it on. An agent holding only one of `list_files` and `read_file` keeps the toolset's tools as they are. The mount follows the file tools the connection last recorded: sync it after the toolset's file tools change. A production hub can't sync, and publishing doesn't record anything there, so its mount follows the file tools recorded at production's last token save. Save production's token again (`wayai set-connection-credential`) after a promote changes them; a connection whose token was saved before the mount existed has none until then.
 
+**Another hub's moved knowledge is refused.** A hub knowledge resource's file type, once its move
+is recorded, belongs to its hub ([resources.md](resources.md)): a Base Toolset on another hub of the
+organization can't reach it. Saving a token, syncing the toolset's tools, and publishing or syncing
+a preview whose toolset reaches one are refused, naming the file type. The organization's own
+moved file types, the hub's own, and any file type that isn't moved knowledge are reached as usual.
+
 ```yaml
 # agents/<agent>.yaml
 tools:

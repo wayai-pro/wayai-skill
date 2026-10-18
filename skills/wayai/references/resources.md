@@ -30,6 +30,13 @@ organization's knowledge resources there, then each hub's own, keeping their fol
 metadata ([`bases/files.md`](bases/files.md#moving-knowledge-resources-into-a-base)). Skills stay
 resources.
 
+Once a resource's move is recorded, the resource is read-only: its settings, files and folders
+refuse edits, and it can't be deleted. A hub resource also refuses a new agent link, or a link
+enabled again; a hub's copy of an organization resource is read-only already, and links to it
+are detached when the hub is cut over. A moved resource stays readable until resources are
+retired. On a hub, the move is recorded on its preview, and publishing or syncing carries it to
+production.
+
 ---
 
 ## Directory Structure
