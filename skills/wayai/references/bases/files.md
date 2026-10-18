@@ -233,7 +233,8 @@ wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   
 - **Where it writes.** `--base` names the knowledge base: its production base, or the preview its
   file types are written in. The file types are written in the preview and promoted, with no other
   config section; like every promotion, it also publishes the preview's credentials opted in to
-  production. The files are written in production only: the preview gets none of them.
+  production. The files are written in production only: the preview gets none of them until you
+  refresh it ([below](#refreshing-a-previews-knowledge)).
 - **A long id gets an alias.** A file type id past 57 characters is named by a short alias (its
   first 50 characters and 6 hex digits), so a toolset's tools for it (`delete_<name>`) fit 64
   characters: name the toolset's file tool by it.
@@ -261,6 +262,39 @@ wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   
   is labelled `wayai knowledge migrate`.
 - **Without a terminal** it needs `-y`; `--dry-run` never asks. It paces itself below the request
   budgets it shares with your other commands and the web console, like `wayai files push`.
+
+## Refreshing a preview's knowledge
+
+A preview is created with its production base's config, never its files. To test agents against
+production's documents on the preview, copy them in:
+
+```bash
+wayai knowledge refresh-preview --org <org_id> --base <knowledge base> [-y]
+```
+
+- **`--base`** names the production base (its one preview is refreshed) or the preview itself.
+- **What it does.** For every file type production holds, the preview's files become production's:
+  each path, its content, content type and metadata. A file the preview changed is replaced, and a
+  file only the preview holds is removed. Nothing else on the preview changes, and production is
+  only read. The preview must already hold each of production's file types: create the preview
+  again to bring its config up to date (it keeps its data), then refresh.
+- **When.** Nothing runs it for you: run it after creating the preview, and whenever the preview
+  should be current again. Creating a hub preview never copies files, since every hub preview of
+  the organization shares the one preview base and a copy would overwrite the others' edits.
+- **It reports each page** it copied: how many files it wrote, removed and left alone. A refresh
+  of a preview that already equals production changes nothing, and says so.
+- **Cost.** Each file written or removed counts as a file write when an API token runs it; signed
+  in as a person, a refresh isn't counted. A file already equal is free, so refreshing a current
+  preview costs nothing.
+- **No file events.** A refresh fires none of the preview's file triggers.
+- **In the console,** a preview's card on the organization's **Bases** tab has **Refresh preview
+  knowledge**, which does the same and shows each page's result, or why it was refused.
+- **The call behind it** is `POST /v1/{preview}/files/snapshot` with `{ "cursor"?: string,
+  "file_types"?: string[] }`, one page per request. It answers
+  `{ "data": { "next_cursor", "written", "removed", "unchanged" } }`; send `next_cursor` back until
+  it is `null`. A `409` means a preview file changed while the page was copied: send the same cursor
+  again. It needs file write access on the preview and file read access on its production base,
+  and is refused on a production base and on a preview not created from one.
 
 ## Attachments
 
