@@ -94,18 +94,30 @@ instructions, and the data they came with, still in front of the agent), and the
 follow-up or an eval run starts: the follow-up's instructions are still in front of
 the agent, the follow-ups after it are still scheduled, and the schedule shows as fired once. When
 that consult's turn would have to wait behind another turn, or another turn has answered since, the
-consult's answer (or the notice that it timed out) goes to your team instead. A turn the
-platform cannot resume safely is handed to your team instead, and nothing is run again: one
-interrupted while its `user_message` monitor was judging the message or while a harness-backed agent's
-turn was starting, one interrupted once its reply was under way, a turn that continues the one before
-it with files that turn fetched, and one already resumed three times. An automation's, a trigger's, a
-delegation's or a system message's turn that cannot resume is handed to your team only in the first two
+consult's answer (or the notice that it timed out) goes to your team instead. A turn interrupted
+after its agent wrote its reply goes on from there too: the reply is stored once and spoken once (a
+reply interrupted while it was being spoken is spoken again, and charged again by your speech
+provider), the work after it (the inactivity follow-ups it schedules, the agent it transfers to) is
+done once, and the reply is sent once. When the interruption may have cut its send, it is sent again once: on
+Telegram and Instagram marked as a possible duplicate; on WhatsApp only once Meta has not confirmed
+the first within a minute, then marked the same way; by email under the same key, so it arrives
+once. The notice that a conversation was handed to your team is sent the same way when an
+interruption cuts it. A turn the platform cannot resume safely is handed to your team instead, and
+nothing is run again: one interrupted while its `user_message` monitor was judging the message or
+while a harness-backed agent's turn was starting, one interrupted while a reply check
+(an `assistant_reply` monitor) was judging its reply or while an eval run's reply was being scored,
+one interrupted after its agent wrote its reply and before the reply was stored that must wait
+behind another turn (or that another turn has answered since),
+a turn that continues the one before it with files that turn fetched, and one already resumed three
+times. An automation's, a trigger's, a
+delegation's or a system message's turn that cannot resume is handed to your team only in the first three
 of those cases; otherwise (one already resumed three times, say) it is run again from the conversation's
 history, or, for a system message the history does not keep, it is not run again and your team is told
 it was interrupted. A customer's message's turn that cannot resume is handed to your team in those same
-two cases too; otherwise its message is answered by a new turn, as when it first arrived (also when the
-turn would have to wait behind another turn, or another turn has answered since), unless its voice
-message or files were not stored before the interruption, when it is handed to your team. An eval run interrupted while
+three cases too; otherwise its message is answered by a new turn, as when it first arrived (also when,
+interrupted before its agent wrote its reply, the turn would have to wait behind another turn, or another
+turn has answered since), unless its voice message or files were not stored before the interruption, when
+it is handed to your team. An eval run interrupted while
 it was being started fails, and is not run again. A resumed turn does not transcribe a voice message or run its `user_message`
 monitor again: it keeps what the interrupted turn got from them. These settings classify the tool for
 what a resumed turn does with a lost call:
