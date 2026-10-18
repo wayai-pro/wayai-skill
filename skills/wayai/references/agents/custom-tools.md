@@ -87,8 +87,8 @@ Then run `wayai push` to create the tools on the hub.
 A turn can be interrupted while a tool call is out (a restart, say), and then whether the call acted
 is not known. The platform records, in an agent's turn, each call that may act before it runs, and
 what came back after. An interrupted turn can resume from its last finished step, and the calls it
-finished are not run again. An agent's turn after a transfer to it resumes this way too, and so do a
-Copilot suggestion your team asked for, an agent's turn when a consult it started comes back, the turn
+finished are not run again. The turn a customer's message starts resumes this way on every channel,
+and so do an agent's turn after a transfer to it, a Copilot suggestion your team asked for, an agent's turn when a consult it started comes back, the turn
 an automation, a scheduled trigger, a delegation from another hub or a system message starts (its
 instructions, and the data they came with, still in front of the agent), and the turn a scheduled
 follow-up or an eval run starts: the follow-up's instructions are still in front of
@@ -102,7 +102,10 @@ it with files that turn fetched, and one already resumed three times. An automat
 delegation's or a system message's turn that cannot resume is handed to your team only in the first two
 of those cases; otherwise (one already resumed three times, say) it is run again from the conversation's
 history, or, for a system message the history does not keep, it is not run again and your team is told
-it was interrupted. An eval run interrupted while
+it was interrupted. A customer's message's turn that cannot resume is handed to your team in those same
+two cases too; otherwise its message is answered by a new turn, as when it first arrived (also when the
+turn would have to wait behind another turn, or another turn has answered since), unless its voice
+message or files were not stored before the interruption, when it is handed to your team. An eval run interrupted while
 it was being started fails, and is not run again. A resumed turn does not transcribe a voice message or run its `user_message`
 monitor again: it keeps what the interrupted turn got from them. These settings classify the tool for
 what a resumed turn does with a lost call:
