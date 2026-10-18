@@ -296,6 +296,57 @@ wayai knowledge refresh-preview --org <org_id> --base <knowledge base> [-y]
   again. It needs file write access on the preview and file read access on its production base,
   and is refused on a production base and on a preview not created from one.
 
+## Cutting a hub over to the knowledge base
+
+Once a hub's knowledge has moved, `wayai knowledge cut-over` switches its preview's agents from
+their knowledge resources to the knowledge base. It changes the preview only, whose agents read the
+knowledge base's preview: [refresh it](#refreshing-a-previews-knowledge) first, since the migration
+writes production only.
+
+```bash
+wayai knowledge cut-over --org <org_id> --base <knowledge base> --hub <preview hub_id> --dry-run   # every change, and why it would stop
+wayai knowledge cut-over --org <org_id> --base <knowledge base> --hub <preview hub_id>
+```
+
+- **Access stays per agent.** Each distinct set of knowledge the hub's agents read (their enabled
+  knowledge links) gets one read-only toolset on the knowledge base, `knowledge-<hash>`, with
+  `list` and `get` on each of its file types: the organization's and the hub's own, never another
+  hub's. It is written in the preview base and promoted, with no other config section. The hub
+  reaches each through a [Base Toolset](../connections.md#base-toolset) connection of the same
+  name, holding a new token bound to it on the preview base.
+- **Each agent is given** `list_files`, `read_file` and its toolset's `list_<file type>` and
+  `get_<file type>` tools (a long file type's alias in place of its id), so its documents are at
+  `data/<file type>/<path>`.
+- **Paths are rewritten.** `resources/<slug>/…` of a moved resource becomes `data/<file type>/…` in
+  agents' instructions and additional context, and in `run_agent` automations' instructions. A
+  skill's paths are left alone.
+- **The sources.** Each move is recorded first: the hub's own moved resources, which become
+  read-only ([resources.md](../resources.md)), and each organization resource whose link it
+  detaches. A move the organization's registry refuses (a file type id another resource or hub
+  holds) stops the run there, before any toolset, connection, tool, text or link is written; the
+  moves recorded ahead of it stay (those resources are read-only, still read through their links).
+  Once the claim is resolved, a run skips the hub's own recorded moves, and sends an organization
+  resource's again while its link is enabled, which changes nothing. The agents' knowledge links
+  are disabled last, once they hold their toolset's tools.
+- **It stops before writing** on: a resource placeholder that reads knowledge an agent is about to
+  lose (`{{files()}}`, `{{files('kb')}}` or `{{resources()}}`, and `{{resource_content()}}` or
+  `{{file_content()}}` naming such a resource), which would render empty: move that text into the
+  agent's instructions or a skill first; an agent on a hosted harness that reads knowledge (it
+  takes no Base Toolset's tools yet, so it would lose it); an agent reading knowledge that has not
+  moved; preview
+  knowledge resources that differ from production's (sync or discard those changes first: a
+  preview's resource is paired with production's, which moved, by its name, so two knowledge
+  resources of one name stop it too); and a hub file type whose hub part two production hubs'
+  names share, whose move can't be recorded until all but one are renamed; and a preview base that
+  lacks a file production holds for one of its file types (refresh it first).
+- **Run it again freely.** It writes only what differs (an organization resource's move is sent
+  again while its link is enabled, which changes nothing), and a re-run after a run cut short
+  finishes it on the same toolsets. A re-run of a finished cut-over writes nothing.
+- **Production** is never touched: once the preview passes its evals, publish it, then mint a
+  token for each toolset on the production base and save it on production's connection. The run
+  prints both commands.
+- **Without a terminal** it needs `-y`; `--dry-run` never asks.
+
 ## Attachments
 
 Record-scoped uploads — the simpler, unversioned surface. Reach for Files instead when you want

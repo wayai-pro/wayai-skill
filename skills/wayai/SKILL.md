@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.153.0
+version: 6.154.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -311,7 +311,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
-- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. Knowledge resources move into a base with `wayai knowledge migrate` ([`references/bases/files.md`](references/bases/files.md#moving-knowledge-resources-into-a-base)); skills stay resources
+- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. Knowledge resources move into a base with `wayai knowledge migrate`, and a hub's agents switch to it with `wayai knowledge cut-over` ([`references/bases/files.md`](references/bases/files.md#moving-knowledge-resources-into-a-base)); skills stay resources
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
 
@@ -626,6 +626,7 @@ wayai files | file-types | attachments | toolsets | actions | triggers | inbound
 wayai files pull|push <file_type> --base <id> [--folder <path>]   # A file type's files as a local folder (knowledge as code). DATA, not config: writes any base, production included. Push shows the diff; a file changed, deleted or created on the base since your pull is a conflict, not written (a new file is checked against the listing push reads — references/bases/files.md)
 wayai knowledge migrate --org <id> --base <knowledge base> [--hub <id>] [--dry-run]   # Move the org's knowledge resources, then a hub's own (--hub), into its knowledge base: one file type each, paths and metadata kept (references/bases/files.md)
 wayai knowledge refresh-preview --org <id> --base <knowledge base>   # Copy the knowledge base's production files into its preview, after creating it and whenever it should be current again (references/bases/files.md)
+wayai knowledge cut-over --org <id> --base <knowledge base> --hub <preview hub id> [--dry-run]   # Switch a preview hub's agents from their knowledge resources to the knowledge base: one read-only toolset per set of knowledge, resources/<slug>/ paths become data/<file type>/, links detached, moves recorded; prints the production steps (references/bases/files.md)
 ```
 
 `wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` maintain **one** worktree scope covering hubs, bases and communities (the selector says which — `wayai use bases/crm` vs `wayai use <hub-uuid>`), so `wayai bases use`/`wayai bases unbind` are deprecated aliases for the base axis alone; and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. Hubs and bases are different entities — never substitute one for the other.

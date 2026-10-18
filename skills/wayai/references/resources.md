@@ -33,9 +33,11 @@ resources.
 Once a resource's move is recorded, the resource is read-only: its settings, files and folders
 refuse edits, and it can't be deleted. A hub resource also refuses a new agent link, or a link
 enabled again; a hub's copy of an organization resource is read-only already, and links to it
-are detached when the hub is cut over. A moved resource stays readable until resources are
-retired. On a hub, the move is recorded on its preview, and publishing or syncing carries it to
-production.
+are detached when the hub is cut over (`wayai knowledge cut-over`,
+[`bases/files.md`](bases/files.md#cutting-a-hub-over-to-the-knowledge-base)). A moved resource stays
+readable until resources are retired. On a hub, the move is recorded on its preview, and publishing
+or syncing carries it to production. A hub's move is refused while two production hubs of the
+organization have names that give its file type's hub part: rename all but one first.
 
 ---
 
