@@ -243,7 +243,7 @@ Notes:
 
 ### Code sandbox (all LLM connectors)
 
-Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox` and `copy_from_sandbox` (add them under the agent's tools; see [Native Tools › Code Sandbox Tools](native-tools.md#code-sandbox-tools)). With them the agent edits the files customers send (spreadsheets, Word and PowerPoint documents, PDFs and images), through Python libraries the sandbox already has, with no network needed. The sandbox is one disposable Linux container per conversation: it starts on the first command, keeps its files between commands, and ends after 10 minutes without use, 60 minutes in all, or when the conversation closes. The next command then starts an empty one.
+Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox` and `copy_from_sandbox` (add them under the agent's tools; see [Native Tools › Code Sandbox Tools](native-tools.md#code-sandbox-tools)). With them the agent edits the files customers send (spreadsheets, Word and PowerPoint documents, PDFs and images), and the documents of its Base Toolset, through Python libraries the sandbox already has, with no network needed: WayAI copies each file in and out, and a document goes back through the toolset with its version check. The sandbox is one disposable Linux container per conversation: it starts on the first command, keeps its files between commands, and ends after 10 minutes without use, 60 minutes in all, or when the conversation closes. The next command then starts an empty one.
 
 | Setting | Values | Default | Effect |
 |---|---|---|---|
