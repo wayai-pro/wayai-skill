@@ -239,7 +239,7 @@ Rules:
 - **Preview hubs only.** A production hub's eval names no customer, whatever its scenario declares, so its calls to a customer-scoped toolset are refused. On production, a declared id would let an eval author act as any real customer.
 - **A contact id (a UUID).** Anything else is refused at `wayai push` and on save. The id is used as declared, so it need not be a contact in the contact book: in the base, the customer is the root record keyed by that id under the reserved `wayai_contact` source — seed it with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base ([Serving a customer](bases/toolsets.md#serving-a-customer)).
 - **Frozen per run.** A session's runs keep the customer their scenario named when the session started.
-- **Scenarios only.** A journey's steps name no customer yet.
+- **On a journey too.** A journey's `customer_contact_id:` names the customer every step serves, by the same rules ([Journeys](#journeys-hub-as-code)).
 
 **The recommended pattern for tool-dependent evals** — anywhere the agent's correctness hinges on values its tools read or write — is **[journey](#journeys-hub-as-code) + `fixture:` + per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals)** together, and its whole point is **repeatable and parallel session runs**. The **journey** captures the multi-turn tool flow (one graded eval per turn); the **`fixture:`** makes each session **repeatable** (reset-before / clear-after → a known baseline every run, not last run's residue); disjoint **`variables`** make the runs **parallel** (each run mutates its own leased row) — collision-free as long as each run's write footprint fits its row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handles the baseline automatically. For a stateless text/tone eval that touches no tools, none of the three is needed — the pattern earns its place precisely when tool values are in play.
 
@@ -347,13 +347,16 @@ variables:                     # optional per-run variables (gh #3007) — propa
   case:
     - { name: "Ana", order_id: "123" }
     - { name: "Bruno", order_id: "124" }
+customer_contact_id: <contact-uuid>  # optional; the customer every step serves (preview hubs only)
 ```
 
 Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), `attachments` (a list of hub-relative file paths, on `user` turns only — see [Attachments](#attachments-imagesfiles-on-a-user-turn)), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
 
 **Per-run variables on a journey.** A journey-level `variables:` map (same shape and `{{var()}}` semantics as [scenario variables](#per-run-variables-var--parallelize-mutating-evals)) **propagates to every derived step eval**, so run *i* of the whole journey — every step — resolves against the same `variables.NAME[i-1]` row. That makes a multi-turn **mutating** journey runnable at `runs: N` in parallel with each run on its own disjoint fixture. Give each step the same `runs` (or a `step_config` that never exceeds the array length) so the per-step indices stay aligned; a step whose `runs` exceeds a variable array is rejected with `insufficient_variables` at run-launch, same as a scenario.
 
-**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
+**The customer on a journey.** A journey-level `customer_contact_id:` propagates to every derived step eval as `variables:` does, so every step's calls to a [customer-scoped toolset](bases/toolsets.md#customer-scope) name that customer, by the [scenario rules](#name-the-customer-customer_contact_id--customer-scoped-toolsets): preview hubs only, a contact id, frozen per run. A journey that declares none names no customer, and those calls are refused.
+
+**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, customer_contact_id, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
 
 > **Pull after creating a journey.** The backend mints stable `step_id`s when a journey is first created (whether via `journey capture` or a `push` of a hand-authored transcript with no `step_id`s). Those ids land in the DB but not on your disk. **Run `wayai pull` after creating or first-pushing a journey** to sync the ids (and the assigned `id`) back — same discipline as entity `id`s. Re-pushing a transcript that's missing the server's `step_id`s re-mints them, which severs the derived evals' history.
 
