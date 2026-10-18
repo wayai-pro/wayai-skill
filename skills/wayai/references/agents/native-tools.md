@@ -361,7 +361,7 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 
 ## Code Sandbox Tools
 
-Run code in the conversation's sandbox: one disposable Linux container per conversation (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. It is the only place a native agent runs code or edits a binary or large file, on every LLM connector: copy a file in, change it with a command, and copy the result out — into the conversation, or back to the document it came from.
+Run code in a sandbox: a disposable Linux container (Debian, with Python 3, curl, jq, zip and other common tools), working directory `/workspace`. By default it is the conversation's, and its files are visible to every agent of the conversation that shares it; an agent whose `sandbox_scope` is `agent` has its own, which no other agent sees ([Roles & Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). It is the only place a native agent runs code or edits a binary or large file, on every LLM connector: copy a file in, change it with a command, and copy the result out — into the conversation, or back to the document it came from.
 
 Python comes with libraries for the files customers send, already installed, so they work with no network:
 - **Spreadsheets:** `openpyxl` reads and edits `.xlsx` workbooks.
