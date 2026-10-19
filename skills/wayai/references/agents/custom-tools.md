@@ -151,7 +151,11 @@ agent's next step, after what its agent had already seen, and an `irreversible: 
 is unknown sends the conversation to your team at that step; what its agent did before that step it did
 without them. The same holds when, at that moment, the platform was itself already re-running another
 interrupted turn: that re-run too is shown the calls from its agent's next step, and a later turn is shown
-them even when the re-run has finished first.
+them even when the re-run has finished first. Every such turn running at once is shown them, whichever of them
+answers first, and so is the turn that answers in one's place when it is itself stopped or interrupted. When
+a turn the model provider kept refusing waits and then resumes, a turn on a later message whose history holds
+its message, started while it runs, is shown the calls it made before it waited. A later turn started while a
+turn a restart interrupted runs again, resumed, is not shown that turn's calls.
 
 Any other later turn is never refused: there the identical call runs, so a write your API cannot
 recognize as a repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was
