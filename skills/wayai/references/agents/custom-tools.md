@@ -149,8 +149,9 @@ conversation to your team, as above, before the new turn's agent runs. A turn on
 already running when the interrupted turn stopped (two turns at once) is shown these calls from its
 agent's next step, after what its agent had already seen, and an `irreversible: true` call whose outcome
 is unknown sends the conversation to your team at that step; what its agent did before that step it did
-without them. This does not yet hold when, at that moment, the platform was itself already re-running
-another interrupted turn: then the later turn is not shown the calls.
+without them. The same holds when, at that moment, the platform was itself already re-running another
+interrupted turn: that re-run too is shown the calls from its agent's next step, and a later turn is shown
+them even when the re-run has finished first.
 
 Any other later turn is never refused: there the identical call runs, so a write your API cannot
 recognize as a repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was
