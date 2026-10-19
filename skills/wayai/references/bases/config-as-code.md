@@ -128,6 +128,12 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   link, so link each file from the new records with a `cascade` link before the prune to keep it; a
   plain reference link from them does not. The same filename-is-`id` rule applies to every config
   entity.
+- **A relationship type's `cascade` flag changes only while the type has no live links.** A push that
+  would change it on a type with live links is refused and applies nothing, and so is a promotion or a
+  rollback that would change it on production: the flag decides whether those links own their
+  [files](files.md). Delete the type's links, push the change, and re-create them, or move the links
+  to a new relationship type with the flag you want. A file goes with its last owning link, so give a
+  file you keep another owning link before deleting its old ones.
 - **Push prints advisory tool-design warnings** for the toolsets it applies (see
   [toolsets.md](toolsets.md)). They go to stderr and never block a push.
 - **Record base context in `AGENTS.md`.** The CLI does **not** seed one for a base folder — create
@@ -154,15 +160,16 @@ landing on someone else's would corrupt both runs.
 
 **Promotion is human-only.** Surface the command and let the user run it; recommend `--dry-run`
 first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhooks`/`--file-types`:
-each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists
-prior promotions and `rollback` reverts one by id. Promotion is blocked if it would break a
-published toolset, or remove a file type production still holds files of — a dry run lists the
-conflicts. An **inline** source secret does not travel with a
-promotion — it is environment-local, so a newly-promoted source carrying one stays unconfigured
-until you set it on production. A `credential:<name>` reference resolves against the credentials of
-the base serving the request, and promotion publishes the preview credentials you opted in
-(overwriting production's row of that name), leaving opted-out and organization-linked ones alone. A
-promotion (including `--dry-run`) reports every referenced credential production will still lack.
+each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists prior
+promotions and `rollback` reverts one by id. Promotion is blocked if it would break a published
+toolset, remove a file type production still holds files of, or change the `cascade` flag of a
+relationship type production still has links of — a dry run lists the conflicts. An **inline**
+source secret does not travel with a promotion — it is environment-local, so a newly-promoted source
+carrying one stays unconfigured until you set it on production. A `credential:<name>` reference
+resolves against the credentials of the base serving the request, and promotion publishes the
+preview credentials you opted in (overwriting production's row of that name), leaving opted-out and
+organization-linked ones alone. A promotion (including `--dry-run`) reports every referenced
+credential production will still lack.
 
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.

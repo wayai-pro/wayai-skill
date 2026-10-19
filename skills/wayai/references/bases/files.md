@@ -130,6 +130,13 @@ deleted, or with its record when the record is archived; or rewritten by an upse
 owns the file. While another owning link still holds the file, dropping one keeps it. A non-cascade
 link is a plain reference, so a file shared across records survives.
 
+A relationship type's `cascade` flag cannot change while the type has live links: an upsert of the
+type, a config push, a preview re-clone, a promotion or a rollback that would change it is refused
+and changes nothing, since it would turn every existing link from owning to reference or back. Take
+the links off the type first: delete them, change the flag, and re-create them, or move them to a new
+relationship type with the flag you want. Deleting a file's last owning link removes the file, so give
+a file you keep another owning link before you delete its old ones.
+
 **File tools for agents.** A toolset can give its agent `list`, `get`, `put` and `delete` tools over
 one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
 hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools). A hub agent
