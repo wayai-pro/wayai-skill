@@ -119,7 +119,12 @@ interrupted before its agent wrote its reply, the turn would have to wait behind
 turn has answered since), unless its voice message or files were not stored before the interruption, when
 it is handed to your team. An eval run interrupted while
 it was being started fails, and is not run again. A resumed turn does not transcribe a voice message or run its `user_message`
-monitor again: it keeps what the interrupted turn got from them. These settings classify the tool for
+monitor again: it keeps what the interrupted turn got from them. Neither does a new turn that answers the
+interrupted turn's message in its place: one started when the message is delivered again (it transcribes
+the voice message again only when the interrupted turn had not stored it yet), or one that answers it after
+the platform dispatched it again (alone, or together with what arrived meanwhile). A
+message delivered again while its interrupted turn's `user_message` monitor was judging it starts no new
+turn: that turn is handed to your team. These settings classify the tool for
 what a resumed turn does with a lost call:
 
 | What the tool is | What a resumed turn does with a lost call |
@@ -132,17 +137,15 @@ what a resumed turn does with a lost call:
 In the resumed turn, while a lost call's outcome is unknown, the agent's identical call (the same tool,
 the same arguments) is not run either: it is answered that an identical call's outcome is unknown.
 
-When the interrupted turn is not resumed but its message is answered by a new turn instead (run again
-from the conversation's history, or a customer's message answered by a new turn, as above), the new turn
-is shown each call the interrupted turn made of a tool that is not a read or `replay_override: rerun`,
-where it was made, with what is known of it: that it took effect (with what your API answered), that it
-did not, or that its outcome is unknown. None of these calls is run again by the platform. While a call's
-outcome is unknown, the new turn's identical call is answered as in a resumed turn; an
-`irreversible: true` call whose outcome is unknown sends the conversation to your team, as above, before
-the new turn's agent runs. One case is not covered yet: a customer's text message (no voice note or files)
-that the platform dispatches again while recovering, on the channel of a turn already running in that
-conversation, is answered once that turn ends, together with whatever else arrived meanwhile, by a turn
-that is not shown the lost calls.
+When the interrupted turn is not resumed but its message is answered by another turn instead (run again
+from the conversation's history; a customer's message answered by a new turn, as above, alone or together
+with what arrived meanwhile; or a turn on a message the customer sent afterwards, whose conversation
+history holds the interrupted turn's message), that turn is shown each call the interrupted turn made of
+a tool that is not a read or `replay_override: rerun`, where it was made, with what is known of it: that
+it took effect (with what your API answered), that it did not, or that its outcome is unknown. None of
+these calls is run again by the platform. While a call's outcome is unknown, that turn's identical call
+is answered as in a resumed turn; an `irreversible: true` call whose outcome is unknown sends the
+conversation to your team, as above, before the new turn's agent runs.
 
 Any other later turn is never refused: there the identical call runs, so a write your API cannot
 recognize as a repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was
