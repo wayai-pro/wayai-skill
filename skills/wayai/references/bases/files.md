@@ -31,10 +31,9 @@ optional metadata schema. It is **config**: write it in a preview base, then pro
   promotion added is kept if it has gained files since, and the rollback names it.
 - **`create-preview`** copies its origin's file types into the new preview.
 
-Unlike every other config entity, a file type is **not** part of the config-as-code subtree yet — `pull`
-does not write it, `push` does not apply it, `--prune` does not remove it. Manage one with these
-commands, or through the base's config API, which carries a `file_types` section
-([config-as-code.md](config-as-code.md)).
+Like every other config entity, a file type is part of the config-as-code subtree: `wayai pull bases/<base>`
+writes it to `file-types/<id>.yaml`, and `wayai push` applies it to a preview
+([config-as-code.md](config-as-code.md)). Or manage one with these commands.
 
 ```bash
 wayai file-types upsert <id> --base <base> --name <name> \
@@ -174,10 +173,9 @@ wayai files push policies --base crm                 # the diff, a question, the
   and delete also carries `If-Match` with the content hash your pull recorded, so one the base
   changes while the push runs is refused too. The rest of the push goes through, and the command
   exits non-zero (so does a `--dry-run` that lists a conflict).
-- **The one gap: a new file.** Push does not yet upload a new file as create-only
-  (`If-None-Match: *`), so a file new in your folder is checked against the listing push reads first. A file created at the same path in the
-  moment between that read and the upload is replaced — its content stays in the file's history
-  (`wayai files history`).
+- **A new file is created, never replaced.** Push uploads a file new in your folder as create-only
+  (`If-None-Match: *`), so a file created at the same path after your pull — even in the moment
+  between push's listing and its upload — is a conflict, not overwritten.
 - **Resolving a conflict.** Commit your copy, `wayai files pull … --overwrite` to take the base's,
   merge the two with git, and push again.
 - **Pull keeps your local changes.** It takes the base's changes over files you have not changed,

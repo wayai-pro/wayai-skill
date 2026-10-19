@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.155.0
+version: 6.156.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -623,7 +623,7 @@ wayai bases tokens|secrets|sql|import|batch|providers|report ...   # namespaced 
 # Everything INSIDE a base is its own top-level namespace, each taking --base <id>:
 wayai records | record-types | relationships | relationship-types | query-relationships
 wayai files | file-types | attachments | toolsets | actions | triggers | inbound-webhooks | seed
-wayai files pull|push <file_type> --base <id> [--folder <path>]   # A file type's files as a local folder (knowledge as code). DATA, not config: writes any base, production included. Push shows the diff; a file changed, deleted or created on the base since your pull is a conflict, not written (a new file is checked against the listing push reads — references/bases/files.md)
+wayai files pull|push <file_type> --base <id> [--folder <path>]   # A file type's files as a local folder (knowledge as code). DATA, not config: writes any base, production included. Push shows the diff; a file changed, deleted or created on the base since your pull is a conflict, not written (a new file is sent create-only — references/bases/files.md)
 wayai knowledge migrate --org <id> --base <knowledge base> [--hub <id>] [--dry-run]   # Move the org's knowledge resources, then a hub's own (--hub), into its knowledge base: one file type each, paths and metadata kept (references/bases/files.md)
 wayai knowledge refresh-preview --org <id> --base <knowledge base>   # Copy the knowledge base's production files into its preview, after creating it and whenever it should be current again (references/bases/files.md)
 wayai knowledge cut-over --org <id> --base <knowledge base> --hub <preview hub id> [--dry-run]   # Switch a preview hub's agents from their knowledge resources to the knowledge base: one read-only toolset per set of knowledge, resources/<slug>/ paths become data/<file type>/, links detached, moves recorded; prints the production steps (references/bases/files.md)
@@ -711,6 +711,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
 │       ├── base.yaml                    # Base identity; `wayai use bases/<folder>` reads it
 │       ├── record-types/<id>.yaml       # One file per entity, per kind. Secrets are never written
 │       ├── relationship-types/<id>.yaml
+│       ├── file-types/<id>.yaml
 │       ├── inbound-webhooks/<id>.yaml
 │       ├── triggers/<id>.yaml
 │       ├── toolsets/<id>.yaml

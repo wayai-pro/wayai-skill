@@ -18,7 +18,7 @@ Organization                       ← account boundary; base tokens
     ├── CONFIG — edit in a PREVIEW, ship with PROMOTE (human-run):
     │     record types (+ their external sources) · relationship types
     │     · triggers · inbound webhooks · Actions · toolsets · seed fixture definitions
-    │     · file types (config too, but NOT in the config-as-code subtree — see files.md)
+    │     · file types
     └── DATA — read/write on ANY base, production included:
           records · relationships · files · attachments · batch writes
           (seed apply/reset/clear and seed leases run only on previews)

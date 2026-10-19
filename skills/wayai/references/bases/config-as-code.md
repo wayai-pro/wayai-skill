@@ -5,25 +5,31 @@ setting up hermetic data for agent evals. Concepts are in [README.md](README.md)
 
 ## The workspace subtree
 
-Seven config entity kinds — record types, relationship types, inbound webhooks, triggers, toolsets,
-Actions, seed fixtures — live as version-controlled YAML under `wayai-ws/bases/<base>/`, one file per
-entity, so changes review cleanly in a pull request.
+Eight config entity kinds — record types, relationship types, file types, inbound webhooks, triggers,
+toolsets, Actions, seed fixtures — live as version-controlled YAML under `wayai-ws/bases/<base>/`, one
+file per entity, so changes review cleanly in a pull request.
 
-> **File types are NOT in this subtree yet.** They are config in every other sense (preview-only writes,
-> promoted with the base, copied into a new preview), but `pull` never writes them, `push` never applies them, and `--prune`
-> never touches them. Manage them with `wayai file-types` ([files.md](files.md)) and do not assume a
-> committed base folder captures them — it does not. The files inside a file type are data, not
+> **File types** are `file-types/<id>.yaml`: a file type's name, description, icon, color, `max_size`,
+> `allowed_content_types` and `metadata_schema`. `push` writes them before toolsets, so one push can
+> add a file type and a toolset whose file tools name it. The files inside a file type are data, not
 > config: keep them as a folder with `wayai files pull`/`push`
 > ([files.md](files.md#syncing-files-as-a-folder)), which write any base, production included.
 >
-> The base's config API already carries them, for the CLI to follow: `GET /v1/<base>/config` returns
-> a `file_types` list, and its diff (`POST …/config/diff`) and apply (`PUT …/config`, previews only)
-> take one. **A config sent without `file_types` keeps the base's file types as they are** — the diff
-> shows none of them removed. A list, `[]` included, is the whole desired set: the apply adds and
-> changes file types to match it, and a file type the list leaves out shows in the diff as a
-> removal but is kept, like every other kind. Deleting one (`wayai file-types delete`) deletes its
-> files too. An id in the list is spelled as the config returns it — a type created as `políticas`
-> is `pol%C3%ADticas` — and any other spelling is refused.
+> **A folder with no `file-types/` directory leaves the base's file types alone** — a folder pulled
+> before the CLI wrote file types, say: `push` sends none, and neither the diff nor `--prune` touches
+> them. Once the directory exists, its files are the whole desired set, like every other kind: a file
+> type whose file you delete shows in the diff as a removal, and `push --prune` deletes it **and every
+> file in it**. Git keeps no empty directory, so after you delete the last file in `file-types/`, a
+> fresh checkout's push leaves the base's file types alone; delete the last one with
+> `wayai file-types delete`. A file type's id is spelled as `pull` writes it, and must be letters,
+> digits, `.`, `-` and `_` for the CLI to write it: `pull` skips one created under another spelling
+> (`políticas` is stored as `pol%C3%ADticas`) with a warning, and `push --prune` keeps it.
+>
+> The base's config API carries the same section: `GET /v1/<base>/config` returns a `file_types` list,
+> and its diff (`POST …/config/diff`) and apply (`PUT …/config`, previews only) take one. A config sent
+> without `file_types` keeps the base's file types as they are; a list, `[]` included, is the whole
+> desired set. An id in the list is spelled as the config returns it, and any other spelling is
+> refused.
 >
 > A toolset's **file tools** are not file types: they are the toolset's `files` key in
 > `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike most of the toolset's keys,
@@ -47,6 +53,7 @@ wayai-ws/
         ├── base.yaml                 # base identity; `wayai use bases/<folder>` reads it
         ├── record-types/<id>.yaml
         ├── relationship-types/<id>.yaml
+        ├── file-types/<id>.yaml
         ├── inbound-webhooks/<id>.yaml
         ├── triggers/<id>.yaml
         ├── toolsets/<id>.yaml
@@ -121,11 +128,12 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   `wayai inbound-webhooks` and `wayai triggers`; an external source's credential is a credential of
   the base itself, managed through its credential API.
 - **Deletions are opt-in.** Because deleting a record type also removes its records (and the files
-  their [`cascade`](files.md) links owned, unless another owning link still holds them), `push` is
-  additive by default: an entity on the server that your files no longer declare shows in the diff as
-  a removal but is **kept** unless you pass `--prune`. The corollary bites when copying config between
-  folders: an entity file you forgot to copy is one the push simply will not create, so check the diff
-  rather than assuming a clean apply means a complete one.
+  their [`cascade`](files.md) links owned, unless another owning link still holds them), and deleting
+  a file type removes its files, `push` is additive by default: an entity on the server that your
+  files no longer declare shows in the diff as a removal but is **kept** unless you pass `--prune`.
+  The corollary bites when copying config between folders: an entity file you forgot to copy is one
+  the push simply will not create, so check the diff rather than assuming a clean apply means a
+  complete one.
 - **Renaming a record type is re-seed, not in-place.** A record type's `id` is its identity and must
   equal its filename (`record-types/<id>.yaml`), so a rename means changing **both** the filename and
   the inner `id:` together (changing only one errors; or delete the inner `id:` so it defaults to the
