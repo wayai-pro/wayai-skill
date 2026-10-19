@@ -111,7 +111,8 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   once — save it. Existing secrets are left untouched. Manage inbound-webhook and trigger values with
   `wayai inbound-webhooks` and `wayai triggers`; an external source's credential is a credential of
   the base itself, managed through its credential API.
-- **Deletions are opt-in.** Because deleting a record type also removes its records, `push` is
+- **Deletions are opt-in.** Because deleting a record type also removes its records (and the files
+  their [`cascade`](files.md) links owned), `push` is
   additive by default: an entity on the server that your files no longer declare shows in the diff as
   a removal but is **kept** unless you pass `--prune`. The corollary bites when copying config between
   folders: an entity file you forgot to copy is one the push simply will not create, so check the diff
@@ -122,8 +123,9 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   filename). Either way it is a **create-new + orphan-old**: the diff shows `+ <new>` / `- <old>`,
   push creates a new **empty** record type, and the old one keeps all its records. To rename and keep
   the data: push to create the new empty type, re-seed its records (`wayai records upsert`, or
-  `wayai bases batch`), then `push --prune` to delete the orphan — which cascades its records. The
-  same filename-is-`id` rule applies to every config entity.
+  `wayai bases batch`), then `push --prune` to delete the orphan — which cascades its records, their
+  links, and the files their [`cascade`](files.md) links owned, even a file a link from the new
+  records also points at. The same filename-is-`id` rule applies to every config entity.
 - **Push prints advisory tool-design warnings** for the toolsets it applies (see
   [toolsets.md](toolsets.md)). They go to stderr and never block a push.
 - **Record base context in `AGENTS.md`.** The CLI does **not** seed one for a base folder — create
@@ -239,12 +241,15 @@ wayai seed get <name> --base <preview>
   updates in place and never creates a duplicate.
 - **`reset` restores the baseline.** It re-applies the declared records in place (fixing any a run
   mutated — a status a trigger flipped, say) and removes fixture-owned rows the fixture no longer
-  declares. Use it between runs for a guaranteed-clean start.
+  declares, with the relationships pointing at a removed record and the files those relationships
+  owned (a [`cascade`](files.md) link), whoever attached them. Use it between runs for a
+  guaranteed-clean start.
 - **`exclusive_record_types` makes `reset` authoritative for whole record types.** Records an agent
   *creates* during a run carry no ownership marker, so a plain reset leaves them behind and they
   accumulate. List the record types your evals write to and reset also removes every record of those
   types the fixture did not declare — regardless of who created it, including other fixtures' rows —
-  plus relationships pointing at removed records. A record referenced by one of the fixture's declared
+  plus relationships pointing at removed records and the files those relationships owned (a
+  [`cascade`](files.md) link). A record referenced by one of the fixture's declared
   relationships always survives. Opt-in and reset-only; choose exclusive types deliberately on a
   shared preview, because the fixture becomes the single source of truth for them.
 - **`clear` is teardown.** It deletes exactly the rows the fixture owns and nothing else — ownership

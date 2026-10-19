@@ -21,8 +21,9 @@ A record type is a JSON Schema. Only `--name` is required; for a schema longer t
 to a file and pass `--schema @path/to/schema.json`. `--icon`/`--color` are display hints. `--sources` declares external
 sources — see [integrations.md](integrations.md).
 
-Deleting a record type also removes all of its records and any relationships pointing at them; a
-record type recreated with the same id starts empty.
+Deleting a record type also removes all of its records and any relationships pointing at them, with
+the files those relationships owned (a [`cascade`](files.md) link); a record type recreated with the
+same id starts empty.
 
 ## Records
 
@@ -318,7 +319,8 @@ wayai relationship-types history <id> --base <base> [--limit <n>] [--offset <n>]
 
 `--schema` (optional) validates relationship metadata; omit it to allow any metadata.
 `--source-record-types`/`--target-record-types` (optional, JSON arrays) restrict which record types
-the type may connect. Deleting a relationship type also removes every relationship of that type.
+the type may connect. Deleting a relationship type also removes every relationship of that type, and
+for a `cascade` type the files those relationships owned ([files.md](files.md)).
 
 ## Relationships
 
@@ -417,7 +419,8 @@ failure in place; a run that dies is resumed by hand.
 
 **Undo.** `wayai bases import rollback <import_id>` soft-deletes only the rows the import **created** —
 a row it merely overwrote stays, keeping the imported values (there is no version-revert). Links
-pointing at deleted rows go too, so nothing dangles. It works in pages and the CLI loops until
+pointing at deleted rows go too, so nothing dangles, and so does a file such a link owned (a
+[`cascade`](files.md) link), even one attached after the import. It works in pages and the CLI loops until
 complete; retrying is always safe, since pages already swept stay swept. **In a terminal** it shows
 the live matched count and asks to confirm. **Off a TTY — a script, CI, or an agent — a missing
 `--yes` is REFUSED, never assumed**: the prompt would have no one to answer it, so the command errors
