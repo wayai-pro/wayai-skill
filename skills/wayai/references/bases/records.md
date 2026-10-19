@@ -206,6 +206,58 @@ Checked at config write and at promotion: the declaration's shape on the record 
 - A single delete is not checked, since `--prune` deletes one record type at a time.
 - A base left with two roots or an owner without one refuses the customer-scoped calls that depend on it, and a promotion refuses it.
 
+### Reviewed records (`x-review`)
+
+A record type can hold records that a person approves before agents read them, such as knowledge notes: agents write drafts, a person approves them, and only approved records reach the agents that read them. Declare it with `x-review` at the root of the schema:
+
+```jsonc
+{ "type": "object",
+  "properties": {
+    "title":       { "type": "string" },
+    "body":        { "type": "string" },
+    "status":      { "type": "string", "enum": ["draft", "approved", "retired"] },
+    "audience":    { "type": "array", "items": { "type": "string" } },
+    "approved_by": { "type": "string" },
+    "approved_at": { "type": "string", "format": "date-time" },
+    "drafted_by":  { "type": "string" }
+  },
+  "required": ["title", "status", "audience"],
+  "x-review": {
+    "field": "status",
+    "audience": "audience",
+    "writers": ["backoffice-notes"],
+    "stamps": { "approved_by": "approved_by", "approved_at": "approved_at", "drafted_by": "drafted_by" }
+  } }
+```
+
+- `field` names the status: a top-level property listed in `required`, whose `enum` is all strings and holds `draft` and `approved`. Any other value (`retired`) means not approved.
+- `audience` (optional) names a top-level array of strings listed in `required`: the toolset ids that read each record, or `*` for every reader. An id that names no toolset matches nothing.
+- `writers` lists the toolset ids that write drafts ([toolsets.md](toolsets.md#reviewed-record-types)). An id that names no toolset is inert, so the record type can be written before its toolsets.
+- `stamps` (optional) names the fields the server writes: `approved_by` and `drafted_by` (strings) and `approved_at` (`format: date-time`). None of them may be listed in `required`.
+- The record type is native (`sources: []`) and stays updatable: no `x-archival` mode other than `mutable`, and no terminal `x-workflow` state, so a person can always edit an approved record.
+
+**Who approves.** Only a person signed in to WayAI: the console, the CLI after `wayai login` (not `--token` or `WAYAI_TOKEN`), and that person's REST writes, batches and imports. A seed fixture on a preview base approves too, so a preview can hold approved records. Every other writer writes drafts: a toolset call (a person's included), an API token, an agent, an inbound webhook, a trigger. Such a writer:
+
+- creates a draft when it sends no status;
+- is refused setting `approved`, moving a record out of `approved`, changing an approved record (its data, or its `external_id` or `external_source`), and deleting or cancelling one. A full replace that leaves out the status would move the record to `draft`, so it is refused too;
+- is refused cancelling an archived record of the type, whose status cannot be read;
+- may write again what an approved record already holds: a write that changes nothing passes, so a nightly import re-asserting the same rows keeps working.
+
+A deleted record written again counts as a new record. A person may do anything; editing an approved record keeps it approved.
+
+A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` does not print that count yet, and its confirmation's record count includes the records it will keep.
+
+**Stamps.** The server writes the fields `stamps` names, and ignores any value a write sends for them. They hold ids only, never a name or an email:
+
+- `approved_by`: `user:<WayAI user id>`, or `seed:<fixture>` for a seed fixture. `approved_at`: when. Both are written when a person approves a record or edits an approved one, and removed when the record leaves `approved`.
+- `drafted_by`: written whenever a writer that is not an approver changes a record: the toolset id for a toolset call, `token:<token id>` for an API token, `inbound_webhook` or `system` (a trigger) otherwise. A person's writes, and any write that changes nothing, leave it as it was.
+
+They are ordinary fields: `records get` and `records query` return them, and a filter can select on them (`{"field":"data.approved_by","op":"eq","value":"user:..."}`).
+
+**Not held to the rule:** deleting the record type itself, which is a config change, and the external key a trigger's `external_write` links back onto a record.
+
+**Checked at config write and at promotion**, across the base ([toolsets.md](toolsets.md#reviewed-record-types)): the declaration's shape; a toolset its `writers` do not name holding a create, update or delete on the type (an Action, a composite step or a `batch`); `sql_query` on a toolset that is not a writer of every reviewed type; a writer's `writable_fields` naming the status or a stamp; and an `internal_write` [trigger](integrations.md#triggers) targeting the type. `x-review` promotes like any other schema key. Records do not promote: production's are approved in production, and a preview gets approved records from seed fixtures. A reviewed type's records stay in the base's active records whatever their age, so an approved record never drops out of a list.
+
 ### Field constraints
 
 The schema's own keywords are enforced on every write — they are not documentation. Reach for these

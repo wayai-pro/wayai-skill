@@ -11,6 +11,7 @@ An agent connected to a toolset sees `create_invoice`, `list_payments` — its o
 - [Toolsets](#toolsets)
 - [File tools](#file-tools)
 - [Customer scope](#customer-scope)
+- [Reviewed record types](#reviewed-record-types)
 - [The MCP connection URL](#the-mcp-connection-url)
 - [Which base serves a slug](#which-base-serves-a-slug)
 - [Promotion blocking](#promotion-blocking)
@@ -302,6 +303,27 @@ A call is refused when:
 
 The customer record is read from the base's live records. Once its record type is declared `root`, archival keeps every record of the type there. A customer record archival had already moved out before then, by whichever rule moved it, is not found.
 
+## Reviewed record types
+
+A [reviewed record type](records.md#reviewed-records-x-review) holds drafts and approved records. Its `x-review.writers` names the toolsets that write its drafts; every other toolset that reaches it only reads its approved records.
+
+**A writer** — a toolset its `writers` name:
+
+- reads every record of the type, drafts included, so it can tell what is already there;
+- writes drafts. Its create and update tools leave out the status and the stamp fields, and a create lands as `draft`, stamped with the toolset id in `drafted_by`. A tool call is never an approver, even a person's;
+- is refused changing, deleting or approving an approved record (`REVIEW_APPROVER_REQUIRED`, 403). To correct one, it writes a new draft — a field naming the record it replaces lets the person approving it retire the old one;
+- may not name the status or a stamp field in an Action's `writable_fields`: the server writes them. A create's `writable_fields` need not name the status, though it is `required`.
+
+**A reader** — any other toolset that reaches the type through an Action, a composite step or a relationship tool:
+
+- `list`, `get` and a relationship `list` answer only approved records whose `audience` holds the toolset's own id or `*` (every approved record, when the type declares no audience). Any other record is answered as not found, and a link to one is left out. The rule is not a tool parameter: an agent cannot see it or turn it off, and it applies to every filter the agent sends. A list of archived records of the type answers none; a `get` still reads an archived record that meets the rule;
+- holds no write on the type: a create, update or delete Action, a composite step that writes it, or a `batch` that allows any operation on it;
+- holds no `sql_query`, which reads every row of the base, unless the toolset is a writer of every reviewed type in the base.
+
+A toolset that breaks either list is refused when it, an Action it references, or the record type is written, and at [promotion](#promotion-blocking). A config restored without these checks — a rollback, or a preview clone of a source that already had the problem — still refuses each such call with `REVIEW_READER_REFUSED` (403). The same code refuses every reader of a type whose `x-review` is malformed, whose status or audience field is not one plain top-level name, or, when an audience is declared, a reader whose own toolset id reads as a date-time (`2026-01-01`).
+
+A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held to both rules at once.
+
 ## The MCP connection URL
 
 ```bash
@@ -329,6 +351,7 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects,
 - breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role, an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target, or a trigger with `skip_cascade_writes: false` on a type such an `internal_write` patches.
+- breaking a [reviewed record type](#reviewed-record-types): a malformed `x-review`, a toolset its `writers` do not name holding a write on the type, `sql_query` on a toolset that is not a writer of every reviewed type, a writer's `writable_fields` naming the status or a stamp, or an `internal_write` trigger targeting the type.
 
 So promote the Actions and the toolset **together with** the schema change. `--dry-run` lists any such conflicts first. Promotion is human-run.
 
