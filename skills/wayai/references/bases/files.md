@@ -269,6 +269,12 @@ wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   
   promotion is first run as a dry run: one that would change anything but these file types, or
   report a failing check, stops with the file types written in the preview and nothing in
   production.
+- **A file type created while it runs is kept.** The run promotes only file types production did
+  not hold when it read it. One an agent or a person creates in production at such an id since is
+  never written over: unless it is already what the run would promote, the promotion's dry run
+  reports it and the run stops, naming it, with nothing in production. A re-run treats it as any
+  file type already in production: one this command did not write stops it before any write until
+  you remove it or rename the resource.
 - **A file created while it runs is kept.** Each file is written create-only
   (`If-None-Match: *`), so one an agent or a person creates at its path after the run listed
   production's files is refused by the base, not replaced. The run stops there, naming the path;
