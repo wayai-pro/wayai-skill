@@ -130,4 +130,5 @@ connections:
 
 resources:
   - name: Company FAQ
+    type: knowledge   # held from before knowledge was retired: a new hub's push refuses it (README §3)
     description: Public-facing FAQ and policy docs (billing, refunds, account)

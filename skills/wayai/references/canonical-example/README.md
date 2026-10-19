@@ -33,6 +33,8 @@ canonical-example/
 Note where each lives: stable identity in `instructions` (system prompt — cached), high-churn reads in `additional_context_template` (per-turn — outside the cache). This split is what makes Anthropic/OpenAI prompt-cache hits possible. See `references/agents/instructions.md#additional-context-cache-friendly`.
 
 ### 3. Agent → Resource
+**Knowledge is retired:** `Company FAQ` is a `knowledge` resource, which only a hub that already holds one keeps. A new hub's push refuses it, as it refuses every new knowledge resource; put such documents in the organization's knowledge base instead, where agents read them at `data/<file type>/…` ([`references/bases/files.md`](../bases/files.md)). The wiring below still shows how an agent reads a resource's files by path.
+
 `agents/support-pilot.yaml` `resources:` lists `name: Company FAQ`, which matches `hub.yaml` `resources[].name: Company FAQ`. The folder under `resources/` is the **slugified** resource name (`Company FAQ` → `company-faq`). Files inside the folder are the actual knowledge content — the list of files is **not** in YAML; the filesystem is the source of truth (per `references/resources.md`).
 
 The agent invokes the resource at runtime via the native tools `list_files` (discover what's there) and `read_file` (read the content) — both declared in `tools.native`. The instructions reinforce this: look up the FAQ before promising anything.

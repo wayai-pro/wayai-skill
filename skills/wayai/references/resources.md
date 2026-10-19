@@ -19,10 +19,16 @@ Resources are knowledge bases (documents) or skills (versioned agent capability 
 
 | Type | Purpose | Entry Point | Execution |
 |------|---------|-------------|-----------|
-| `knowledge` (default) | Document collections (FAQ, product docs, manuals) | Any file(s) | The linked resources are injected as `resources/<slug>` mounts into the `list_files` native-tool schema at turn time; content is read on demand via `list_files` + `read_file` |
-| `skill` | Versioned agent capability package | `SKILL.md` with YAML frontmatter | Tool-based or native integration |
+| `knowledge` (retired: none is created) | Document collections (FAQ, product docs, manuals) | Any file(s) | The linked resources are injected as `resources/<slug>` mounts into the `list_files` native-tool schema at turn time; content is read on demand via `list_files` + `read_file` |
+| `skill` (default) | Versioned agent capability package | `SKILL.md` with YAML frontmatter | Tool-based or native integration |
 
-`knowledge` is the default — `type` can be omitted in YAML when the resource is a knowledge base.
+`skill` is the default: a new resource that names no `type` is a skill.
+
+**No new knowledge.** A new `knowledge` resource is refused, by `wayai push` (and `wayai org
+push`), the console, and linking an organization's knowledge into a hub; so is turning a skill into
+knowledge. The knowledge a hub or an organization already holds keeps working, pushing, publishing
+and syncing as before until resources are retired, and a resource that names no `type` keeps its
+own, so a folder pulled earlier re-pushes unchanged.
 
 **Knowledge is moving into a base.** An organization's documents belong in its knowledge base, as
 files agents read and edit at `data/<file type>/<path>`. `wayai knowledge migrate` moves an
@@ -72,18 +78,18 @@ Resources are declared in `hub.yaml` under `resources:`. The list of files is **
 resources:
   - id: "resource-uuid"           # set by pull
     name: Product Catalog
-    # type: knowledge             # default — omitted
+    type: knowledge               # held before knowledge was retired; a new one is refused
     description: Product docs
     # enabled: true               # default — omitted
 
   - id: "skill-uuid"
     name: Order Management
-    type: skill
+    type: skill                   # the default
     skill_name: order-management  # auto-derived from name if omitted
     description: Handles order queries
 ```
 
-**Default omission:** `enabled: true` and `type: knowledge` are defaults — they're omitted from pulled YAML and from your edits.
+**Default omission:** `enabled: true` is the default — it's omitted from pulled YAML and from your edits. Pull names every resource's `type`.
 
 ---
 
