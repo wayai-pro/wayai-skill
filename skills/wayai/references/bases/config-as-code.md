@@ -9,12 +9,21 @@ Seven config entity kinds — record types, relationship types, inbound webhooks
 Actions, seed fixtures — live as version-controlled YAML under `wayai-ws/bases/<base>/`, one file per
 entity, so changes review cleanly in a pull request.
 
-> **File types are NOT in this subtree.** They are config in every other sense (preview-only writes,
+> **File types are NOT in this subtree yet.** They are config in every other sense (preview-only writes,
 > promoted with the base, copied into a new preview), but `pull` never writes them, `push` never applies them, and `--prune`
 > never touches them. Manage them with `wayai file-types` ([files.md](files.md)) and do not assume a
 > committed base folder captures them — it does not. The files inside a file type are data, not
 > config: keep them as a folder with `wayai files pull`/`push`
 > ([files.md](files.md#syncing-files-as-a-folder)), which write any base, production included.
+>
+> The base's config API already carries them, for the CLI to follow: `GET /v1/<base>/config` returns
+> a `file_types` list, and its diff (`POST …/config/diff`) and apply (`PUT …/config`, previews only)
+> take one. **A config sent without `file_types` keeps the base's file types as they are** — the diff
+> shows none of them removed. A list, `[]` included, is the whole desired set: the apply adds and
+> changes file types to match it, and a file type the list leaves out shows in the diff as a
+> removal but is kept, like every other kind. Deleting one (`wayai file-types delete`) deletes its
+> files too. An id in the list is spelled as the config returns it — a type created as `políticas`
+> is `pol%C3%ADticas` — and any other spelling is refused.
 >
 > A toolset's **file tools** are not file types: they are the toolset's `files` key in
 > `toolsets/<id>.yaml`, which `pull` writes and `push` applies. **Unlike most of the toolset's keys,
