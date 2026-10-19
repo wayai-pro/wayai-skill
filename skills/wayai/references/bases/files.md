@@ -264,10 +264,16 @@ wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   
   whose schema is `null`), a new file its file type would refuse (a content-type or size limit, or
   its metadata under the whole schema — a moved file type keeps an admin's later limits and
   constraints), and a production file that differs
-  from its source. That last one was edited after it moved, so it is never overwritten: remove
-  it from production to move it again. Separately, the promotion is first run as a dry run: one
-  that would change anything but these file types, or report a failing check, stops with the file
-  types written in the preview and nothing in production.
+  from its source. That last one was edited after it moved, or created there by someone else, so
+  it is never overwritten: move or remove it in production to move its source. Separately, the
+  promotion is first run as a dry run: one that would change anything but these file types, or
+  report a failing check, stops with the file types written in the preview and nothing in
+  production.
+- **A file created while it runs is kept.** Each file is written create-only
+  (`If-None-Match: *`), so one an agent or a person creates at its path after the run listed
+  production's files is refused by the base, not replaced. The run stops there, naming the path;
+  the files written before it stay. Run it again: it writes what is left, unless the file at that
+  path differs from its source, which stops it before any write as above.
 - **Run it again freely.** What has moved is not written again; a run with nothing left to move
   writes nothing. A file type already in production is never changed by a later run — its name,
   description, limits and schema stay as they are, an edit made after the move included. A new
