@@ -386,6 +386,10 @@ Deliveries are verified against that secret and wake only the conversation whose
 
 A turn whose repository the App is not installed on, or whose connection has no App, does not start: it is handled as any hosted turn that cannot start, and it is not retried.
 
+**Branch or commit** (the agent's `repo_checkout` setting, optional): the branch, or the full commit hash, each session clones. Unset or empty clones the repository's default branch. A full commit hash (40 or 64 hex characters) is read as a commit, anything else as a branch name; a value that is neither a valid branch name nor a full commit hash is refused when the agent is saved or pushed. A session keeps the checkout it started with: changing `repo_url` or `repo_checkout` starts the conversation's next turn in a new session.
+
+For a ready-made agent that works on a repository (it reads the repository's `AGENTS.md` first and pushes only a branch of its own), copy the [repository agent template](repository-agent/README.md).
+
 ---
 
 ## Channel

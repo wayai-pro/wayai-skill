@@ -1,0 +1,11 @@
+name: Repository Agent
+role: pilot
+connection: claude-agent              # your Claude Agent (Managed) connection's name in hub.yaml
+settings:
+  model: claude-sonnet-5
+  repo_url: https://github.com/your-org/your-repo   # the repository the connection's GitHub App is installed on
+  repo_checkout: main                 # the branch, or full commit hash, each session starts from; remove it for the default branch
+  max_session_minutes: 120            # the longest one turn may run
+  network_egress_policy: allowlist    # the sandbox reaches only the hosts listed below
+  network_egress_allowlist: []        # add the hosts the repository's build needs (e.g. registry.npmjs.org)
+  mcp_servers: []                     # the connection id of the MCP Server connection to your toolset, if the agent has one
