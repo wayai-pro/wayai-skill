@@ -229,7 +229,7 @@ wayai set-connection-credential --hub <id|name> --connection "OpenAI" --org-cred
 echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connection "OpenAI" --field api_key --stdin
 ```
 
-- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`.
+- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`.
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
 - **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
 - **A raw secret switches that field to Direct Input**, on preview and production, whether it comes from `--field`, the UI's Direct Input or the API. The org credential that supplied that field is unlinked from the connection, so its next rotation no longer overwrites the secret you set. Only that field's link goes: a connection that takes its API key from one org credential and its access token from another keeps the other one linked. The org credential itself, and its links to other connections, stay.
@@ -377,6 +377,14 @@ A hosted agent connection (Beta): Anthropic's Managed Agents runs the agent loop
 3. Copy the endpoint's signing secret (`whsec_…`, shown once) into the connection's **Webhook Signing Secret** field, or set it with `wayai set-connection-credential --field webhook_secret_token --stdin` (on a production hub this writes the production credential).
 
 Deliveries are verified against that secret and wake only the conversation whose session the delivery names; a delivery for a session the hub did not start is acknowledged and ignored.
+
+**Repository access** (for an agent whose **Repository URL** is set, `https://github.com/<owner>/<repo>`): the connection holds your organization's own GitHub App — never a personal access token. Each session gets a token for its one repository, with only **Contents** and **Pull requests** write access, valid for an hour and renewed while a long turn runs. The token goes to Anthropic for that session only; the App's private key stays in WayAI.
+1. On GitHub, create a GitHub App owned by your organization, with repository permissions **Contents: Read and write** and **Pull requests: Read and write** (and no others), and no webhook. Generate a private key (a `.pem` file).
+2. Install the App on the repositories your agents work on.
+3. Set the App on the connection: **GitHub App ID** (the App ID on the App's settings page) and **GitHub App Private Key** (the `.pem` contents), or with `wayai set-connection-credential --field github_app_id --stdin` and `--field github_app_private_key --stdin`.
+4. Protect each repository's default branch (branch protection or a ruleset that requires a pull request): the token can push to any branch of its repository, so the protection is what keeps an agent's changes behind review.
+
+A turn whose repository the App is not installed on, or whose connection has no App, does not start: it is handled as any hosted turn that cannot start, and it is not retried.
 
 ---
 
