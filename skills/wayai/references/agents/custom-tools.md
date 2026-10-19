@@ -130,10 +130,23 @@ what a resumed turn does with a lost call:
 | `irreversible: true` | Never runs it again. Unless the platform had recorded that the call took effect (the agent is then told so), the conversation goes to your team, whose notice names the call and its arguments, so a person checks whether it took effect. |
 
 In the resumed turn, while a lost call's outcome is unknown, the agent's identical call (the same tool,
-the same arguments) is not run either: it is answered that an identical call's outcome is unknown. A
-later turn is never refused: there the identical call runs, so a write your API cannot recognize as a
-repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was not
-interrupted (your API answered 5xx, say) is not affected: retrying it runs it.
+the same arguments) is not run either: it is answered that an identical call's outcome is unknown.
+
+When the interrupted turn is not resumed but its message is answered by a new turn instead (run again
+from the conversation's history, or a customer's message answered by a new turn, as above), the new turn
+is shown each call the interrupted turn made of a tool that is not a read or `replay_override: rerun`,
+where it was made, with what is known of it: that it took effect (with what your API answered), that it
+did not, or that its outcome is unknown. None of these calls is run again by the platform. While a call's
+outcome is unknown, the new turn's identical call is answered as in a resumed turn; an
+`irreversible: true` call whose outcome is unknown sends the conversation to your team, as above, before
+the new turn's agent runs. One case is not covered yet: a customer's text message (no voice note or files)
+that the platform dispatches again while recovering, on the channel of a turn already running in that
+conversation, is answered once that turn ends, together with whatever else arrived meanwhile, by a turn
+that is not shown the lost calls.
+
+Any other later turn is never refused: there the identical call runs, so a write your API cannot
+recognize as a repeat (no `idempotency_header`) can then act twice. A call that failed in a turn that was
+not interrupted (your API answered 5xx, say) is not affected: retrying it runs it.
 
 Set `replay_override: rerun` only on a tool whose second run leaves what the first left (a lookup sent
 as POST, an update that sets a fixed value). A write with an `idempotency_header` keeps sending its key
