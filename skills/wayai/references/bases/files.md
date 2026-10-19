@@ -123,10 +123,12 @@ silently clobbering a concurrent change. Every write is a new version with full 
 may carry `If-Match` too, and is refused with 412 if the file changed since you read it.
 
 **Linking files to records.** A relationship can point at a file — its endpoint kind is `file`. If the
-link's relationship type is declared **`cascade`**, deleting the link (or the owning relationship)
-removes the file, whether the link is deleted on its own, in a batch, or with its relationship type or
-the record type at its other end. A non-cascade link is a plain reference, so a file shared across
-records survives.
+link's relationship type is declared **`cascade`**, the link owns the file, and dropping the file's
+last owning link removes it: whether that link is deleted on its own, in a batch, or with its
+relationship type or the record type at its other end; moved to archival storage after its record is
+deleted, or with its record when the record is archived; or rewritten by an upsert so it no longer
+owns the file. While another owning link still holds the file, dropping one keeps it. A non-cascade
+link is a plain reference, so a file shared across records survives.
 
 **File tools for agents.** A toolset can give its agent `list`, `get`, `put` and `delete` tools over
 one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
