@@ -214,6 +214,7 @@ connections:
 
 - **Default is `true`** (copy on publish/sync) — omit the field to keep that behavior.
 - **Base Toolset connections ignore it:** their token is never copied, whatever the flag says ([Base Toolset](#base-toolset)).
+- **A hosted agent connection's webhook signing secret is never copied either**, whatever the flag says: it belongs to the endpoint registered for its own hub, so production sets its own ([Claude Agent (Managed)](#claude-agent-managed)). Its API key follows the flag as usual.
 - **Non-secret config field:** it lives in `hub.yaml`, is set by `wayai push`, and round-trips on `wayai pull` (emitted only when `false`). It is **not** a secret — the credential itself never goes in YAML.
 
 ### Setting a connection's credential directly (`wayai set-connection-credential`)
@@ -363,6 +364,19 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 4. Click Save
 
 Direct access to Grok models (grok-4.7 default). Reaches xAI's API without the OpenRouter hop; Grok is also available via the OpenRouter connector (`x-ai/grok-*`).
+
+### Claude Agent (Managed)
+
+A hosted agent connection (Beta): Anthropic's Managed Agents runs the agent loop, keyed by your Anthropic API key. A turn runs in the background and its reply is posted when the session finishes, which Anthropic reports by webhook. Without the webhook, a finished turn's reply is picked up only by a check every 5 minutes.
+
+**Webhook setup** (once per connection, and again on the production hub after publish — each hub has its own endpoint and secret, and publish and sync never copy the secret):
+1. Create the connection with its API key, and note the hub's id and the connection's id (`GET /api/setup/connections?hub_id=<hub id>` lists each connection's `connection_id`).
+2. In the Claude Console, open **Settings → Webhooks** for the workspace the API key belongs to and add an endpoint:
+   - **URL:** `https://api.wayai.pro/webhooks/managed-agents/<hub id>/<connection id>`
+   - **Events:** `session.status_idled` and `session.status_terminated`
+3. Copy the endpoint's signing secret (`whsec_…`, shown once) into the connection's **Webhook Signing Secret** field, or set it with `wayai set-connection-credential --field webhook_secret_token --stdin` (on a production hub this writes the production credential).
+
+Deliveries are verified against that secret and wake only the conversation whose session the delivery names; a delivery for a session the hub did not start is acknowledged and ignored.
 
 ---
 

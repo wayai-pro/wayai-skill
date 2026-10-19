@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.154.0
+version: 6.155.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -894,7 +894,7 @@ For full agent options (settings per connector, `additional_context_template`, `
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
 - **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
-- **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). A Base Toolset connection's token is never copied, whatever the flag says: always set production's own. See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
+- **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). A Base Toolset connection's token is never copied, whatever the flag says: always set production's own. Nor is a hosted agent connection's webhook signing secret (`Claude Agent (Managed)`): each hub registers its own endpoint and sets its own. See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
 - **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve (matching rule in Connections & Credentials above). Only an organization admin may change them; a push that leaves them as they are works for anyone. A tag's slug is permanent — the UI edits only its display name and color — so these lists never need rewriting. See [`references/connections.md`](references/connections.md#organization-tags)
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from an MCP Server connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
 - **Names are foreign keys:** cross-entity references resolve by display name at push/runtime — agent `connection:`, delegation `target:` (agent name or UI-managed team name), agent `resources[].name`, eval `agent:`, custom tool `connection:`. A dangling name fails the push or the runtime call — when renaming anything, update its referrers in the same edit
