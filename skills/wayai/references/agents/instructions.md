@@ -174,7 +174,7 @@ Arguments are an **unordered token set** — write them in any order, quoted or 
 | `skill` | Skills only |
 | `tree` | Also list every file's canonical path under its resource |
 
-Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. With `tree`, each file's canonical path (`resources/<resource-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). Path listings are capped at 200 per resource, so reach for `list_files` on a large knowledge base instead. An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
+Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. With `tree`, each file's canonical path (`skills/<skill-slug>/<folders…>/<file-name>` for a skill, `resources/<resource-slug>/<folders…>/<file-name>` for a knowledge base) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). Path listings are capped at 200 per resource, so reach for `list_files` on a large knowledge base instead. An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
 
 `tree` is per call, so one template can show a bare catalog in one place and the full path listing in another.
 
@@ -218,14 +218,14 @@ Inlines file text by path, from a resource linked to the current agent.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `path` | Yes | `resources/<resource-slug>/<folders…>/<file-name>` for one file, or `resources/<resource-slug>` for the whole resource |
+| `path` | Yes | `skills/<skill-slug>/<folders…>/<file-name>` for one file of a skill, or `skills/<skill-slug>` for the whole skill; `resources/<resource-slug>/…` and `resources/<resource-slug>` likewise for a knowledge base |
 
 Two path shapes, one placeholder:
 
 - **A file path** — `{{file_content(resources/company-faq/refunds.md)}}` inlines that one file.
-- **A resource root** — `{{file_content(resources/company-faq)}}` inlines the whole resource: for a skill, its `SKILL.md`; for a knowledge base, its files concatenated, each headed by its canonical path (`## resources/company-faq/refunds.md`). That heading is an address, not a label — the agent can pass it straight to `read_file`, and it is the same path `{{files('tree')}}` and `list_files` report for that file.
+- **A resource root** — `{{file_content(skills/order-processing)}}` inlines a skill's `SKILL.md`; `{{file_content(resources/company-faq)}}` inlines a knowledge base's files concatenated, each headed by its canonical path (`## resources/company-faq/refunds.md`). That heading is an address, not a label — the agent can pass it straight to `read_file`, and it is the same path `{{files('tree')}}` and `list_files` report for that file.
 
-Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo). Only `resources/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt — the agent reads those with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
+Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo), and so does a skill named under `resources/`: a skill is read under `skills/` only. Only `skills/…` and `resources/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt — the agent reads those with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
 
 > **A comma ends the path.** Arguments are comma-separated, so `{{file_content(resources/kb/Pricing, 2026.md)}}` addresses `resources/kb/Pricing` and resolves to nothing — quoting does not help. Rename such a file, or reach it with `read_file`, which takes the path as a tool argument rather than as placeholder syntax.
 
@@ -236,7 +236,11 @@ Paths match case-insensitively but must be **canonical and complete** — the sa
 ```
 {{file_content(resources/refund-policy/refunds.md)}}
 {{file_content(resources/refund-policy)}}
+{{file_content(skills/order-processing/references/menu.md)}}
+{{file_content(skills/order-processing)}}
 ```
+
+**Skills moved to `skills/`.** Agents read a skill at `skills/<skill_name>/…`, and the platform rewrote every stored citation of a skill under `resources/` in the text agents act on: agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions. A save or `wayai push` that writes a skill under `resources/` into any of these again (from an agent folder pulled, or an editor opened, before the move) is refused, naming the `skills/` path to write; `wayai pull` refreshes such a folder. Knowledge keeps `resources/<slug>`.
 
 ---
 

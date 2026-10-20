@@ -157,6 +157,8 @@ description: |
 
 The `description` is the trigger mechanism — it determines whether the agent invokes the skill. Make it clear about both **what the skill does** and **when to use it**.
 
+**Where the agent reads it.** An agent reads a skill's files at `skills/<skill_name>/…` — `skills/order-management/references/api-docs.md` above — with `list_files`, `read_file` and `{{file_content(skills/…)}}`. The workspace folder stays `resources/<slugified-name>/` for now. Knowledge keeps `resources/<slug>/…`. Text agents act on (agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions) that cites a skill under `resources/` is refused on save and on `wayai push`, naming the `skills/` path to write ([native-tools.md](agents/native-tools.md)). An organization resource's descriptions are copied into each hub that links it with such a citation written as that hub's `skills/` path.
+
 ---
 
 ## Skill Execution Modes

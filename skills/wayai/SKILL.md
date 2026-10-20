@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.158.0
+version: 6.159.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -296,7 +296,7 @@ Knowledge and skills attached to agents. Content lives as real files under `reso
 | Type | What | Runtime behavior |
 |------|------|------------------|
 | `knowledge` (retired: a new one is refused) | Document collections — FAQ, catalogs, policies | The linked resources are injected as `resources/<slug>` mounts into the `list_files` native-tool schema at turn time; the agent explores content via `list_files` + `read_file` |
-| `skill` (default) | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
+| `skill` (default) | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | The agent reads its files at `skills/<skill_name>/…` (`list_files`, `read_file`, `{{file_content(skills/…)}}`); a skill cited under `resources/` in any text agents act on (instructions, settings, monitor notes, automations, kanban follow-ups, custom tools, resource descriptions) is refused on save and push. Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
 
 A new resource is a skill: a new `knowledge` resource, a skill turned into knowledge, and an organization's knowledge newly linked into a hub are refused, and documents go in the organization's knowledge base (`data/<file type>/…`). Knowledge a hub already holds keeps working until resources are retired ([`references/resources.md`](references/resources.md#resource-types)).
 
