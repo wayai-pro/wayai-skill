@@ -1,6 +1,6 @@
 # Canonical Example
 
-A complete, minimal hub: **Customer Support** with one pilot agent, a knowledge resource, two states, a kanban workflow, and one eval. Read this **once** before generating a new hub — it shows how the per-domain references fit together. The per-domain refs (`references/connections.md`, `references/agents/*`, `references/states.md`, `references/resources.md`, `references/evals.md`) describe each piece in isolation; this file shows the **wiring between them**.
+A complete, minimal hub: **Customer Support** with one pilot agent that reads the organization's knowledge base, two states, a kanban workflow, and one eval. Read this **once** before generating a new hub — it shows how the per-domain references fit together. The per-domain refs (`references/connections.md`, `references/agents/*`, `references/states.md`, `references/bases/*`, `references/evals.md`) describe each piece in isolation; this file shows the **wiring between them**.
 
 This is **reference content** — it is not a template to copy. Use the shapes and cross-reference patterns; pick names and content that fit the user's actual hub.
 
@@ -8,16 +8,20 @@ This is **reference content** — it is not a template to copy. Use the shapes a
 
 ```
 canonical-example/
-├── hub.yaml                              # config + states + connections + resources declarations
+├── hub.yaml                              # config + states + connections (the knowledge base's Base Toolset)
 ├── agents/
-│   ├── support-pilot.yaml                # agent config (connection ref, tools, resource link)
+│   ├── support-pilot.yaml                # agent config (connection refs, tools incl. the toolset's file tools)
 │   └── support-pilot.md                  # instructions w/ {{...}} placeholders
-├── resources/
-│   └── company-faq/                      # slugified resource folder
-│       ├── refunds.md
-│       └── billing.md
-└── evals/
-    └── refund-eligible.yaml              # one scenario testing the refund path
+├── knowledge-base/                       # the org's knowledge base config: wayai-ws/bases/<base>/ in a workspace
+│   ├── file-types/company-faq.yaml       # the file type the FAQ lives in
+│   └── toolsets/support-faq.yaml         # read-only file tools on it (list_faq, get_faq)
+├── company-faq/                          # the file type's files, as `wayai files pull company-faq --base <production base>` writes them
+│   ├── refunds.md
+│   └── billing.md
+├── evals/
+│   └── refund-eligible.yaml              # one scenario testing the refund path
+└── journeys/
+    └── refund-flow.yaml                  # a happy-path transcript, one eval per agent turn
 ```
 
 ## Cross-references (this is the part you can't get from per-domain refs)
@@ -32,14 +36,14 @@ canonical-example/
 
 Note where each lives: stable identity in `instructions` (system prompt — cached), high-churn reads in `additional_context_template` (per-turn — outside the cache). This split is what makes Anthropic/OpenAI prompt-cache hits possible. See `references/agents/instructions.md#additional-context-cache-friendly`.
 
-### 3. Agent → Resource
-**Knowledge is retired:** `Company FAQ` is a `knowledge` resource, which only a hub that already holds one keeps. A new hub's push refuses it, as it refuses every new knowledge resource; put such documents in the organization's knowledge base instead, where agents read them at `data/<file type>/…` ([`references/bases/files.md`](../bases/files.md)). The wiring below still shows how an agent reads a resource's files by path.
+### 3. Agent → Knowledge base
+The FAQ is data in the organization's knowledge base, not part of the hub: a file type `company-faq` (`knowledge-base/file-types/company-faq.yaml`) holding `refunds.md` and `billing.md`. Its config is written in the knowledge base's preview (`wayai push bases/<base>`) and promoted; its files are data, kept as a folder synced with one base: `wayai files pull company-faq --base <production base>` writes `company-faq/` (with the `.wayai-files.json` record of what it pulled), and `wayai files push company-faq --base <production base>` writes your edits back. The preview gets production's files with `wayai knowledge refresh-preview`, not a second push of the same folder. See [`references/bases/files.md`](../bases/files.md). An organization's file type id is its own choice; `company-faq` keeps the name the FAQ always had.
 
-`agents/support-pilot.yaml` `resources:` lists `name: Company FAQ`, which matches `hub.yaml` `resources[].name: Company FAQ`. The folder under `resources/` is the **slugified** resource name (`Company FAQ` → `company-faq`). Files inside the folder are the actual knowledge content — the list of files is **not** in YAML; the filesystem is the source of truth (per `references/resources.md`).
+The hub reaches it through the toolset `support-faq` (`knowledge-base/toolsets/support-faq.yaml`): `list` and `get` on `company-faq`, named `faq`, so its tools are `list_faq` and `get_faq`. `hub.yaml`'s connection `company-faq` is a **Base Toolset** connection to that toolset, holding a token bound to it on the knowledge base of the hub's environment (the preview's here; production's connection gets its own, which is why it sets `sync_credentials_to_production: false`) — see [`references/connections.md`](../connections.md#base-toolset).
 
-The agent invokes the resource at runtime via the native tools `list_files` (discover what's there) and `read_file` (read the content) — both declared in `tools.native`. The instructions reinforce this: look up the FAQ before promising anything.
+`agents/support-pilot.yaml` holds the toolset's two tools under `tools.mcp` (by the connection's name) and the native `list_files` and `read_file`. With both, the file type is mounted at `data/company-faq/` in those file tools, which read it through `list_faq` and `get_faq`; the agent is offered `list_files` and `read_file` in their place ([`references/agents/native-tools.md`](../agents/native-tools.md#resource--file-tools)). The toolset only reads, as a customer-facing agent's must.
 
-That same slugified folder name is also the file's runtime address: `resources/company-faq/refunds.md` is what `read_file` takes, so the path an author writes in the instructions is the path on disk. Prefer it over a `file_id` — publishing regenerates every UUID, while the names a path is built from clone verbatim. This holds because `Company FAQ` is the hub's only resource with that name; duplicate names get rank-based `-2` suffixes that are not stable across renames, deletes, or a publish.
+`data/company-faq/refunds.md` is the file's runtime address: the file type id, then the file's path in it, the same path as on disk under `company-faq/`. The instructions cite it, and an agent's path survives publishing, which regenerates every hub id. A `data/` path is written in full and matched exactly, case included.
 
 ### 4. Kanban slug invariant
 `agents/support-pilot.md` instructs the agent to call `update_kanban_status` with slugs: `in_progress`, `waiting_for_customer`, `resolved`. These **must** match `hub.yaml` `hub.kanban_statuses[].slug` exactly — the slug is the stable identifier and the tool's only accepted wire value (`references/agents/native-tools.md#update_kanban_status`); display names appear only as descriptive labels in the tool description.
@@ -53,15 +57,15 @@ Allowed transitions: `hub.yaml` declares `allowed_next_statuses` per status. The
 `agents/support-pilot.yaml` `tools.delegation` targets `Tier 2 Support`. Teams are NOT defined in `hub.yaml` — they live in the platform UI under **Hub → Users → Teams**. The name in `target:` is matched at runtime. A nonexistent target name fails at runtime with a `transfer_to_team` error.
 
 ### 7. Eval → Agent + Tools + State
-`evals/refund-eligible.yaml` `agent: Support Pilot` matches the agent's `name` in `support-pilot.yaml`. The `expected.tool_calls` list only the deterministic outcome calls (`set_state_path`, `transfer_to_team`) — the FAQ-consultation step lives in `evaluator_instructions` instead, because the agent may reach `refunds.md` by path or by a runtime-resolved id, so the exact call shape can't be statically asserted. All four tools are still declared in the agent's `tools.native` and `tools.delegation`; the eval just doesn't pin their exact call shape. The `expected` response and the agent's actual response (text + tool calls) are compared automatically; the `evaluator_instructions` only layer on the FAQ-consultation criterion that can't be statically asserted, as extra guidance for the hub's `message_evaluator` agent (a separate background-role agent, not shown here — see `references/agents/roles-and-settings.md`).
+`evals/refund-eligible.yaml` `agent: Support Pilot` matches the agent's `name` in `support-pilot.yaml`. The `expected.tool_calls` list only the deterministic outcome calls (`set_state_path`, `transfer_to_team`) — the FAQ-consultation step lives in `evaluator_instructions` instead, because the agent may reach `refunds.md` with `list_files` first or straight with `read_file`, so the exact call shape can't be statically asserted. All four tools are still declared in the agent's `tools.native` and `tools.delegation`; the eval just doesn't pin their exact call shape. The `expected` response and the agent's actual response (text + tool calls) are compared automatically; the `evaluator_instructions` only layer on the FAQ-consultation criterion that can't be statically asserted, as extra guidance for the hub's `message_evaluator` agent (a separate background-role agent, not shown here — see `references/agents/roles-and-settings.md`).
 
 ## What is intentionally NOT in this example
 - **`hub_id`, `hub_environment`, per-entity `id`** — set by `wayai pull`. Never author them. New hubs ship without these fields; they appear on the first pull after `push`. **One exception — followup `id`:** it is the only per-entity id the server never assigns (the web editor mints one for followups it creates; `wayai pull` only echoes an id that already exists). Author it by hand on any `before_event` an `inactivity_after_before_event` followup links to via `after_followup_id` — the link has nothing else to name. See [`references/kanban.md`](../kanban.md#followups).
 - **Channels other than `app`** — the `app` channel auto-creates with the hub. WhatsApp / Instagram / Email / Telegram require channel connections set up via the UI (OAuth) or by adding a Channel-type entry to `connections:` (API-key channels). See `references/connections.md`.
-- **Custom tools, `composed_tools`, `response_format`, MCP tools, skills, automations, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
+- **Custom tools, `composed_tools`, `response_format`, other MCP tools, skills (`resources:`), automations, scheduling, branched preview hubs.** Each has a dedicated reference — load them when the user's hub requires them.
 - **Multiple agents (specialist, advisor, copilot, evaluators).** This example has one pilot. Multi-agent patterns are covered in `references/agents/roles-and-settings.md` (`Delegation Flow`, `Role Reference`).
 
 ## When to consult this file
 - **State 8 of cold-start** — generating a new hub from a user's description. Read the README once for wiring, then the per-domain refs for the specific shapes you need.
-- **When unsure how two entities reference each other** — e.g. "how does an agent link to a resource?", "what's the right placeholder for state?". The cross-reference section above is the answer.
-- **After producing a hub that doesn't behave as expected** — check this file's invariants (slug must match, scope+name must match, resource folder must be slugified, etc.) before debugging deeper.
+- **When unsure how two entities reference each other** — e.g. "how does an agent read the organization's documents?", "what's the right placeholder for state?". The cross-reference section above is the answer.
+- **After producing a hub that doesn't behave as expected** — check this file's invariants (slug must match, scope+name must match, a `data/` path must name the file type and the file's full path, etc.) before debugging deeper.

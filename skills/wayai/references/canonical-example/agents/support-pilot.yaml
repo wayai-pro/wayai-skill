@@ -19,10 +19,14 @@ tools:
     - close_conversation
     - list_files
     - read_file
+  mcp:
+    # The toolset's file tools: with list_files and read_file above, the agent reads the FAQ at
+    # data/company-faq/… through them (README §3).
+    - name: list_faq
+      connection: company-faq
+    - name: get_faq
+      connection: company-faq
   delegation:
     - type: team
       tool: transfer_to_team
       target: Tier 2 Support
-resources:
-  - name: Company FAQ
-    priority: 0

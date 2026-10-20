@@ -1,0 +1,7 @@
+id: support-faq
+name: Support FAQ
+actions: []
+files:
+  - file_type: company-faq
+    operations: [list, get]   # read-only: a customer-facing agent's toolset takes no put or delete
+    name: faq                 # its tools are list_faq and get_faq

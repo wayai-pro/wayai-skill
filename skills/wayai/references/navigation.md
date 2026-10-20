@@ -85,7 +85,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/overview` | Org overview |
 | `/settings/organizations/[orgId]/hubs` | Org's hubs list |
 | `/settings/organizations/[orgId]/credentials` | Org-level credentials |
-| `/settings/organizations/[orgId]/resources` | Org-level resources (shared knowledge bases / skills) |
+| `/settings/organizations/[orgId]/resources` | Org-level resources (shared skills) |
 | `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
 | `/settings/organizations/[orgId]/contacts` | The organization's contact book: contacts, org lists, CSV import and account links (see [automations.md](automations.md#the-contact-book)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
@@ -99,7 +99,7 @@ Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`.
 | `connections` | `/connections` | LLM providers, channel APIs, MCP servers, OAuth configs |
 | `agents` | `/agents` | Agents list |
 | `state` | `/state` | Conversation/user state schemas |
-| `resource` | `/resource` | Knowledge bases, skill resources |
+| `resource` | `/resource` | Skill resources |
 | `evals` | `/evals` | Eval scenarios + results |
 | `automations` | `/automations` | Automations — enable, pause and run now — and the hub's own lists (the **Lists** sub-tab, `/automations/lists`, a list at `/automations/lists/<listId>`; see [automations.md](automations.md#hub-lists)). The contacts, and the org lists, are the organization's contact book (see [automations.md](automations.md#the-contact-book)) |
 | `analytics` | `/analytics` | Hub metrics |

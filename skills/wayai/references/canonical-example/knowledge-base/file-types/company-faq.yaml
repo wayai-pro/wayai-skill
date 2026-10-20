@@ -1,0 +1,11 @@
+id: company-faq
+name: Company FAQ
+description: Public-facing FAQ and policy docs (billing, refunds, account)
+max_size: 1048576
+allowed_content_types:
+  - text/markdown
+metadata_schema:
+  type: object
+  properties:
+    title: { type: string }
+    tags: { type: array, items: { type: string } }

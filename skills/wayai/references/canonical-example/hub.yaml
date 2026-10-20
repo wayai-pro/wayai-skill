@@ -127,8 +127,12 @@ connections:
     # Default true (copy the credential to production on publish/sync). Set false to
     # keep production's credential separate — set it directly on the production connection.
     # sync_credentials_to_production: false
-
-resources:
-  - name: Company FAQ
-    type: knowledge   # held from before knowledge was retired: a new hub's push refuses it (README §3)
-    description: Public-facing FAQ and policy docs (billing, refunds, account)
+  - name: company-faq             # the organization's knowledge base, through its toolset (README §3)
+    type: Tool
+    service: Base Toolset
+    credential: support-faq-preview   # a Bearer Token org credential holding a token bound to the toolset on the preview knowledge base
+    settings:
+      toolset: support-faq
+    # A token is bound to one base: production's connection holds one minted on the production
+    # knowledge base, so the preview's is never copied to it.
+    sync_credentials_to_production: false

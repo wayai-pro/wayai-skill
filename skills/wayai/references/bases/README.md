@@ -189,6 +189,5 @@ Two paths work today, and neither is the same thing as the hub's own config:
 - **Eval seeding** — an eval set or journey names a `fixture:` and a `target_base:`, and the hub's
   seed connection supplies the API origin and a `write:seeds` token. See [`../evals.md`](../evals.md).
 
-A hub's or an organization's knowledge **resources** move into a base as files with
-`wayai knowledge migrate` ([files.md](files.md#moving-knowledge-resources-into-a-base)); skills stay
-resources ([`../resources.md`](../resources.md)).
+An organization's documents live in a base, its knowledge base, as files ([files.md](files.md));
+skills stay resources ([`../resources.md`](../resources.md)).

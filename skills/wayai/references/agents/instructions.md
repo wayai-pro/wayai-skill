@@ -164,36 +164,28 @@ User preference: {{state(user, preferences).language}}
 
 ### `{{files()}}`
 
-Markdown-formatted catalog of the resources (knowledge bases and skills) linked to the current agent.
+Markdown-formatted catalog of the skills linked to the current agent.
 
-Arguments are an **unordered token set** — write them in any order, quoted or not:
+| Argument | Description |
+|----------|-------------|
+| `tree` | Also list every file's canonical path under its skill (quoted or not) |
 
-| Token | Description |
-|-------|-------------|
-| `kb` | Knowledge bases only (omit both `kb` and `skill` for everything) |
-| `skill` | Skills only |
-| `tree` | Also list every file's canonical path under its resource |
-
-Returns a Markdown list — one bullet per resource with its name, type, id, description, and file count. With `tree`, each file's canonical path (`skills/<skill-slug>/<folders…>/<file-name>` for a skill, `resources/<resource-slug>/<folders…>/<file-name>` for a knowledge base) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). Path listings are capped at 200 per resource, so reach for `list_files` on a large knowledge base instead. An agent with no linked resources renders a short "(no resources are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
+Returns a Markdown list — one bullet per skill with its name, type, id, description, and file count. With `tree`, each file's canonical path (`skills/<skill-slug>/<folders…>/<file-name>`) is listed underneath. Those paths are addresses, not labels: the agent can pass one straight to `read_file` with no listing round-trip, and unlike an id a path survives publishing (which regenerates every UUID). Path listings are capped at 200 per skill, so reach for `list_files` on a large skill instead. An agent with no linked skills renders a short "(no skills are linked to this agent)" note. This is a prompt-side catalog; the `list_files` native tool browses the same files by path for on-demand discovery (see [native-tools.md](native-tools.md)).
 
 `tree` is per call, so one template can show a bare catalog in one place and the full path listing in another.
 
 ```
 {{files()}}
-{{files('kb')}}
-{{files('skill')}}
-{{files('kb','tree')}}
+{{files('tree')}}
 ```
 
-> **Deprecated spelling:** `{{resources(...)}}` is the old name for this placeholder and keeps working indefinitely, with the same arguments. Prefer `{{files()}}`.
->
-> One difference, and it exists to give you a way out: a resource link configured before this argument existed may carry a retired per-link "always show the structure" setting, which no interface can change any more. `{{resources(...)}}` still honors it, so an untouched instruction renders exactly what it always did; `{{files(...)}}` ignores it and obeys its arguments alone. If your paths disappear when you rename the call, add `'tree'`; if paths appear that you don't want, rename the call.
+> **Retired spellings.** Knowledge resources are retired, and with them `{{resources(...)}}` (this placeholder's old name) and the `kb` kind (`{{files('kb')}}`): the platform rewrote every stored `{{resources(...)}}` to `{{files(...)}}`, and a save or `wayai push` that writes either is refused, naming what to write. A `'skill'` token is ignored, since every linked resource is a skill. Documents an agent reads live in the knowledge base, under `data/<file type>/…` ([native-tools.md](native-tools.md)).
 
 ---
 
 ### `{{agent_skills()}}`
 
-XML-formatted skill metadata for the skills linked to the current agent. Used for progressive disclosure — the agent sees available skills and can load them on demand. Draws from the same linked-resource set as `{{files('skill')}}`. The `read_skill` / `read_skill_file` native tools also list these skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
+XML-formatted skill metadata for the skills linked to the current agent. Used for progressive disclosure — the agent sees available skills and can load them on demand. Draws from the same linked skills as `{{files()}}`. The `read_skill` / `read_skill_file` native tools also list these skill ids directly in their `skill_id` parameter (see [native-tools.md](native-tools.md)).
 
 Returns (empty `<available_skills></available_skills>` when no skills are linked):
 ```xml
@@ -214,33 +206,31 @@ Returns (empty `<available_skills></available_skills>` when no skills are linked
 
 ### `{{file_content(PATH)}}`
 
-Inlines file text by path, from a resource linked to the current agent.
+Inlines file text by path, from a skill linked to the current agent.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `path` | Yes | `skills/<skill-slug>/<folders…>/<file-name>` for one file of a skill, or `skills/<skill-slug>` for the whole skill; `resources/<resource-slug>/…` and `resources/<resource-slug>` likewise for a knowledge base |
+| `path` | Yes | `skills/<skill-slug>/<folders…>/<file-name>` for one file of a skill, or `skills/<skill-slug>` for the whole skill |
 
 Two path shapes, one placeholder:
 
-- **A file path** — `{{file_content(resources/company-faq/refunds.md)}}` inlines that one file.
-- **A resource root** — `{{file_content(skills/order-processing)}}` inlines a skill's `SKILL.md`; `{{file_content(resources/company-faq)}}` inlines a knowledge base's files concatenated, each headed by its canonical path (`## resources/company-faq/refunds.md`). That heading is an address, not a label — the agent can pass it straight to `read_file`, and it is the same path `{{files('tree')}}` and `list_files` report for that file.
+- **A file path** — `{{file_content(skills/order-processing/references/menu.md)}}` inlines that one file, the same path `{{files('tree')}}` and `list_files` report for it.
+- **A skill root** — `{{file_content(skills/order-processing)}}` inlines the skill's `SKILL.md`.
 
-Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo), and so does a skill named under `resources/`: a skill is read under `skills/` only. Only `skills/…` and `resources/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt — the agent reads those with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
+Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo), and so does a skill named under `resources/`: a skill is read under `skills/` only. Only `skills/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt, and the knowledge base's documents (`data/…`) are read on demand — the agent reads both with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
 
-> **A comma ends the path.** Arguments are comma-separated, so `{{file_content(resources/kb/Pricing, 2026.md)}}` addresses `resources/kb/Pricing` and resolves to nothing — quoting does not help. Rename such a file, or reach it with `read_file`, which takes the path as a tool argument rather than as placeholder syntax.
+> **A comma ends the path.** Arguments are comma-separated, so `{{file_content(skills/pricing/Plans, 2026.md)}}` addresses `skills/pricing/Plans` and resolves to nothing — quoting does not help. Rename such a file, or reach it with `read_file`, which takes the path as a tool argument rather than as placeholder syntax.
 
-> **Note:** content is inlined **raw and unescaped** into the system prompt (like `{{state()}}`), so only reference resources you trust — a knowledge base populated from externally-authored documents is placed verbatim into the agent's instructions.
+> **Note:** content is inlined **raw and unescaped** into the system prompt (like `{{state()}}`), so only reference skills you trust — a skill holding externally-authored text places it verbatim into the agent's instructions.
 
-> **Deprecated spelling:** `{{resource_content(NAME)}}` takes a resource *name* instead of a path and inlines that whole resource. It keeps working indefinitely, but a name is ambiguous when two resources share one and cannot address a single file; prefer `{{file_content(PATH)}}`.
+> **Retired spelling:** `{{resource_content(NAME)}}`, which took a resource *name*, is retired with knowledge resources: the platform rewrote each stored one whose name matched exactly one skill to `{{file_content(skills/<slug>)}}`, and a save or `wayai push` that writes it is refused.
 
 ```
-{{file_content(resources/refund-policy/refunds.md)}}
-{{file_content(resources/refund-policy)}}
 {{file_content(skills/order-processing/references/menu.md)}}
 {{file_content(skills/order-processing)}}
 ```
 
-**Skills moved to `skills/`.** Agents read a skill at `skills/<skill_name>/…`, and the platform rewrote every stored citation of a skill under `resources/` in the text agents act on: agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions. A save or `wayai push` that writes a skill under `resources/` into any of these again (from an agent folder pulled, or an editor opened, before the move) is refused, naming the `skills/` path to write; `wayai pull` refreshes such a folder. Knowledge keeps `resources/<slug>`.
+**Skills moved to `skills/`.** Agents read a skill at `skills/<skill_name>/…`, and the platform rewrote every stored citation of a skill under `resources/` in the text agents act on: agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions. A save or `wayai push` that writes a skill under `resources/` into any of these again (from an agent folder pulled, or an editor opened, before the move) is refused, naming the `skills/` path to write; `wayai pull` refreshes such a folder.
 
 ---
 

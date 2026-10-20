@@ -1,6 +1,8 @@
 # Resources
 
-Resources are knowledge bases (documents) or skills (versioned agent capability packages) attached to agents. Resource files are stored on the filesystem and synced bidirectionally to the platform via `wayai push` / `wayai pull`.
+Resources are skills: versioned agent capability packages attached to agents. Resource files are stored on the filesystem and synced bidirectionally to the platform via `wayai push` / `wayai pull`.
+
+**Documents live in the knowledge base, not here.** An organization's policies, manuals and price sheets are files in its knowledge base, which agents read and edit at `data/<file type>/<path>` through a [Base Toolset](connections.md#base-toolset) connection ([`bases/files.md`](bases/files.md)). Knowledge resources are retired: a hub or an organization holds skills only.
 
 ## Table of Contents
 - [Resource Types](#resource-types)
@@ -19,31 +21,9 @@ Resources are knowledge bases (documents) or skills (versioned agent capability 
 
 | Type | Purpose | Entry Point | Execution |
 |------|---------|-------------|-----------|
-| `knowledge` (retired: none is created) | Document collections (FAQ, product docs, manuals) | Any file(s) | The linked resources are injected as `resources/<slug>` mounts into the `list_files` native-tool schema at turn time; content is read on demand via `list_files` + `read_file` |
-| `skill` (default) | Versioned agent capability package | `SKILL.md` with YAML frontmatter | Tool-based or native integration |
+| `skill` | Versioned agent capability package | `SKILL.md` with YAML frontmatter | Tool-based or native integration |
 
-`skill` is the default: a new resource that names no `type` is a skill.
-
-**No new knowledge.** A new `knowledge` resource is refused, by `wayai push` (and `wayai org
-push`), the console, and linking an organization's knowledge into a hub; so is turning a skill into
-knowledge. The knowledge a hub or an organization already holds keeps working, pushing, publishing
-and syncing as before until resources are retired, and a resource that names no `type` keeps its
-own, so a folder pulled earlier re-pushes unchanged.
-
-**Knowledge is moving into a base.** An organization's documents belong in its knowledge base, as
-files agents read and edit at `data/<file type>/<path>`. `wayai knowledge migrate` moves an
-organization's knowledge resources there, then each hub's own, keeping their folders, paths and
-metadata ([`bases/files.md`](bases/files.md#moving-knowledge-resources-into-a-base)). Skills stay
-resources.
-
-Once a resource's move is recorded, the resource is read-only: its settings, files and folders
-refuse edits, and it can't be deleted. A hub resource also refuses a new agent link, or a link
-enabled again; a hub's copy of an organization resource is read-only already, and links to it
-are detached when the hub is cut over (`wayai knowledge cut-over`,
-[`bases/files.md`](bases/files.md#cutting-a-hub-over-to-the-knowledge-base)). A moved resource stays
-readable until resources are retired. On a hub, the move is recorded on its preview, and publishing
-or syncing carries it to production. A hub's move is refused while two production hubs of the
-organization have names that give its file type's hub part: rename all but one first.
+Every resource is a skill, so `type` can be left out. `wayai push` (and `wayai org push`) refuses an entry still saying `type: knowledge`, from a folder kept since knowledge was retired, naming the knowledge base, rather than push its documents as a skill.
 
 ---
 
@@ -53,15 +33,12 @@ Resource files live under `wayai-ws/hubs/<hub>/resources/`:
 
 ```
 wayai-ws/hubs/<hub>/resources/
-├── product-catalog/             # Knowledge resource (slugified name)
-│   ├── pricing.md               # Text file — editable, diffable
-│   ├── catalog.pdf              # Binary file — uploaded as asset
-│   └── images/
-│       └── logo.png
-└── order-management/            # Skill resource
+└── order-management/            # Skill resource (slugified name)
     ├── SKILL.md                 # Skill entry point (YAML frontmatter required)
-    └── references/
-        └── api-docs.md
+    ├── references/
+    │   └── api-docs.md          # Text file — editable, diffable
+    └── assets/
+        └── flow.png             # Binary file — uploaded as asset
 ```
 
 Folder name = slugified resource name. Subfolders inside a resource are preserved (relative paths kept on push).
@@ -76,20 +53,15 @@ Resources are declared in `hub.yaml` under `resources:`. The list of files is **
 
 ```yaml
 resources:
-  - id: "resource-uuid"           # set by pull
-    name: Product Catalog
-    type: knowledge               # held before knowledge was retired; a new one is refused
-    description: Product docs
-    # enabled: true               # default — omitted
-
-  - id: "skill-uuid"
+  - id: "skill-uuid"              # set by pull
     name: Order Management
-    type: skill                   # the default
+    type: skill                   # written by pull; may be left out
     skill_name: order-management  # auto-derived from name if omitted
     description: Handles order queries
+    # enabled: true               # default — omitted
 ```
 
-**Default omission:** `enabled: true` is the default — it's omitted from pulled YAML and from your edits. Pull names every resource's `type`.
+**Default omission:** `enabled: true` is the default — it's omitted from pulled YAML and from your edits.
 
 ---
 
@@ -101,17 +73,13 @@ Resources are attached to agents in `agents/<slug>.yaml` under `resources:` (par
 # agents/sales-agent.yaml
 name: Sales Agent
 resources:
-  - name: Product Catalog
-    resource_id: "resource-uuid"
-    priority: 0
-
   - name: Order Management
     resource_id: "skill-uuid"
-    priority: 1
-    use_native_integration: false   # skill-only — see Execution Modes below
+    priority: 0
+    use_native_integration: false   # see Execution Modes below
 ```
 
-Higher `priority` means higher precedence when multiple resources apply. A link's `write_enabled` is still accepted but does nothing: no agent tool writes a knowledge resource. Agents write documents in a base through its Base Toolset's file tools (`write_file`, `edit_file`).
+Higher `priority` means higher precedence when multiple resources apply. A link's `write_enabled` is still accepted but does nothing: agents never write a skill. They write documents in a base through its Base Toolset's file tools (`write_file`, `edit_file`).
 
 ---
 
@@ -157,7 +125,7 @@ description: |
 
 The `description` is the trigger mechanism — it determines whether the agent invokes the skill. Make it clear about both **what the skill does** and **when to use it**.
 
-**Where the agent reads it.** An agent reads a skill's files at `skills/<skill_name>/…` — `skills/order-management/references/api-docs.md` above — with `list_files`, `read_file` and `{{file_content(skills/…)}}`. The workspace folder stays `resources/<slugified-name>/` for now. Knowledge keeps `resources/<slug>/…`. Text agents act on (agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions) that cites a skill under `resources/` is refused on save and on `wayai push`, naming the `skills/` path to write ([native-tools.md](agents/native-tools.md)). An organization resource's descriptions are copied into each hub that links it with such a citation written as that hub's `skills/` path.
+**Where the agent reads it.** An agent reads a skill's files at `skills/<skill_name>/…` — `skills/order-management/references/api-docs.md` above — with `list_files`, `read_file` and `{{file_content(skills/…)}}`. The workspace folder stays `resources/<slugified-name>/` for now. Text agents act on (agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions) that cites a skill under `resources/` is refused on save and on `wayai push`, naming the `skills/` path to write ([native-tools.md](agents/native-tools.md)). An organization resource's descriptions are copied into each hub that links it with such a citation written as that hub's `skills/` path.
 
 ---
 

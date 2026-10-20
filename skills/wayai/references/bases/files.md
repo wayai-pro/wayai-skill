@@ -8,10 +8,9 @@ rejected. Binary content goes in **Files** (versioned, path-addressed, mountable
 case, **attachments** (record-scoped uploads). Files are the richer evolution; prefer them for
 anything you will version, diff, describe with metadata, or mount.
 
-Files are where an organization's documents live. A hub's or an organization's **knowledge
-resources** move into an organization's knowledge base as file types with
-`wayai knowledge migrate` ([below](#moving-knowledge-resources-into-a-base)); **skills** stay
-resources ([`../resources.md`](../resources.md)).
+Files are where an organization's documents live: its knowledge base, whose files agents read and
+edit at `data/<file type>/<path>` through a [Base Toolset](../connections.md#base-toolset)
+connection. **Skills** stay resources ([`../resources.md`](../resources.md)).
 
 ## File types
 
@@ -216,82 +215,9 @@ wayai files push policies --base crm                 # the diff, a question, the
 
 ## Moving knowledge resources into a base
 
-`wayai knowledge migrate` moves knowledge resources into the organization's knowledge base, the
-base its agents' documents live in: first the organization's, then each hub's own.
-
-```bash
-wayai knowledge migrate --org <org_id> --base <knowledge base> --dry-run   # what it would write, and why it would stop
-wayai knowledge migrate --org <org_id> --base <knowledge base>             # the organization's resources
-wayai knowledge migrate --org <org_id> --base <knowledge base> --hub <hub_id>   # then a hub's own
-```
-
-- **One file type per resource.** An organization resource becomes the file type named by its
-  slug (`policies`); a hub resource becomes `<hub-slug>--<resource-slug>` (`support--faq`), the hub
-  part taken from the hub's name when it first moves. The file type's schema names the resource it
-  came from, so the id is kept after a rename of the resource or its hub: a later run finds it. A
-  hub's copies of organization resources are the organization's, and move with them. Skills stay
-  resources.
-- **Paths are kept.** A file agents read at `resources/<slug>/<path>` moves to
-  `data/<file type>/<path>`. A folder with a description gains an `_index.md` holding it.
-- **Metadata is kept.** The resource's folder metadata schema is folded into its file metadata
-  schema, beside `title` and `tags`, and each file carries its folders' values (the nearest folder
-  winning), its own over them, and its title and tags. When a file type is first created, a field
-  that would refuse a value a file holds is widened to accept it, and a field no schema declared is
-  declared, so no value is lost and a filter on any of them is answered. The dry run lists each
-  such field.
-- **Schema refs: plain local ones only.** A schema moves with its `$ref`s only in the form
-  `#/$defs/<name>` or `#/definitions/<name>`, where `<name>` needs no escaping (no `~`, `/`, `%`,
-  brackets or other characters a URI encodes). Any other `$ref` (`#`, a URI, a relative ref, a
-  pointer into `properties` or below a definition), any `$id` (or a draft-4 `id`, read as one),
-  `$anchor` or `$recursiveRef` — in an `x-` annotation too — a definition name that needs
-  escaping, and a definition both schemas name with different content stop the run, naming the
-  resource and the field: simplify the schema by hand (inline what the ref names, or rename
-  the definition and the refs to it), then run again. A definition both schemas hold alike is kept
-  once.
-- **Where it writes.** `--base` names the knowledge base: its production base, or the preview its
-  file types are written in. The file types are written in the preview and promoted, with no other
-  config section; like every promotion, it also publishes the preview's credentials opted in to
-  production. The files are written in production only: the preview gets none of them until you
-  refresh it ([below](#refreshing-a-previews-knowledge)).
-- **A long id gets an alias.** A file type id past 57 characters is named by a short alias (its
-  first 50 characters and 6 hex digits), so a toolset's tools for it (`delete_<name>`) fit 64
-  characters: name the toolset's file tool by it.
-- **Org first.** `--hub` moves the hub's own resources, read from its production hub, and refuses
-  until the organization's have moved.
-- **It stops before writing** on: two resources whose file types would take one id (two hubs whose
-  names give the same slug, each with a resource of the same name), an id production holds for
-  another resource (a hub named as another hub was when it moved) or that this command did not
-  write, a folder description whose `_index.md` a file already holds, two described folders sharing
-  a path, a file whose metadata title or tags disagree with its own, a resource schema whose refs
-  are not plain local ones (above), a schema a file type refuses (an `x-validate` anywhere but a
-  field's top level, where the move drops it with the field's other `x-` annotations, or a field
-  whose schema is `null`), a new file its file type would refuse (a content-type or size limit, or
-  its metadata under the whole schema — a moved file type keeps an admin's later limits and
-  constraints), and a production file that differs
-  from its source. That last one was edited after it moved, or created there by someone else, so
-  it is never overwritten: move or remove it in production to move its source. Separately, the
-  promotion is first run as a dry run: one that would change anything but these file types, or
-  report a failing check, stops with the file types written in the preview and nothing in
-  production.
-- **A file type created while it runs is kept.** The run promotes only file types production did
-  not hold when it read it. One an agent or a person creates in production at such an id since is
-  never written over: unless it is already what the run would promote, the promotion's dry run
-  reports it and the run stops, naming it, with nothing in production. A re-run treats it as any
-  file type already in production: one this command did not write stops it before any write until
-  you remove it or rename the resource.
-- **A file created while it runs is kept.** Each file is written create-only
-  (`If-None-Match: *`), so one an agent or a person creates at its path after the run listed
-  production's files is refused by the base, not replaced. The run stops there, naming the path;
-  the files written before it stay. Run it again: it writes what is left, unless the file at that
-  path differs from its source, which stops it before any write as above.
-- **Run it again freely.** What has moved is not written again; a run with nothing left to move
-  writes nothing. A file type already in production is never changed by a later run — its name,
-  description, limits and schema stay as they are, an edit made after the move included. A new
-  file its schema refuses stops the run, naming the field and the value: widen the file type
-  yourself (in the preview, then promote it), or change the file's metadata. Each version it writes
-  is labelled `wayai knowledge migrate`.
-- **Without a terminal** it needs `-y`; `--dry-run` never asks. It paces itself below the request
-  budgets it shares with your other commands and the web console, like `wayai files push`.
+Knowledge resources are retired, and `wayai knowledge migrate`, which moved them here, with them.
+Add documents to the knowledge base as files: `wayai files push` ([above](#syncing-files-as-a-folder)),
+or `wayai files put`.
 
 ## Refreshing a preview's knowledge
 
@@ -328,54 +254,10 @@ wayai knowledge refresh-preview --org <org_id> --base <knowledge base> [-y]
 
 ## Cutting a hub over to the knowledge base
 
-Once a hub's knowledge has moved, `wayai knowledge cut-over` switches its preview's agents from
-their knowledge resources to the knowledge base. It changes the preview only, whose agents read the
-knowledge base's preview: [refresh it](#refreshing-a-previews-knowledge) first, since the migration
-writes production only.
-
-```bash
-wayai knowledge cut-over --org <org_id> --base <knowledge base> --hub <preview hub_id> --dry-run   # every change, and why it would stop
-wayai knowledge cut-over --org <org_id> --base <knowledge base> --hub <preview hub_id>
-```
-
-- **Access stays per agent.** Each distinct set of knowledge the hub's agents read (their enabled
-  knowledge links) gets one read-only toolset on the knowledge base, `knowledge-<hash>`, with
-  `list` and `get` on each of its file types: the organization's and the hub's own, never another
-  hub's. It is written in the preview base and promoted, with no other config section. The hub
-  reaches each through a [Base Toolset](../connections.md#base-toolset) connection of the same
-  name, holding a new token bound to it on the preview base.
-- **Each agent is given** `list_files`, `read_file` and its toolset's `list_<file type>` and
-  `get_<file type>` tools (a long file type's alias in place of its id), so its documents are at
-  `data/<file type>/<path>`.
-- **Paths are rewritten.** `resources/<slug>/…` of a moved resource becomes `data/<file type>/…` in
-  agents' instructions and additional context, and in `run_agent` automations' instructions. A
-  skill's paths are left alone.
-- **The sources.** Each move is recorded first: the hub's own moved resources, which become
-  read-only ([resources.md](../resources.md)), and each organization resource whose link it
-  detaches. A move the organization's registry refuses (a file type id another resource or hub
-  holds) stops the run there, before any toolset, connection, tool, text or link is written; the
-  moves recorded ahead of it stay (those resources are read-only, still read through their links).
-  Once the claim is resolved, a run skips the hub's own recorded moves, and sends an organization
-  resource's again while its link is enabled, which changes nothing. The agents' knowledge links
-  are disabled last, once they hold their toolset's tools.
-- **It stops before writing** on: a resource placeholder that reads knowledge an agent is about to
-  lose (`{{files()}}`, `{{files('kb')}}` or `{{resources()}}`, and `{{resource_content()}}` or
-  `{{file_content()}}` naming such a resource), which would render empty: move that text into the
-  agent's instructions or a skill first; an agent on a hosted harness that reads knowledge (it
-  takes no Base Toolset's tools yet, so it would lose it); an agent reading knowledge that has not
-  moved; preview
-  knowledge resources that differ from production's (sync or discard those changes first: a
-  preview's resource is paired with production's, which moved, by its name, so two knowledge
-  resources of one name stop it too); and a hub file type whose hub part two production hubs'
-  names share, whose move can't be recorded until all but one are renamed; and a preview base that
-  lacks a file production holds for one of its file types (refresh it first).
-- **Run it again freely.** It writes only what differs (an organization resource's move is sent
-  again while its link is enabled, which changes nothing), and a re-run after a run cut short
-  finishes it on the same toolsets. A re-run of a finished cut-over writes nothing.
-- **Production** is never touched: once the preview passes its evals, publish it, then mint a
-  token for each toolset on the production base and save it on production's connection. The run
-  prints both commands.
-- **Without a terminal** it needs `-y`; `--dry-run` never asks.
+`wayai knowledge cut-over`, which switched a hub's agents from their knowledge resources to the
+knowledge base, is retired with them. An agent reads the knowledge base through a toolset of `list`
+and `get` file tools ([toolsets.md](toolsets.md#file-tools)) on a
+[Base Toolset](../connections.md#base-toolset) connection, holding `list_files` and `read_file`.
 
 ## Attachments
 
