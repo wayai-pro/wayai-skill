@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.167.0
+version: 6.168.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -314,7 +314,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
-- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
+- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset (one without `get_url` or `put_url`: [URL tools and hub agents](references/bases/toolsets.md#url-tools-and-hub-agents)); an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
 

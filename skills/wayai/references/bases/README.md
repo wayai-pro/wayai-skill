@@ -185,7 +185,8 @@ Two paths work today, and neither is the same thing as the hub's own config:
   (`book_appointment`, `list_invoices`), not generic data operations, and the connection holds the
   rules a customer-facing agent's toolset must meet. A harness-backed agent uses an ordinary
   **MCP Server** connection (Streamable HTTP, Bearer Token) pointed at
-  `https://data-mcp.wayai.pro/t/<slug>/mcp` instead.
+  `https://data-mcp.wayai.pro/t/<slug>/mcp` instead, of a toolset without `get_url` or `put_url`
+  ([URL tools and hub agents](toolsets.md#url-tools-and-hub-agents)).
 - **Eval seeding** — an eval set or journey names a `fixture:` and a `target_base:`, and the hub's
   seed connection supplies the API origin and a `write:seeds` token. See [`../evals.md`](../evals.md).
 

@@ -141,7 +141,8 @@ relationship type with the flag you want. Deleting a file's last owning link rem
 a file you keep another owning link before you delete its old ones.
 
 **File tools for agents.** A toolset can give its agent `list`, `get`, `put` and `delete` tools over
-one file type and folder. A tool's `put` and `delete` check the file's **version**, not its content
+one file type and folder, and `get_url` and `put_url` tools that answer a short-lived download URL and
+a single-use upload URL, for code that moves a file of any size itself. A tool's `put` and `delete` check the file's **version**, not its content
 hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools). A hub agent
 connected to the toolset, and holding both `list_files` and `read_file`, reads these documents at
 `data/<file-type>/<path>` with those two tools, and writes them there with `write_file` and `edit_file`
