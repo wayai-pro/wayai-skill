@@ -137,6 +137,18 @@ A toolset `actions[]` entry accepts **only** `action`, `action_name`, and `descr
 
 Relationship tools and `batch` are declared inline on the toolset because they are not first-class Actions. A relationship entry is `{ rel_type, operations, name?, names?, description_override? }`; `batch` is `{ "enabled": true, "operations": { "invoices": ["create","update"] } }`.
 
+### Relationship `list` tools: one hop
+
+A relationship `list` tool walks one hop from a record: given `record_type`, `record_id` and an optional `direction` (`source`, `target`, or `both`, the default), it answers each link of its relationship type at that record, newest first, as a row `{ link, node }`.
+
+- **`link`**: its `id`, `rel_type`, `direction` (`outgoing` when the start is its source, `incoming` when it is its target), `created_at`, and `data`, a summary of the link's data (see `fields` below; up to 512 bytes), with `omitted`, the number of its fields left out.
+- **`node`, a record**: its `record_type`, `id` and `external_id`. When the toolset has a `get` tool for that record type, it also carries `fields`, a summary of the record (its top-level text, number, true/false and null fields, each text cut to 200 characters, up to 1 KiB; a field is left out whole, never cut to fit), and `omitted`, the number of fields left out. Call the type's `get` for the whole record. A type the toolset only lists answers its record's identity alone. A record the base no longer holds (deleted or archived) answers `"held": false` with its type and id, and a record of a [source-backed](integrations.md) type answers its type and id.
+- **`node`, a file**: its `file_type`, `path`, `version` and `title` (from its metadata, cut to 200 characters), and `get_tool`, the toolset's `get` file tool that reads it by `path` (absent when only a `list` tool's folder holds it).
+- **Only what the toolset reads.** A link is answered only when its other end is a record of a type the toolset has a `get` or `list` tool for, or a live file in the folder of one of its `list` or `get` [file tools](#file-tools). Any other link is left out, so the graph an agent walks is the one its tools read. A hop starts from a record of such a type; any other start, a file included, is refused with the record types it can start from. A file node is a leaf.
+- **Paging.** A page holds up to 25 rows and 64 KiB. While `meta.has_more` is true, call again with `meta.next_cursor` as `cursor`. A link written while you page does not move the pages. Each call reads a bounded number of links, so a page may hold fewer rows than it could, even none, while `has_more` is still true: keep paging.
+- **Permissions.** A token not bound to the toolset calls a relationship `list` tool with `read:relationships`, plus `read:records` when the toolset reads a record type and `read:files` when it reads a folder.
+- **Link tools are not confined this way.** A relationship `create` writes any end its relationship type allows.
+
 **Toolsets and Actions are preview-only config.** Author them against a preview base and promote with the schema change they depend on. Config-as-code round-trips them under `wayai-ws/bases/<base>/` via `wayai pull bases/<base>` / `wayai push bases/<base>` — see [`config-as-code.md`](config-as-code.md).
 
 ## File tools
@@ -277,7 +289,7 @@ What a call reaches:
 
 The rule applies to every filter an agent sends, archived records included.
 
-**Relationship `list` tools.** These answer only links whose other end the customer reaches: its own record, a record it owns, a shared record, or a file. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link. A link whose other end is a record type the relationship type no longer names on either end is left out too, so narrowing a relationship type's record types hides the links it no longer admits.
+**Relationship `list` tools.** These answer only links whose other end both the toolset reads ([one hop](#relationship-list-tools-one-hop)) and the customer reaches: its own record, a record it owns, a shared record, or a file. A node's `fields` are those of the record the scope was judged on. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link. A link whose other end is a record type the relationship type no longer names on either end is left out too, so narrowing a relationship type's record types hides the links it no longer admits.
 
 **Writes.** A record tool's `create`, `update` and `delete`, a relationship tool's `create` and `delete`, and every step of a composite write only inside the customer's reach:
 
@@ -316,7 +328,7 @@ A [reviewed record type](records.md#reviewed-records-x-review) holds drafts and 
 
 **A reader** — any other toolset that reaches the type through an Action, a composite step or a relationship tool:
 
-- `list`, `get` and a relationship `list` answer only approved records whose `audience` holds the toolset's own id or `*` (every approved record, when the type declares no audience). Any other record is answered as not found, and a link to one is left out. The rule is not a tool parameter: an agent cannot see it or turn it off, and it applies to every filter the agent sends. A list of archived records of the type answers none; a `get` still reads an archived record that meets the rule;
+- `list`, `get` and a relationship `list` answer only approved records whose `audience` holds the toolset's own id or `*` (every approved record, when the type declares no audience). Any other record is answered as not found, and a link to one is left out; a relationship `list` starting from one is answered as not found. The rule is not a tool parameter: an agent cannot see it or turn it off, and it applies to every filter the agent sends. A list of archived records of the type answers none; a `get` still reads an archived record that meets the rule;
 - holds no write on the type: a create, update or delete Action, a composite step that writes it, or a `batch` that allows any operation on it;
 - holds no `sql_query`, which reads every row of the base, unless the toolset is a writer of every reviewed type in the base.
 
