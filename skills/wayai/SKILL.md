@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.169.0
+version: 6.170.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -77,7 +77,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
 | Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list of an invite-only community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
-| Communities — settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md). Moderation: UI |
+| Communities — the name, settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md). Moderation: UI |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
 | Publish/sync a preview to production | CLI (`wayai publish`, alias `wayai sync`) or UI |

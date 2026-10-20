@@ -130,7 +130,8 @@ organization that owns it (`wayai-ws/wayai.yaml`). Push never creates a communit
 
 ```yaml
 community_id: 6b1e…            # read-only
-name: Acme Builders            # read-only: there is no rename
+name: Acme Builders            # the name members see; edit it to rename the community
+name_rev: v1:e7bbfd24a6f3      # the name's own rev
 settings:                      # settings and rules.md share one rev
   rev: v1:4d1e9a07c2b3
   slow_mode_seconds: 30        # 0 is off
@@ -232,7 +233,7 @@ The lesson's text, in Markdown: at most 20,000 characters.
 
 ### How pull and push decide
 
-For the settings (with `rules.md`), the join link, each room, course, module and lesson, and the
+For the name, the settings (with `rules.md`), the join link, each room, course, module and lesson, and the
 order of each list — the courses, a course's modules, a module's lessons — the files, the server and
 the `rev` are compared:
 
@@ -244,7 +245,8 @@ the `rev` are compared:
 | Changed differently on both sides — a conflict | refuses the whole push | leaves the files' side, says so and exits non-zero; `--theirs` takes the server's, and an edit of yours made again on top of it then pushes |
 
 So a push does not undo an edit made in the web console before it reads the community, and a pull
-never overwrites an edit you have not pushed. When push asks before applying, it reads the community
+never overwrites an edit you have not pushed — save a `name` edited in a folder with no `name_rev`
+(below), which pull replaces with the server's. When push asks before applying, it reads the community
 again after your answer and stops, writing nothing, if anything changed while it waited; with `-y` it
 applies right after its read. A room, course, module or lesson on the server that the files do not
 list is left as is by push, and added to the files by pull.
@@ -271,8 +273,12 @@ either side.
 - **Publishing comes last.** Push takes courses, then lessons, off the community first, and publishes
   a course last, once its modules and lessons are in place: a new course is created as a draft, and a
   new course with `published: true` goes live at the end of the push.
-- **Read-only fields** — `community_id`, `name`, a created room's `kind` — refuse the push when
+- **Read-only fields** — `community_id` and a created room's `kind` — refuse the push when
   changed in the files.
+- **`name` renames the community** for every member at once (1–100 characters). A file pulled
+  before renames could be pushed has no `name_rev`, and its `name` is read as the last one synced:
+  pull once before renaming in such a folder: otherwise push reads your rename as the server's
+  change, leaves it unpushed and says to pull, and that pull replaces it with the server's name.
 - **`join_link_enabled: true` over a link that is off makes a new link**: every link shared before
   stays dead. To replace an active link, or turn off a leaked one at once, use
   `wayai communities join-link rotate|off`.
