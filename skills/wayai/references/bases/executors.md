@@ -204,6 +204,8 @@ const cert = await fetchExecutorCredential(request, 'partner-cert')
 - **Pull once per invocation and reuse** — the grant is single-use per credential name.
 - The value comes back **verbatim**; decode it according to its recorded content type.
 - The grant headers are **not signature-bound**. If you sit behind a TLS-terminating proxy, pin the allowed origin to `https://data.wayai.pro`.
+- Treat the token as opaque, and send it back exactly as received: it is bound to the base that issued it, and a token presented at another base's callback URL is refused like a used one.
+- The callback is rate-limited per calling address; past the limit it answers `429` with `Retry-After: 60` (the SDK reports it as `credential_fetch_failed`).
 
 A per-tenant certificate needs no templating: a reference already resolves against the credentials of the base serving the request, so the same `"secret_ref": "credential:partner-cert"` picks up each tenant base's own certificate. Placeholders are rejected in a `credential:` reference for that reason.
 
