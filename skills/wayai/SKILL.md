@@ -1,12 +1,12 @@
 ---
 name: wayai
-version: 6.165.0
+version: 6.167.0
 description: |
-  Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
+  Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
   voice calls.
   Use when: creating or editing a hub or hub config; adding/configuring agents, tools, channels,
-  connections, teams, kanban, states, resources, eval scenarios or journeys, automations (scheduled or event-triggered sends and agent runs, webhook-started tasks), voice calls;
+  connections, teams, kanban, states, skills, eval scenarios or journeys, automations (scheduled or event-triggered sends and agent runs, webhook-started tasks), voice calls;
   running analytics or evals; annotating conversation outcomes; reviewing or editing workspace YAML
   (hub.yaml, agents/*.yaml, base.yaml, record-types/*.yaml) or agent instruction Markdown;
   designing a base schema, upserting or querying records, linking records with relationships,
@@ -26,7 +26,7 @@ description: |
 
 # WayAI Skill
 
-WayAI is where AI agents and people work together — serving your customers and running your operations. Each hub combines AI agents and a human team, from person-centered support and sales across channels to task-centered back-office work ([Hub Types](#hub-types)). This workspace stores hubs as code — one folder per hub (`hub.yaml` + `agents/*.{yaml,md}` + `evals/`, `journeys/`, `resources/`) synced bidirectionally to the platform via the `wayai` CLI.
+WayAI is where AI agents and people work together — serving your customers and running your operations. Each hub combines AI agents and a human team, from person-centered support and sales across channels to task-centered back-office work ([Hub Types](#hub-types)). This workspace stores hubs as code — one folder per hub (`hub.yaml` + `agents/*.{yaml,md}` + `evals/`, `journeys/`, `skills/`) synced bidirectionally to the platform via the `wayai` CLI.
 
 **Platform is the source of truth.** Workspace files are the edit surface — changes flow through files → `wayai push` → platform. Always `wayai pull` before editing to catch out-of-band changes.
 
@@ -48,7 +48,7 @@ WayAI is where AI agents and people work together — serving your customers and
 
 | Entity | How |
 |--------|-----|
-| Hub settings, agents, agent instructions, tools, kanban, states, resources, evals, journeys, automations, custom tools | CLI (`wayai push`); an automation is paused from the app |
+| Hub settings, agents, agent instructions, tools, kanban, states, skills, evals, journeys, automations, custom tools | CLI (`wayai push`); an automation is paused from the app |
 | Contacts and org lists (the organization's contact book, which automations target) | UI (organization settings → Contacts) or API (`/api/contact-book`) — never `hub.yaml`. See [Automations](#automations) |
 | A contact's customer record in a base (what a customer-scoped toolset serves when a conversation names the contact) | CLI (`wayai contacts link-customer` / `unlink-customer`, browser sign-in only) or API (`/api/contact-book/contacts/:id/customer`) — see [Linking a contact to its customer record](references/bases/toolsets.md#linking-a-contact-to-its-customer-record) |
 | Hub lists (a hub's own filters over the contact book, which its automations target) | CLI (`hub.yaml` `contact_lists:`, `wayai push`) or UI (hub → Automations → Lists) |
@@ -57,7 +57,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Connections — OAuth (WhatsApp, Instagram, MCP OAuth) | Platform UI |
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
 | Org credentials — create / rotate / edit | CLI (`wayai create-credential` / `wayai update-credential`) or UI |
-| Org-level shared resources (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
+| Org-level shared skills (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
 | Bases — schemas, records, relationships, files, toolsets (the Data surface) | CLI (`wayai bases`, `wayai records`, `wayai record-types`, …; config-as-code via `wayai pull`/`push bases/<base>`) — open [`references/bases/README.md`](references/bases/README.md) first |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
@@ -92,7 +92,7 @@ WayAI is where AI agents and people work together — serving your customers and
 Organization                ← CLI (`wayai org create`) or UI
 ├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
 ├── Org Tags                ← UI — gate which credentials each hub can resolve and which contacts it sees
-├── Org Resources           ← CLI (`wayai org pull/push`) — shared skills, fan out to linked hubs
+├── Org Skills              ← CLI (`wayai org pull/push`) — shared skills, fan out to linked hubs
 ├── Bases                   ← CLI (`wayai bases`) — the Data surface. Org-level, NOT inside a hub (see Bases)
 ├── Contact book            ← UI (Contacts) or API — contacts + org lists that automations target. Org-level, NOT in `hub.yaml`
 └── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
@@ -100,10 +100,10 @@ Organization                ← CLI (`wayai org create`) or UI
     ├── Channels            ← auto-provisioned, never authored (see Channels)
     ├── Agents              ← CLI — `agents/<slug>.yaml` + `<slug>.md`
     │   ├── Tools           ← CLI — native, custom HTTP, MCP, delegation
-    │   └── Resource links  ← CLI — `resources:` block in agent YAML
+    │   └── Skill links     ← CLI — `skills:` block in agent YAML
     ├── Kanban statuses     ← CLI — `hub.yaml` (workflow stages for conversations)
     ├── States              ← CLI — `hub.yaml` (JSON-schema data agents read/write)
-    ├── Resources           ← CLI — `hub.yaml` + `resources/` folder (skills)
+    ├── Skills              ← CLI — `hub.yaml` `skills:` + `skills/` folder
     ├── Evals + Journeys    ← CLI — `evals/`, `journeys/`
     ├── Hub lists           ← CLI — `hub.yaml` `contact_lists:`; filters over the contact book (labels, scope tags)
     ├── Automations         ← CLI — `hub.yaml`; paused in the app; each targets a hub list or an org list by name
@@ -289,19 +289,21 @@ Full field specs, constraint matrix, warnings, and a complete example: [`referen
 
 **Kanban vs State:** kanban tracks workflow progression; state tracks structured data. Both coexist. Schemas and patterns: [`references/states.md`](references/states.md).
 
-## Resources
+## Skills
 
-Skills attached to agents. Content lives as real files under `resources/<slugified-name>/` (the filesystem is the source of truth **for resource content**); `hub.yaml` `resources:` declares only name/description.
+Skills attached to agents. Content lives as real files under `skills/<skill_name>/` (the filesystem is the source of truth **for skill content**); `hub.yaml` `skills:` declares only name, `skill_name` and description.
 
 | Type | What | Runtime behavior |
 |------|------|------------------|
-| `skill` | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | The agent reads its files at `skills/<skill_name>/…` (`list_files`, `read_file`, `{{file_content(skills/…)}}`); a skill cited under `resources/` in any text agents act on (instructions, settings, monitor notes, automations, kanban follow-ups, custom tools, resource descriptions) is refused on save and push. Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
+| `skill` | Versioned capability package — `SKILL.md` (frontmatter `name` + `description`) + optional `references/` | The agent reads its files at `skills/<skill_name>/…` (`list_files`, `read_file`, `{{file_content(skills/…)}}`); a skill cited under `resources/` in any text agents act on (instructions, settings, monitor notes, automations, kanban follow-ups, custom tools, skill descriptions) is refused on save and push. Injected as a callable tool (default, works on all providers), or run natively in a provider container (`use_native_integration: true`, Anthropic/OpenAI only; auto-syncs to the provider on `wayai push`, `wayai sync-skills` re-syncs after failures or late-added connections) |
 
-Every resource is a skill: knowledge resources are retired, and documents (FAQ, catalogs, policies) live in the organization's knowledge base, read by agents at `data/<file type>/…` through a Base Toolset connection ([Bases](#bases-the-data-surface)). A `type: knowledge` entry is refused by push ([`references/resources.md`](references/resources.md#resource-types)).
+Knowledge resources are retired: documents (FAQ, catalogs, policies) live in the organization's knowledge base, read by agents at `data/<file type>/…` through a Base Toolset connection ([Bases](#bases-the-data-surface)). A skill takes no `type`.
 
-Agents link resources in `agents/<slug>.yaml` under a `resources:` block (by name, with `priority`). Org-level resources shared across hubs live in `wayai-ws/org/` via `wayai org pull/push` (push fans out to linked hubs).
+Agents link skills in `agents/<slug>.yaml` under a `skills:` block (by name and `skill_id`, with `priority`). Org-level skills shared across hubs live in `wayai-ws/org/` (`skills.yaml` + `skills/<skill_name>/`) via `wayai org pull/push` (push fans out to linked hubs). Push is declarative: removing a skill from `hub.yaml` (the last one too) deletes it.
 
-File handling (text vs binary, 10 MB cap), skill authoring, execution modes: [`references/resources.md`](references/resources.md).
+**Folders pulled before skills** hold `resources:` (in `hub.yaml` and the agent files) and a `resources/` folder (`org/resources.yaml` for an organization). `wayai push`, `diff` and `publish` (and `org push`/`org diff`) refuse them before sending anything; `wayai pull` (`wayai org pull`) converts them, and stops, naming it, on anything in `resources/` that is not the folder of a skill it writes, or already in its `skills/` (a knowledge backup: move it out of the workspace). This needs `@wayai/cli` 0.3.234 or later (`wayai update`). Details: [`references/skills.md`](references/skills.md#folders-pulled-before-skills-resources).
+
+File handling (text vs binary, 10 MB cap), skill authoring, execution modes: [`references/skills.md`](references/skills.md).
 
 ## Bases (the Data surface)
 
@@ -312,7 +314,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
-- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay resources
+- **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset; an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
 
@@ -538,8 +540,8 @@ wayai login             # OAuth — or `wayai login --token` for headless/CI
 wayai logout            # Sign out and clear stored credentials
 wayai whoami            # Show the authenticated identity
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
-wayai org pull          # Org-as-code: fetch org-level shared resources → wayai-ws/org/
-wayai org push          # Org-as-code: apply local org resources to the platform (fans out to linked hubs); `wayai org diff` previews
+wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-ws/org/
+wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
 wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
@@ -696,9 +698,9 @@ wayai-ws/                                # All WayAI config-as-code (init create
 │                                        #   Write these two by hand — no command creates them.
 │                                        #   `wayai init` keeps their VALUES when it rewrites the file,
 │                                        #   but YAML comments in it are not preserved.
-├── org/                                 # Org-as-code — shared resources (wayai org pull/push)
-│   ├── resources.yaml
-│   └── resources/<slug>/
+├── org/                                 # Org-as-code — shared skills (wayai org pull/push)
+│   ├── skills.yaml
+│   └── skills/<skill_name>/
 ├── communities/                         # One folder per community — `wayai pull communities/<community_id>`
 │   └── <community-slug>/                #   (see references/communities.md; push edits the LIVE community)
 │       ├── community.yaml               # Identity, settings, join link state, rooms, course folders in order — with ids and revs
@@ -718,7 +720,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
 │       └── seeds/<id>.yaml
 └── hubs/
     └── <hub-slug>--<label>/             # One folder per preview hub (disambiguated)
-        ├── hub.yaml                     # Hub config + states + connections + automations + resources
+        ├── hub.yaml                     # Hub config + states + connections + automations + skills
         ├── agents/
         │   ├── <slug>.yaml              # Agent config (one per agent, slugified name)
         │   └── <slug>.md                # Agent instructions (one per agent)
@@ -729,7 +731,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
         │   └── <slug>.yaml
         ├── attachments/                 # Eval/journey turn attachment files (synced; hub-root, shared by evals + journeys)
         ├── call-openings/               # Voice agents' own call opening audio (synced; `call_openings` in agents/<slug>.yaml)
-        ├── resources/                   # Skill resource files (synced)
+        ├── skills/<skill_name>/         # Skill files (synced)
         ├── AGENTS.md                    # Hub-specific memory — scaffold seeded on pull/push (NOT synced; fill it in)
         └── references/                  # Hub-specific supporting files (NOT synced)
     └── <hub-slug>/                      # Linked production hub: READ-ONLY mirror (bare slug, no --label). Refreshed each pull; never pushed
@@ -823,7 +825,7 @@ connections:
       modelId: eleven_multilingual_v2
 ```
 
-`hub.yaml` also holds `resources:`, `automations:` and `contact_lists:` blocks. See the per-domain references for full schemas.
+`hub.yaml` also holds `skills:`, `automations:` and `contact_lists:` blocks. See the per-domain references for full schemas.
 
 ## `agents/<slug>.yaml` Shape
 
@@ -880,9 +882,9 @@ tools:
           properties:
             email: { type: string, description: Customer email }
           required: [email]
-resources:
-  - name: Order Management         # links a hub skill by name (see Resources)
-    resource_id: "resource-uuid"   # set by pull
+skills:
+  - name: Order Management         # links a hub skill by name (see Skills)
+    skill_id: "skill-uuid"         # set by pull
     priority: 0
 ```
 
@@ -897,7 +899,7 @@ For full agent options (settings per connector, `additional_context_template`, `
 - **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). A Base Toolset connection's token is never copied, whatever the flag says: always set production's own. Nor is a hosted agent connection's webhook signing secret (`Claude Agent (Managed)`): each hub registers its own endpoint and sets its own. See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
 - **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve (matching rule in Connections & Credentials above). Only an organization admin may change them; a push that leaves them as they are works for anyone. A tag's slug is permanent — the UI edits only its display name and color — so these lists never need rewriting. See [`references/connections.md`](references/connections.md#organization-tags)
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from an MCP Server connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
-- **Names are foreign keys:** cross-entity references resolve by display name at push/runtime — agent `connection:`, delegation `target:` (agent name or UI-managed team name), agent `resources[].name`, eval `agent:`, custom tool `connection:`. A dangling name fails the push or the runtime call — when renaming anything, update its referrers in the same edit
+- **Names are foreign keys:** cross-entity references resolve by display name at push/runtime — agent `connection:`, delegation `target:` (agent name or UI-managed team name), agent `skills[].name`, eval `agent:`, custom tool `connection:`. A dangling name fails the push or the runtime call — when renaming anything, update its referrers in the same edit
 - **Renaming:** change the `name` field — the stable `id` ensures it's detected as a rename, not delete + create. For agents, `wayai push` auto-renames the `.yaml` and `.md` files
 - **Default omission:** fields matching defaults are omitted (e.g., `enabled: true`, kanban flags default `false`, `excludeHolidays` defaults `true`)
 - **Entity matching (sync/diff):** `id` first (stable UUID), then fallback. Exceptions: states match by `name` (unique per hub regardless of scope); evals match by `name + path`; native tools by `tool_name` per agent
@@ -937,7 +939,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Agents** | [`references/agents/prompt-principles.md`](references/agents/prompt-principles.md) | Placing & structuring context for reliable execution — context-to-slot-lifetime, cache hygiene, state vs tool-history, flow-before-style, positive framing, voice as its own section |
 | **Kanban** | [`references/kanban.md`](references/kanban.md) | Kanban field specs: flags, transitions, followups, additional-context schema/instructions, lanes, constraint matrix, warnings |
 | **States** | [`references/states.md`](references/states.md) | State JSON Schemas, scope, agent read/write, initial values |
-| **Resources** | [`references/resources.md`](references/resources.md) | Skill resources, agent linkage, provider sync (`wayai sync-skills`) |
+| **Skills** | [`references/skills.md`](references/skills.md) | Skills (`skills:`, `skills/<skill_name>/`), agent linkage, converting a folder pulled before skills, provider sync (`wayai sync-skills`) |
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule, event or webhook trigger, contact-list or no target, `send_message` / `run_agent`), webhook deliveries (signing, the secret, rotation), valid combinations per hub type, task-hub tasks, gates, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |

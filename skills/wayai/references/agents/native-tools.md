@@ -358,7 +358,7 @@ Python comes with libraries for the files customers send, already installed, so 
 - **Images:** `Pillow` opens, converts, resizes and edits PNG, JPEG, WebP, GIF, TIFF and BMP.
 - **Tables:** `pandas` reads and writes CSV and `.xlsx`, and filters, joins and aggregates them.
 
-A sandbox whose network setting reaches a package index can `pip install` more: `pip install --user`, or a virtual environment under `/workspace`, is kept across the sandbox's stops (below), while a plain `pip install` is not. (A skill run with native integration on Anthropic or OpenAI runs in that provider's own skill container instead; see [Skill Execution Modes](../resources.md#skill-execution-modes).) These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts a new sandbox, with the `/workspace` files kept but nothing that was running, while `copy_from_sandbox` reads the running one whatever the setting.
+A sandbox whose network setting reaches a package index can `pip install` more: `pip install --user`, or a virtual environment under `/workspace`, is kept across the sandbox's stops (below), while a plain `pip install` is not. (A skill run with native integration on Anthropic or OpenAI runs in that provider's own skill container instead; see [Skill Execution Modes](../skills.md#skill-execution-modes).) These tools run only for an agent whose `code_execution_enabled` setting is on, on any LLM connector, held by a pilot- or copilot-track responder (`pilot`, `pilot_specialist`, `copilot`, `copilot_specialist`), and the sandbox reaches the network only as the agent's `sandbox_network` setting allows (see [Agent Settings › Code sandbox](roles-and-settings.md#code-sandbox-all-llm-connectors)). Consult turns cannot use them. A sandbox keeps one network setting for its life: a command or a copy in by an agent with a different one starts a new sandbox, with the `/workspace` files kept but nothing that was running, while `copy_from_sandbox` reads the running one whatever the setting.
 
 ### bash
 
@@ -403,7 +403,7 @@ Copy a file out of the sandbox into the conversation, so what commands produced 
 
 ## Skill Tools
 
-Read [skill-resource](../resources.md#skill-resources) content on demand (tool-based execution mode). `skill_id` = the skill's `resource_id`; the ids of the skills linked to the agent are injected into the `skill_id` parameter description at turn time, so the agent can discover them without any hand-written ids. (The handler also resolves a skill by name.)
+Read a [skill's](../skills.md#skill-files) content on demand (tool-based execution mode). `skill_id` = the skill's id (an agent link's `skill_id`); the ids of the skills linked to the agent are injected into the `skill_id` parameter description at turn time, so the agent can discover them without any hand-written ids. (The handler also resolves a skill by name.)
 
 ### read_skill
 
@@ -411,7 +411,7 @@ Read a skill's `SKILL.md`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `skill_id` | string | Yes | The skill's resource_id |
+| `skill_id` | string | Yes | The skill's id |
 
 ### read_skill_file
 
@@ -419,7 +419,7 @@ Read a file inside a skill by relative path (no need to call `read_skill` first 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `skill_id` | string | Yes | The skill's resource_id |
+| `skill_id` | string | Yes | The skill's id |
 | `file_path` | string | Yes | Relative path from skill root (e.g. `references/menu.md`) |
 
 ---

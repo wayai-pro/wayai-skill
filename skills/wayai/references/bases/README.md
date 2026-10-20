@@ -190,4 +190,4 @@ Two paths work today, and neither is the same thing as the hub's own config:
   seed connection supplies the API origin and a `write:seeds` token. See [`../evals.md`](../evals.md).
 
 An organization's documents live in a base, its knowledge base, as files ([files.md](files.md));
-skills stay resources ([`../resources.md`](../resources.md)).
+skills stay in the hub ([`../skills.md`](../skills.md)).

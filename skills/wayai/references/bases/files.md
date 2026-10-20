@@ -10,7 +10,7 @@ anything you will version, diff, describe with metadata, or mount.
 
 Files are where an organization's documents live: its knowledge base, whose files agents read and
 edit at `data/<file type>/<path>` through a [Base Toolset](../connections.md#base-toolset)
-connection. **Skills** stay resources ([`../resources.md`](../resources.md)).
+connection. **Skills** stay in the hub ([`../skills.md`](../skills.md)).
 
 ## File types
 
