@@ -45,6 +45,13 @@ existing record in place instead of creating a twin. Set it on every record with
 — available to platform admins or a token granted `read:audit`; ordinary agent tokens are rejected.
 The same subcommand exists on `relationships`, `record-types` and `relationship-types`.
 
+Each version also carries `toolset_id`: the toolset whose tool made the change, and empty for every
+other writer (a person, an API token, an import, a trigger), and for changes recorded before toolsets
+were tracked. That is how you read one agent kind's changes apart from everyone else's. The base-wide change feed, `GET /v1/<base>/audit`, takes the same
+grant and narrows by `entity_type`, `record_type`, `actor_id`, `operation`, `from`/`to`, `toolset_id`
+(the changes made through one toolset's tools) and `source` (how the change came in: `api`, `cli`,
+`mcp`, `import`, `seed`, `inbound_webhook`, `cascade`, `promote`, `archival` or `snapshot`).
+
 There is no `records list`: listing IS `records query` with no `--filter`.
 
 ### Filtering & search
