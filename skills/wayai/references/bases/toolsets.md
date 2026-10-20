@@ -277,7 +277,7 @@ What a call reaches:
 
 The rule applies to every filter an agent sends, archived records included.
 
-**Relationship `list` tools.** These answer only links whose other end the customer reaches: its own record, a record it owns, a shared record, or a file. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link.
+**Relationship `list` tools.** These answer only links whose other end the customer reaches: its own record, a record it owns, a shared record, or a file. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link. A link whose other end is a record type the relationship type no longer names on either end is left out too, so narrowing a relationship type's record types hides the links it no longer admits.
 
 **Writes.** A record tool's `create`, `update` and `delete`, a relationship tool's `create` and `delete`, and every step of a composite write only inside the customer's reach:
 
