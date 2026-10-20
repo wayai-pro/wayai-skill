@@ -63,6 +63,8 @@ resources:
 
 **Default omission:** `enabled: true` is the default — it's omitted from pulled YAML and from your edits.
 
+**A push changes resources only when it lists some.** A push that lists no resources leaves the hub's resources as they are: their files, and agents' links to them, included (an agent's own `resources:` links are then ignored, with a warning). `wayai push` leaves out an empty `resources:`, so removing a hub's last resource from `hub.yaml` deletes nothing: delete it in the console. Removing one of several still deletes it. `wayai org push` always sends the organization's list, so removing its last resource there still deletes it.
+
 ---
 
 ## Agent ↔ Resource Linkage
