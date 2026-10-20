@@ -149,6 +149,21 @@ A relationship `list` tool walks one hop from a record: given `record_type`, `re
 - **Permissions.** A token not bound to the toolset calls a relationship `list` tool with `read:relationships`, plus `read:records` when the toolset reads a record type and `read:files` when it reads a folder.
 - **Link tools are not confined this way.** A relationship `create` writes any end its relationship type allows.
 
+### Navigating the graph
+
+Every toolset with a relationship `list` tool also gets `describe_graph`, a generated tool that answers the map of what the toolset reaches, read from its current config on every call:
+
+- **`record_types`**: each record type the toolset has a record tool, a composite Action step or a `batch` entry for: its `key` (`record:<id>`), `name`, `description` (cut to 200 characters), `tools` (each operation, or `composite` or `batch`, to this toolset's tool name; a list when several share one), and `references`, its `x-fk` fields whose record type a hop can answer. On a [customer-scoped](#customer-scope) toolset each carries its `customer_scope` (`root`, `owned` or `shared`), and a [reviewed record type](#reviewed-record-types) the toolset only reads carries `"review": "approved_only"` (or `"refused"` when its review cannot be applied to this toolset, which then reads none of its records).
+- **`relationship_types`**: each relationship type with a relationship tool, a composite step or a `batch` entry (a `batch` key counts as a relationship type when the base defines one by that id), with `source` and `target`: the ends a hop of its `list` tool can answer, by key. A record type is an end when the toolset has a `get` or `list` tool for it, a file type (`file:<id>`) when one of its folders has a `list` or `get` tool, and `["*"]` marks a side the relationship type leaves open. A `create` tool may link other ends.
+- **`file_types`**: each file type with file tools, and its folders (`path_prefix`, `""` for the whole type), each with its tools. A folder whose tools are only `get_url`, `put` or `put_url` is listed, but a hop answers none of its files, so it makes its file type no end.
+- **`truncated`**: the map holds up to 64 KiB of whole entries; when it leaves some out, it says `true`.
+
+Pass `detail` with a key from the map for one entry's fields: a record type's top-level fields (name, `type`, `format`, `enum` up to 20 values, `required`, `description`, and `references` when its `x-fk` names a record type a hop answers), a relationship type's data fields with its ends and `cascade`, or a file type's metadata fields with its folders. Up to 32 KiB of whole fields, with `truncated` as above. A record type the toolset reaches only through `batch` has no detail, and an unknown key is refused with the valid ones. Nothing outside the toolset's own tools appears in either answer.
+
+The name `describe_graph` is reserved on every toolset, whether or not it has a relationship `list` tool: config write and promotion refuse a toolset that names another tool `describe_graph`. A toolset that took the name before it was reserved keeps that tool, and gets no `describe_graph`, until you rename it; a copy of its base (a new preview, a rollback) keeps it as it is. A call bills as one `get`. A token not bound to the toolset calls it with `read:toolsets`, `read:relationship_types` and `read:file_types`, and [minting](#permissions-and-scope) a token bound to a toolset with a relationship `list` tool takes those two reads too.
+
+**Give `describe_graph` to every agent that holds a relationship `list` tool.** It tells the agent which links lead where, which tool reads each record type it meets, and where to start a hop, so it walks the graph instead of guessing. Assign it alongside the relationship tools.
+
 **Toolsets and Actions are preview-only config.** Author them against a preview base and promote with the schema change they depend on. Config-as-code round-trips them under `wayai-ws/bases/<base>/` via `wayai pull bases/<base>` / `wayai push bases/<base>` — see [`config-as-code.md`](config-as-code.md).
 
 ## File tools
@@ -373,6 +388,7 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - dropping an Action a reference points at,
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects,
+- a toolset naming a tool `describe_graph`, the [reserved](#navigating-the-graph) name,
 - breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role, an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target, or a trigger with `skip_cascade_writes: false` on a type such an `internal_write` patches.
 - breaking a [reviewed record type](#reviewed-record-types): a malformed `x-review`, a toolset its `writers` do not name holding a write on the type, `sql_query` on a toolset that is not a writer of every reviewed type, a writer's `writable_fields` naming the status or a stamp, or an `internal_write` trigger targeting the type.
 
@@ -391,7 +407,7 @@ An Action's generated MCP tool name defaults to its **`id`**. A toolset referenc
 - **`action_name`** — rename this Action *in this toolset*: `{ "action": "search_invoices", "action_name": "find_invoices" }`. The `--action <id>=<surface_name>` flag form is the same thing.
 - **`description_override`** — replace the Action's default description for this toolset.
 
-Tool names must be unique across the toolset, so if you reference the same Action twice (or two Actions that would collide) give one a distinct `action_name`. **Relationship** tools are named by the inline `name`/`names` map on their entry: `name` sets the base noun (link / list / unlink over it), `names` overrides a specific operation (`{ "create": "assign_payment" }`). Every key inside `names` must be a valid relationship operation (`create`/`list`/`delete`), or the override is rejected at config write.
+Tool names must be unique across the toolset, so if you reference the same Action twice (or two Actions that would collide) give one a distinct `action_name`. No tool may be named `describe_graph`, which is [reserved](#navigating-the-graph). **Relationship** tools are named by the inline `name`/`names` map on their entry: `name` sets the base noun (link / list / unlink over it), `names` overrides a specific operation (`{ "create": "assign_payment" }`). Every key inside `names` must be a valid relationship operation (`create`/`list`/`delete`), or the override is rejected at config write.
 
 ### Typed filter params (`filterable_fields`)
 
