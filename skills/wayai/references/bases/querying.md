@@ -107,6 +107,8 @@ Tuning is optional — unset fields use a sensible default. `x-search` hints app
 
 **Pick `threshold` deliberately.** Everything above the cutoff is returned, ranked — so a value that doesn't exist can still come back as a confident near-match of something else. `mode: "name"` compresses scores high when many values share a prefix token (hundreds of plans all starting `AMIL`), which is exactly when a default cutoff under-discriminates. If "no match" needs to be a trustworthy signal in your workload, raise `threshold` on that field.
 
+**A few words against a long field score low.** Closeness is measured against the whole field, so a short query scores low against a long title or text even when the field contains its words: under the default threshold, `roteador` finds no record titled `Luz LOS vermelha no roteador`, and under `mode: "text"` the score of one word against a text field falls as the text grows (`roteador` scores about 0.03 against a 400-character text that contains it). Several `search` legs joined by `and` must each clear their own threshold (under `or`, any one of them), and the results are ranked by the average score of all the legs. To rank a short list by closeness without dropping anything, set `mode: "text"` with `threshold: 0` on those fields: every record the rest of the filter keeps is returned, best match first.
+
 **Exposing search to an agent:** these hints only affect a toolset's generated tool if the `list` Action declares `match: search` on that field in `filterable_fields` — the only match that compiles to the `search` operator ([`toolsets.md`](toolsets.md)). A `searchable: false` field is rejected there at config-write.
 
 Omit `--sort` when using `search` to keep the relevance ranking.

@@ -338,6 +338,8 @@ A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held 
 
 On a WayAI hub, a customer-facing agent never holds the tools of a writer whose Actions or composite steps reach the type, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
 
+For a worked example, with a writer toolset, a reader per agent kind and what a person approves, see [Recipe: notes for agent kinds](records.md#recipe-notes-for-agent-kinds).
+
 ## The MCP connection URL
 
 ```bash

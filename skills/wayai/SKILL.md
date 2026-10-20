@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.161.0
+version: 6.163.0
 description: |
   Configure WayAI hubs, agents, tools, channels, resources, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -944,7 +944,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats, an invite-only community's access list; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml` (its `admission`), `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs` |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
-| **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, relationship types, relationships, batch, bulk import |
+| **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, reviewed records (`x-review`) and the agent notes recipe, relationship types, relationships, batch, bulk import |
 | **Bases** | [`references/bases/querying.md`](references/bases/querying.md) | `wayai bases sql` — tables, mandatory scoping predicates, JSON subcolumns, the example gallery; `x-search` tuning and timezone configuration |
 | **Bases** | [`references/bases/files.md`](references/bases/files.md) | File types, versioned path-addressed files, history/diff, S3 mounts, record attachments |
 | **Bases** | [`references/bases/config-as-code.md`](references/bases/config-as-code.md) | `wayai-ws/bases/<base>/`, subtree routing and mixed-invocation refusal, `base.yaml`, promote/rollback, eval mode, seed fixtures and leases |

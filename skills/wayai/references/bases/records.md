@@ -232,7 +232,7 @@ A record type can hold records that a person approves before agents read them, s
   "x-review": {
     "field": "status",
     "audience": "audience",
-    "writers": ["backoffice-notes"],
+    "writers": ["notes-curator"],
     "stamps": { "approved_by": "approved_by", "approved_at": "approved_at", "drafted_by": "drafted_by" }
   } }
 ```
@@ -264,6 +264,115 @@ They are ordinary fields: `records get` and `records query` return them, and a f
 **Not held to the rule:** deleting the record type itself, which is a config change, and the external key a trigger's `external_write` links back onto a record.
 
 **Checked at config write and at promotion**, across the base ([toolsets.md](toolsets.md#reviewed-record-types)): the declaration's shape; a toolset its `writers` do not name holding a create, update or delete on the type (an Action, a composite step or a `batch`); `sql_query` on a toolset that is not a writer of every reviewed type; a writer's `writable_fields` naming the status or a stamp; and an `internal_write` [trigger](integrations.md#triggers) targeting the type. `x-review` promotes like any other schema key. Records do not promote: production's are approved in production, and a preview gets approved records from seed fixtures. A reviewed type's records stay in the base's active records whatever their age, so an approved record never drops out of a list.
+
+#### Recipe: notes for agent kinds
+
+Notes are the short procedures and recurring issues an agent kind follows, such as "a red LOS light means the fiber signal is cut: check the green connector before anything else". A back-office or curator agent writes them as drafts, a person approves them, and each agent reads only the approved notes meant for its kind. A note's `audience` names the toolsets that read it: for each kind, the id of the toolset that holds its notes tools (step 3).
+
+**A note never holds anything about one customer:** no name, document number, phone, address, order or invoice. That is what lets a customer-facing agent read notes on every channel, including the ones that name no customer, without a [customer scope](toolsets.md#customer-scope). Facts about a customer stay in records a customer-scoped toolset reads.
+
+**1. The record type**, `record-types/notes.yaml`, declared `shared` and reviewed:
+
+```yaml
+id: notes
+name: Notes
+json_schema:
+  type: object
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+      x-search: { mode: text, threshold: 0 }
+    body:
+      type: string
+      minLength: 1
+      maxLength: 4000
+      description: The procedure. Never a customer's name, document, phone, address or invoice.
+      x-search: { mode: text, threshold: 0 }
+    status: { type: string, enum: [draft, approved, retired] }
+    audience:
+      type: array
+      minItems: 1
+      items: { type: string, enum: ["*", support, notes-curator] }   # ids of the toolsets holding the notes tools, or * for all
+    tags: { type: array, items: { type: string } }
+    supersedes:                       # the approved note a corrected draft replaces
+      type: string
+      x-fk: { record_type: notes, key: id }
+    approved_by: { type: string }
+    approved_at: { type: string, format: date-time }
+    drafted_by: { type: string }
+  required: [title, body, status, audience]
+  x-customer-scope: { role: shared }
+  x-review:
+    field: status
+    audience: audience
+    writers: [notes-curator]
+    stamps: { approved_by: approved_by, approved_at: approved_at, drafted_by: drafted_by }
+sources: []
+```
+
+An `enum` on the audience items keeps a writer from naming a kind that does not exist, which would leave the note unread. Adding an agent kind then means adding the id of the toolset that holds its notes tools there. The writer's own id, `notes-curator`, marks a note for the back office alone: the writer reads every note, and no reader's id matches it.
+
+`mode: text` with `threshold: 0` makes a search keep every note the reader may see and rank them, best match first: a few words score low against a long title or body, and a higher threshold would hide a note that holds them ([Search tuning](querying.md#search-tuning)). The tool still answers one page, the Action's `default_limit` (step 2).
+
+**2. The Actions.** A reader's search and a writer's search are separate Actions, so each returns the fields its kind needs:
+
+```yaml
+# actions/search_notes.yaml: readers
+id: search_notes
+record_type: notes
+operation: list
+description: Search the approved notes for you (procedures and recurring issues) by title or text.
+filterable_fields:
+  - { field: title, match: search, optional: true }
+  - { field: body, match: search, optional: true }
+default_limit: 50
+default_fields: id,data.title,data.tags
+```
+
+A search answers titles, not bodies, so a page of 50 costs the agent little; it reads the note it needs with `get_note`. Keep each kind's notes within that page: a note ranked past it never comes back, and the answer then says `truncated: true`. A kind that will hold more notes than a page needs `expose_offset: true` on `search_notes`, with an instruction to page on while the answer is `truncated`.
+
+- `search_all_notes`: the same `list`, for the writer, whose `default_fields` add `data.status`, `data.audience`, `data.supersedes`, `data.drafted_by` and `data.approved_at`.
+- `get_note`: a `get` on `notes`.
+- `draft_note` (`create`) and `revise_note` (`update`), whose `writable_fields` are `title`, `body`, `audience`, `tags` and `supersedes`. The status and the stamps stay out: the server writes them.
+
+**3. The toolsets.**
+
+- **The writer**, `notes-curator`, the one toolset `x-review.writers` names: `search_all_notes`, `get_note`, `draft_note` and `revise_note`. It writes and reads as [Reviewed record types](toolsets.md#reviewed-record-types) says; to correct an approved note, it writes a new draft whose `supersedes` names it.
+- **A reader per kind**, holding `search_notes` and `get_note`. Every call answers only the approved notes whose `audience` holds that toolset's id or `*`.
+  - A kind whose toolset is not [customer-scoped](toolsets.md#customer-scope), such as one that reads only documents, adds the two tools to that toolset.
+  - A kind whose toolset is customer-scoped gets a second toolset for its notes, with no customer scope, and its `audience` id is that second toolset's. Every call to a customer-scoped toolset names a customer, so on a channel that names none, notes on it would be refused.
+
+On a hub, connect each toolset with a [Base Toolset](../connections.md#base-toolset) connection, whose token is bound to that toolset on the base of the hub's environment; in `hub.yaml`, the connection names the Bearer Token org credential that holds it. Give the writer's tools to an agent the team works with, such as the hub's copilot, and the reader's to the agents of its kind: a customer-facing agent may hold them, and never the writer's ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*). After adding the notes tools to a toolset the hub already connects, sync the connection's tools and assign them to the agents ([Giving agents its tools](../connections.md#base-toolset)).
+
+**4. The instructions.** Tell a reader where notes fit beside its documents, for example:
+
+```markdown
+- For a procedure or a recurring issue (a fault, an outage, how to fix something), search the notes with
+  `search_notes` by the subject's words. It answers the closest titles first: read the note whose title
+  is about the subject with `get_note`. If no title is, and the answer isn't marked `truncated`, there is no
+  such note. A person approved every note you get: follow it as written.
+- Notes never hold customer data. A customer's details come only from <where they live>.
+- Before saying you don't have some information, look in the documents and also in the notes with
+  `search_notes`. If neither has it, say you don't have that information.
+```
+
+Without that last line, an agent asked something its documents don't cover tends to answer from them alone, without searching the notes.
+
+Tell the writer what a note is and what it never holds: one procedure or recurring issue per note, the audience it is for, no customer data, `search_all_notes` before writing so it doesn't duplicate a note, and a new draft with `supersedes` to correct an approved one.
+
+**5. What a person approves.** Signed in to WayAI (the console, or the CLI after `wayai login`), a person reads the drafts and approves each one that is right, holds no customer data, and names the right audience:
+
+```bash
+wayai records query notes --base <base> --filter '{"field":"data.status","op":"eq","value":"draft"}'
+wayai records get notes <id> --base <base>
+wayai records upsert notes --base <base> --id <id> --data @note.json   # the whole note, with "status": "approved"
+```
+
+`records upsert` replaces the whole record, so send every field, with the status changed. Approving a draft that `supersedes` a note means retiring that note too (`"status": "retired"`). The server stamps `approved_by` and `approved_at`.
+
+**6. Preview and production.** The record type, the Actions and the toolsets are config: write them on a preview, then promote. Notes are data and don't promote: production's notes are written and approved in production. A preview holds notes from a [seed fixture](config-as-code.md#seed-fixtures), which may write `approved`, so an eval can show what each kind reads: a reader answers from an approved note of its own kind, and doesn't know what a draft, a retired note or another kind's note says.
 
 ### Field constraints
 
