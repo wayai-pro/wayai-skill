@@ -324,6 +324,8 @@ A toolset that breaks either list is refused when it, an Action it references, o
 
 A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held to both rules at once.
 
+On a WayAI hub, a customer-facing agent never holds the tools of a writer whose Actions or composite steps reach the type, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
+
 ## The MCP connection URL
 
 ```bash

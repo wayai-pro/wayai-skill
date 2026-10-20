@@ -252,7 +252,7 @@ A record type can hold records that a person approves before agents read them, s
 
 A deleted record written again counts as a new record. A person may do anything; editing an approved record keeps it approved.
 
-A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` does not print that count yet, and its confirmation's record count includes the records it will keep.
+A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` prints that count, and for a reviewed type its confirmation says "up to" its record count, which includes the records it will keep.
 
 **Stamps.** The server writes the fields `stamps` names, and ignores any value a write sends for them. They hold ids only, never a name or an email:
 
