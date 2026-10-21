@@ -146,7 +146,7 @@ a single-use upload URL, for code that moves a file of any size itself. A tool's
 hash, so their rules differ from the mount's — see [File tools](toolsets.md#file-tools). A hub agent
 connected to the toolset, and holding both `list_files` and `read_file`, reads these documents at
 `data/<file-type>/<path>` with those two tools, and writes them there with `write_file` and `edit_file`
-through the toolset's `put`, when it holds those too ([native-tools.md](../agents/native-tools.md#resource--file-tools)).
+through the toolset's `put`, when it holds those too ([native-tools.md](../agents/native-tools.md#skill--file-tools)).
 A toolset's relationship `list` tool answers a file linked to a record as a node with its `path` and
 `get_tool`, the toolset's `get` tool whose folder holds it, when the file lies in the folder of one of
 its `list` or `get` file tools; a link to any other file is left out

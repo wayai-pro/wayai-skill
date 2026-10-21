@@ -562,7 +562,7 @@ A `user_message` monitor runs **inside** the customer's turn rather than as a tu
 
 **It adds its own latency to every reply.** The customer waits for it, so keep it on a fast model and a small window. It cannot change the reply or stop it being sent. If its model is misconfigured, fails, or returns nothing usable, the monitor is skipped and the turn proceeds without it; if the model is merely slow, its call is abandoned after a few seconds and the turn proceeds without waiting for it.
 
-**Only the model call is abandoned.** Reading the conversation and resolving the monitor's own instructions happen first and are not. Placeholders in a monitor's instructions are resolved for a `user_message` monitor exactly as they are for an `idle` one — so a monitor whose instructions pull in file or resource content (`{{file_content(…)}}`, `{{files()}}`, `{{previous_conversations(N)}}`) fetches that content on every customer message, before its model is called. Prefer a monitor that judges the conversation it is handed; move one that needs to look things up to `idle`.
+**Only the model call is abandoned.** Reading the conversation and resolving the monitor's own instructions happen first and are not. Placeholders in a monitor's instructions are resolved for a `user_message` monitor exactly as they are for an `idle` one — so a monitor whose instructions pull in file or skill content (`{{file_content(…)}}`, `{{files()}}`, `{{previous_conversations(N)}}`) fetches that content on every customer message, before its model is called. Prefer a monitor that judges the conversation it is handed; move one that needs to look things up to `idle`.
 
 ### One enabled monitor per trigger
 

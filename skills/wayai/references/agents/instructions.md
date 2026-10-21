@@ -179,7 +179,7 @@ Returns a Markdown list — one bullet per skill with its name, type, id, descri
 {{files('tree')}}
 ```
 
-> **Retired spellings.** Knowledge resources are retired, and with them `{{resources(...)}}` (this placeholder's old name) and the `kb` kind (`{{files('kb')}}`): the platform rewrote every stored `{{resources(...)}}` to `{{files(...)}}`, and a save or `wayai push` that writes either is refused, naming what to write. A `'skill'` token is ignored, since every linked resource is a skill. Documents an agent reads live in the knowledge base, under `data/<file type>/…` ([native-tools.md](native-tools.md)).
+> **Retired spellings.** Knowledge resources are retired, and with them `{{resources(...)}}` (this placeholder's old name) and the `kb` kind (`{{files('kb')}}`): the platform rewrote every stored `{{resources(...)}}` to `{{files(...)}}`, and a save or `wayai push` that writes either is refused, naming what to write. A `'skill'` token is ignored, since an agent links skills only. Documents an agent reads live in the knowledge base, under `data/<file type>/…` ([native-tools.md](native-tools.md)).
 
 ---
 
@@ -217,7 +217,7 @@ Two path shapes, one placeholder:
 - **A file path** — `{{file_content(skills/order-processing/references/menu.md)}}` inlines that one file, the same path `{{files('tree')}}` and `list_files` report for it.
 - **A skill root** — `{{file_content(skills/order-processing)}}` inlines the skill's `SKILL.md`.
 
-Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a resource this agent isn't linked to, also leaves the placeholder literal (a resource the agent cannot read is indistinguishable from a typo), and so does a skill named under `resources/`: a skill is read under `skills/` only. Only `skills/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt, and the knowledge base's documents (`data/…`) are read on demand — the agent reads both with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
+Paths match case-insensitively but must be **canonical and complete** — the same string `{{files('tree')}}` prints. Content is fetched per turn and truncated at ~100 KB per path; at most 20 paths are inlined per turn, and any beyond that are left literal. An unknown path, or one naming a skill this agent isn't linked to, also leaves the placeholder literal (a skill the agent cannot read is indistinguishable from a typo), and so does a skill named under `resources/`: a skill is read under `skills/` only. Only `skills/…` paths resolve here: conversation attachments belong to the transcript, not the system prompt, and the knowledge base's documents (`data/…`) are read on demand — the agent reads both with `read_file`. Reach for `read_skill` / `list_files` when the agent should fetch on demand instead of always inlining.
 
 > **A comma ends the path.** Arguments are comma-separated, so `{{file_content(skills/pricing/Plans, 2026.md)}}` addresses `skills/pricing/Plans` and resolves to nothing — quoting does not help. Rename such a file, or reach it with `read_file`, which takes the path as a tool argument rather than as placeholder syntax.
 
@@ -230,7 +230,7 @@ Paths match case-insensitively but must be **canonical and complete** — the sa
 {{file_content(skills/order-processing)}}
 ```
 
-**Skills moved to `skills/`.** Agents read a skill at `skills/<skill_name>/…`, and the platform rewrote every stored citation of a skill under `resources/` in the text agents act on: agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and resource and folder descriptions. A save or `wayai push` that writes a skill under `resources/` into any of these again (from an agent folder pulled, or an editor opened, before the move) is refused, naming the `skills/` path to write; `wayai pull` refreshes such a folder.
+**Skills moved to `skills/`.** Agents read a skill at `skills/<skill_name>/…`, and the platform rewrote every stored citation of a skill under `resources/` in the text agents act on: agents' instructions, additional context, settings' system message and monitor notes; experiment-arm overrides of those; automations' instructions; kanban follow-ups' and statuses' instructions; custom tools' instructions and descriptions; and skill and folder descriptions. A save or `wayai push` that writes a skill under `resources/` into any of these again (from an agent folder pulled, or an editor opened, before the move) is refused, naming the `skills/` path to write; `wayai pull` refreshes such a folder.
 
 ---
 
@@ -298,7 +298,7 @@ Event information from conversation events (scheduling, appointments).
 
 Another agent's instructions and tools configuration (by agent name).
 
-> **Note:** this placeholder is not yet populated at runtime — an unresolved `{{agent_settings(NAME)}}` is left as the literal token (tracked separately). For the *current* agent's resources and skills, use `{{files()}}` / `{{agent_skills()}}` instead.
+> **Note:** this placeholder is not yet populated at runtime — an unresolved `{{agent_settings(NAME)}}` is left as the literal token (tracked separately). For the *current* agent's skill files and skills, use `{{files()}}` / `{{agent_skills()}}` instead.
 
 | Argument | Required | Description |
 |----------|----------|-------------|

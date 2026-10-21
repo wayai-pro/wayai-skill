@@ -30,7 +30,7 @@ Other native fields (schema, instructions, operation) come from the platform cat
 ## Table of Contents
 - [Conversation Tools](#conversation-tools)
 - [State Tools](#state-tools)
-- [Resource & File Tools](#resource--file-tools)
+- [Skill & File Tools](#skill--file-tools)
 - [Code Sandbox Tools](#code-sandbox-tools)
 - [Skill Tools](#skill-tools)
 - [History & Summary Tools](#history--summary-tools)
@@ -235,9 +235,9 @@ Reset a state to its initial value (deletes the persisted row; reads fall back t
 
 ---
 
-## Resource & File Tools
+## Skill & File Tools
 
-Discover and read skill content and the documents of the agent's toolset, exchange files with the user, and write those documents under `data/` (`write_file`, `edit_file`). Skills are read-only to agents. `list_files` is the one discovery tool: the mounts an agent may browse are injected into its `path` parameter description at turn time, so it discovers what exists in-band — the hub author no longer needs to hand-write resource UUIDs into the instructions.
+Discover and read skill content and the documents of the agent's toolset, exchange files with the user, and write those documents under `data/` (`write_file`, `edit_file`). Skills are read-only to agents. `list_files` is the one discovery tool: the mounts an agent may browse are injected into its `path` parameter description at turn time, so it discovers what exists in-band — the hub author no longer needs to hand-write skill UUIDs into the instructions.
 
 **Files are addressed by path.** Every skill file has a canonical path, `skills/<skill-slug>/<folders…>/<file-name>`, where the slug is the skill's `skill_name`. `read_file` takes that path, `list_files` returns it on every row, and `{{files('tree')}}` lists it under each skill. Knowledge resources, and the `resources/` mount they were read at, are retired: an organization's documents are read under `data/` (below). Prefer paths in instructions: publishing a hub regenerates every UUID, so an id written into a prompt breaks at preview → production, while the names a path is built from clone verbatim. `file_id` is still accepted everywhere.
 
@@ -290,7 +290,7 @@ Browse what the agent can reach, by path. Discovery is a drill-down: no `path` l
 
 **Response.** `{ path, entries, total, limit, offset }`, where `path` is the resolved location and `total` is the count the page was drawn from. Each entry is a `mount`, `folder`, or `file` row carrying its own `path`; `folder` rows carry the folder's `description`, and `file` rows carry `file_id` alongside the path, because `read_file` and `send_files` also take an id. A `data/` listing differs as described above: `has_more` in place of `total`, and each row the toolset's own.
 
-**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `skills/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which skills a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a skill is named in a parameter (`read_file`'s `skill_id`, which takes a linked skill's id or slug), and there it reads the same for an unlinked one and one that does not exist. **Admin note:** if an agent reports "no such path" for a skill you can see in the UI, check the `agent_resource` link and the resource's `enabled` flag — the tool cannot distinguish those for you.
+**Errors are directional, with one deliberate exception.** A path naming a file rather than a folder points at `read_file`. A `skills/<slug>` that is unlinked, disabled, or simply nonexistent all report the SAME "no such path" and point back at the mounts — indistinguishable on purpose, because a slug is a guessable name, and telling the two apart would let anyone who can steer an agent's tool calls enumerate which skills a hub holds but withheld from that agent. The "not linked" diagnostic survives only where a skill is named in a parameter (`read_file`'s `skill_id`, which takes a linked skill's id or slug), and there it reads the same for an unlinked one and one that does not exist. **Admin note:** if an agent reports "no such path" for a skill you can see in the UI, check that the skill is linked to that agent and that the skill is enabled — the tool cannot distinguish those for you.
 
 ### read_file
 
@@ -307,7 +307,7 @@ Inline text from `skills/` and the conversations is cut at 60,000 characters, wi
 
 **A `data/` document** is read through the toolset's own `get` tool, and `read_file` answers that tool's own answer, whole and uncut, with `path` as its `data/` path: `{ path, version, content_type, size, metadata, …, encoding, content }`. The **version** is the one a version-checked write of the file names. Text comes back as UTF-8 and `view_range` selects its lines, adding `lines` (`lines 10-40 of 120`). A document that is not text (a PDF, an image) comes back as base64 (`encoding: "base64"`); it is not shown to the model as an image or a document, and `view_range` doesn't apply to it. The toolset's `get` carries at most 1 MiB, and refuses a larger file. A file type the toolset reads through one tool is always read through it, and the toolset decides that tool's reach; with several tools, one per folder, a file outside all of their folders reports "File not found". A file the agent can list but not read says so.
 
-\* At least one of `path` / `file_id` is required; `path` wins when both are given. `skill_id` narrows only a path, and it is checked after a resource file's `file_id` but before a conversation attachment's: a skill or resource file the agent can read, addressed by `file_id`, is never refused because of `skill_id`, while an attachment addressed by `file_id` is refused when `skill_id` names no skill the agent is linked to — omit `skill_id` for an attachment. An unknown reference reports "File not found" with the discovery hint. "Access denied" means one of two things: a `file_id` whose file sits in a skill or resource this agent is not linked to, or a `skill_id` naming no skill the agent is linked to — the latter reads identically whether or not that skill exists, by id or by slug, so it never confirms one does.
+\* At least one of `path` / `file_id` is required; `path` wins when both are given. `skill_id` narrows only a path, and it is checked after a skill file's `file_id` but before a conversation attachment's: a skill file the agent can read, addressed by `file_id`, is never refused because of `skill_id`, while an attachment addressed by `file_id` is refused when `skill_id` names no skill the agent is linked to — omit `skill_id` for an attachment. An unknown reference reports "File not found" with the discovery hint. "Access denied" means one of two things: a `file_id` whose file sits in a skill this agent is not linked to, or a `skill_id` naming no skill the agent is linked to — the latter reads identically whether or not that skill exists, by id or by slug, so it never confirms one does.
 
 ### write_file
 
@@ -342,7 +342,7 @@ Send files to the end user through their channel (App, WhatsApp, email, …). Wh
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `file_ids` | array | No | Files to send, each named by path (`conversation/report.pdf`, `conversations/<conversation_id>/receipt.pdf`, `skills/order-processing/price-list.pdf`) or by file ID |
-| `folder_ids` | array | No | Resource folder IDs — sends all files in them (alternative to `file_ids`) |
+| `folder_ids` | array | No | Skill folder IDs — sends all files in them (alternative to `file_ids`) |
 | `message_text` | string | No | Accompanying text (WhatsApp caption / email body) |
 
 ---
@@ -375,7 +375,7 @@ Run a Bash command in the sandbox. The sandbox starts on the first command and k
 
 ### copy_to_sandbox
 
-Copy one of the conversation's files, or one of the agent's documents, into the sandbox, so commands can read or edit it there. WayAI copies the file; the sandbox needs no network for it, and never reaches where documents are stored. The files are those `read_file` opens from the conversation's own files: this conversation's attachments and an earlier conversation's of the same user (never a consult attachment); and the documents of the agent's `data/` mount (see the `data/` paragraph under [Resource & File Tools](#resource--file-tools)), read through the toolset's own `get` tool, so the toolset's limits apply. Hub resource files cannot be copied. A file larger than 25 MiB is refused, and a document larger than 1 MiB.
+Copy one of the conversation's files, or one of the agent's documents, into the sandbox, so commands can read or edit it there. WayAI copies the file; the sandbox needs no network for it, and never reaches where documents are stored. The files are those `read_file` opens from the conversation's own files: this conversation's attachments and an earlier conversation's of the same user (never a consult attachment); and the documents of the agent's `data/` mount (see the `data/` paragraph under [Skill & File Tools](#skill--file-tools)), read through the toolset's own `get` tool, so the toolset's limits apply. Skill files cannot be copied. A file larger than 25 MiB is refused, and a document larger than 1 MiB.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -531,7 +531,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 |--------|-------|
 | Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only), `run_monitor` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
-| Resource & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` |
+| Skill & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` |
 | Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
