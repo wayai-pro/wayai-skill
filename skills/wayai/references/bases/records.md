@@ -262,7 +262,7 @@ A record type can hold records that a person approves before agents read them, s
 
 A deleted record written again counts as a new record. A person may do anything; editing an approved record keeps it approved.
 
-A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` prints that count, and for a reviewed type its confirmation says "up to" its record count, which includes the records it will keep. Before a rollback runs, its plan, asked for its counts (`GET /v1/<base>/import/<import_id>/rollback-plan?counts=true`), reports the same `kept.records` for the caller beside `matched_records`, so `matched_records` minus it is what the rollback would remove now. Neither answer carries `kept` when the rollback keeps nothing.
+A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. Before a rollback runs, its plan, asked for its counts (`GET /v1/<base>/import/<import_id>/rollback-plan?counts=true`), reports the same `kept.records` for the caller beside `matched_records`, so `matched_records` minus it is what the rollback would remove now. Neither answer carries `kept` when the rollback keeps nothing. `wayai bases import rollback` asks to delete exactly that difference, saying how many approved records stay, and asks nothing when it would delete none; once done, it prints the count the rollback kept.
 
 **Stamps.** The server writes the fields `stamps` names, and ignores any value a write sends for them. They hold ids only, never a name or an email:
 
@@ -602,7 +602,8 @@ a row it merely overwrote stays, keeping the imported values (there is no versio
 pointing at deleted rows go too, so nothing dangles, and so does a file such a link owned (a
 [`cascade`](files.md) link), even one attached after the import, unless another owning link still holds it. It works in pages and the CLI loops until
 complete; retrying is always safe, since pages already swept stay swept. **In a terminal** it shows
-the live matched count and asks to confirm. **Off a TTY — a script, CI, or an agent — a missing
+how many live records it will delete (those [kept](#reviewed-records-x-review) left out) and asks to
+confirm, or asks nothing when that is none. **Off a TTY — a script, CI, or an agent — a missing
 `--yes` is REFUSED, never assumed**: the prompt would have no one to answer it, so the command errors
 out rather than sweeping unattended. Pass `--yes` deliberately when you mean it. Like the import
 itself it **fires no triggers**, so a trigger that syncs deletions elsewhere will not see them. Rows
