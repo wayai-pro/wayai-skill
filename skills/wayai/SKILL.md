@@ -313,7 +313,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **The one rule:** config writes (record types, relationship types, file types, triggers, inbound webhooks, Actions, toolsets, seeds) only land on a **preview** base; data writes work anywhere. Promotion is human-run — surface `wayai bases promote <prod> --from <preview> --dry-run` and wait
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
-- **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers|report`
+- **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers`
 - **Connecting a hub:** a **Base Toolset** connection gives native agents a toolset's tools, and its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); a harness-backed agent uses an ordinary MCP Server connection pointed at the toolset (one without `get_url` or `put_url`: [URL tools and hub agents](references/bases/toolsets.md#url-tools-and-hub-agents)); an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
@@ -620,8 +620,7 @@ wayai bases rollback <production-id> --promotion <id>
 wayai bases promotions <production-id>
 wayai bases use <base>  # Deprecated alias of `wayai use bases/<id>` (see Worktree scope)
 wayai bases unbind      # Deprecated alias — clears only the base axis of the worktree scope
-wayai bases tokens|secrets|sql|import|batch|providers|report ...   # namespaced — each names a concept WayAI already owns
-                        # (`wayai report` files a PLATFORM bug; `wayai bases report` files a base one)
+wayai bases tokens|secrets|sql|import|batch|providers ...   # namespaced — each names a concept WayAI already owns
 
 # Everything INSIDE a base is its own top-level namespace, each taking --base <id>:
 wayai records | record-types | relationships | relationship-types | query-relationships
