@@ -126,7 +126,7 @@ A SQL Action bills one operation per call. A token not bound to the toolset call
 
 A [customer-scoped](#customer-scope) toolset may hold one only when every record type it declares is `shared`, and a [reviewed record type](#reviewed-record-types)'s reader may not hold one that declares that type: the query reads every row of each type it declares.
 
-On a WayAI hub, a toolset holding a SQL Action is not offered to a customer-facing agent yet.
+On a WayAI hub, a customer-facing agent can hold a SQL Action only on a customer-scoped toolset, as with any other record tool ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*). Without a customer scope, a toolset holding one is refused to customer-facing agents, whatever types it declares: the query reads every row of each.
 
 ## Toolsets
 
