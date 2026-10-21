@@ -22,6 +22,8 @@ Read-only SELECT over one base's own data — filtering, aggregation, JOINs, CTE
 - `--param key=value` binds a named placeholder (`{status:String}`). It is repeatable and also accepts several pairs after one flag. The split is on the **first** `=` only, so a value may itself contain `=`.
 - The base comes from `--base` or `WAYAI_BASE`. `--json` is declared on the `bases` namespace and is accepted on either side of the subcommand.
 
+**For an agent, a SQL Action.** A query an agent should run is written once as a [SQL Action](toolsets.md#sql-actions): the query is fixed in config, the agent fills only its typed parameters, and the query reads only the record types it declares. Develop it here, with `--param` for each parameter, then paste it into the Action unchanged.
+
 Distinct from `wayai analytics sql`, which reads conversation analytics (`conversation`, `message`) — see [`../analytics.md`](../analytics.md). Different store, different tables, different questions; nothing you learn about one transfers to the other.
 
 **Tables**: `records`, `relationships`, `record_types`, `relationship_types`, `bases`, `operations_log`, `organization`, `audit_log`.
@@ -32,7 +34,7 @@ The `organization` table exposes org-level metadata. Its `plan` and `status` col
 
 The `audit_log` table is the change history behind `wayai records history` (and the `history` subcommand on record types, relationships and relationship types) — every version of every entity, with the actor and, for a change a toolset's tool made, that toolset's id (`toolset_id`, empty otherwise). Any query referencing it, JOINs included, is admin-gated the same way: platform admins, or a token granted `read:audit` (see [`README.md`](README.md)). It and `operations_log` are **append-only**: neither has a `deleted` column, and both reject a `deleted = false` predicate.
 
-**Eval clones**: a preview cloned from another preview runs on the `local` analytics tier, where SQL over `records`, `relationships` and `audit_log` is refused outright rather than answering empty. Every other table still answers. The tier is fixed at creation and there is no CLI flag for it — the only way to choose `standard` on such a clone is the config-as-code auto-create branch, which is also your one chance to set it (see [`config-as-code.md`](config-as-code.md)). Plan eval assertions around exact `data.*` filters instead, and give any `created_at`/`updated_at` bound an explicit offset.
+**Eval clones**: a preview cloned from another preview runs on the `local` analytics tier, where SQL over `records`, `relationships` and `audit_log` is refused outright rather than answering empty, and so is every call of a SQL Action. Every other table still answers. The tier is fixed at creation and there is no CLI flag for it — the only way to choose `standard` on such a clone is the config-as-code auto-create branch, which is also your one chance to set it (see [`config-as-code.md`](config-as-code.md)). Plan eval assertions around exact `data.*` filters instead, and give any `created_at`/`updated_at` bound an explicit offset.
 
 ## Scoping predicates
 

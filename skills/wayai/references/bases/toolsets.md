@@ -8,6 +8,7 @@ An agent connected to a toolset sees `create_invoice`, `list_payments` — its o
 
 - [Actions](#actions)
 - [Composite Actions](#composite-actions)
+- [SQL Actions](#sql-actions)
 - [Toolsets](#toolsets)
 - [File tools](#file-tools)
 - [Customer scope](#customer-scope)
@@ -82,6 +83,51 @@ Reference it from a toolset like any Action (`--action place_order`). The genera
 
 **Cross-step references work through external ids.** Set an `external_id` on a create step and address the link step's endpoint with `source_external_id`/`target_external_id` — steps run in order inside one transaction, so the link resolves the record the same Action just created. Referencing a same-Action record by its *server-assigned* id remains impossible: the id does not exist until the step runs. A miss rejects the whole Action.
 
+## SQL Actions
+
+A **SQL Action** is a read-only query you write once, with typed parameters the agent fills. It is one tool that can do what a `list` Action's filters over a single record type cannot: join record types, check a date against two fields of each row, negate a membership, aggregate, or add a column of notices the agent relays. The agent never sees or writes the query.
+
+```json
+{
+  "description": "Free slots of a service, with the professional who holds each",
+  "sql": "SELECT s.id AS slot_id, s.data.starts_at.:String AS starts_at, p.data.name.:String AS professional FROM records AS s JOIN records AS p ON p.external_id = s.data.professional_id.:String AND p.org_id = {org_id:String} AND p.base_id = {base_id:String} AND p.record_type = 'professionals' AND p.deleted = false WHERE s.org_id = {org_id:String} AND s.base_id = {base_id:String} AND s.record_type = 'slots' AND s.deleted = false AND s.archived = false AND s.data.status.:String = 'free' AND s.data.service_id.:String = {service_id:String} AND ({starts_after:Nullable(DateTime64(3, 'UTC'))} IS NULL OR parseDateTime64BestEffort(s.data.starts_at.:String) >= {starts_after:Nullable(DateTime64(3, 'UTC'))}) ORDER BY starts_at",
+  "params": [
+    { "name": "service_id", "type": "String", "description": "The service's external_id, from list_services", "pattern": "^svc-[a-z0-9-]+$" },
+    { "name": "starts_after", "type": "DateTime64(3, 'UTC')", "optional": true, "description": "Earliest start" }
+  ],
+  "record_types": ["slots", "professionals"],
+  "limit": 20
+}
+```
+
+```bash
+wayai actions upsert free_slots --base my-base --config @free_slots.json
+```
+
+In config-as-code it is `actions/free_slots.yaml`, the query as a block scalar (`sql: |`); see [`config-as-code.md`](config-as-code.md).
+
+- **The query.** One `SELECT` (or `WITH … SELECT`) in the dialect of `wayai bases sql` ([querying.md](querying.md)), over the `records` table. Write it there first, with `--param` for each parameter, then paste it. Like any query there, it must scope by `{org_id:String}` and `{base_id:String}`, which the server binds on every call; add `deleted = false`, and `archived = false` when archived records should not count.
+- **Parameters.** Every value the agent supplies is a typed parameter, `{name:Type}`, declared in `params` with one of these types: `String`, `Int64`, `Float64`, `Bool`, `Date`, `DateTime64(3, 'UTC')`, `Array(String)`, `Array(Int64)`. A parameter is required unless it sets `optional: true`; write an optional one as `Nullable(<type>)` in the query, where it is `NULL` when the agent omits it (an array parameter cannot be optional). `description`, `enum` and `pattern` mean what they mean on [`filterable_fields`](#typed-filter-params-filterable_fields), and `org_id` and `base_id` are reserved. A value is always bound as a value of its type, never pasted into the query text.
+- **`record_types`.** The record types the query reads, and the only ones it can read: a row of any other type, of another base or of another organization is invisible to it, whatever the query says. Each must be a native record type of the base (not [source-backed](integrations.md)). The query reads no other table: not relationships, change history or usage.
+- **`limit`.** The most rows a call answers, 1 to 200 (default 50). A call runs for at most 5 seconds.
+
+Push checks the Action: its parameters against the query's placeholders, every declared record type, and the query itself, planned against the query engine, so an unknown column or function is refused (400) before anything is stored. When the check cannot run, the push is refused with a 503 and nothing is stored; push again.
+
+Reference it from a toolset like any Action (`--action free_slots`, or `free_slots=<surface_name>` to rename it). The generated tool:
+
+- takes the parameters as its arguments, each refused when it is blank, outside its `enum` or off its `pattern`; a list parameter also takes a JSON-encoded string of its list;
+- answers `{ "data": [ …each row, with the query's columns… ], "meta": { "rows": n, "truncated": false } }`. When more rows matched than `limit`, `truncated` is `true` in `meta` and beside it, with a note telling the agent to narrow its parameters. An empty answer carries an `empty_result_hint` naming the parameters the agent supplied;
+- has the Action's description, plus one line on the row limit and on freshness: a query reads records as the base's analytical copy holds them, which can be a moment behind the latest write. Keep writes guarded where it matters ([`precondition`](#conditional-writes-precondition)), as a booking that checks the slot is still free does;
+- reads the query from the Action at each call, so a pushed change to it applies on the next call.
+
+`wayai toolsets get --resolved` lists each under `sql_actions`: its tool name, description, parameters, record types and limit — never its query.
+
+A SQL Action bills one operation per call. A token not bound to the toolset calls it with `read:records`, and [minting](#permissions-and-scope) a bound token covers the Action's record types. On a base of the `local` analytics tier, the tier eval clones default to, every call is refused with 409 `ANALYTICS_LOCAL`, and cloning such a base warns `ANALYTICS_LOCAL_SQL_ACTION`: evaluate an agent that holds one on a base created on the `standard` tier ([`querying.md`](querying.md#the-sql-surface)).
+
+A [customer-scoped](#customer-scope) toolset may hold one only when every record type it declares is `shared`, and a [reviewed record type](#reviewed-record-types)'s reader may not hold one that declares that type: the query reads every row of each type it declares.
+
+On a WayAI hub, a toolset holding a SQL Action is not offered to a customer-facing agent yet.
+
 ## Toolsets
 
 A **toolset** composes Actions **by reference** and adds the surfaces that are not Actions: relationship tools, [file tools](#file-tools), batch, and SQL.
@@ -133,7 +179,7 @@ wayai toolsets upsert invoicing-agent --base my-base --config '{
 }'
 ```
 
-A toolset `actions[]` entry accepts **only** `action`, `action_name`, and `description_override`. Any other key — a stray `record_type`, `operations`, `filterable_fields` — is rejected at config write: the shaping config lives on the Action, not on the reference.
+A toolset `actions[]` entry accepts **only** `action`, `action_name`, and `description_override`, whatever kind of Action it references (single-op, [composite](#composite-actions) or [SQL](#sql-actions)). Any other key — a stray `record_type`, `operations`, `filterable_fields` — is rejected at config write: the shaping config lives on the Action, not on the reference.
 
 Relationship tools and `batch` are declared inline on the toolset because they are not first-class Actions. A relationship entry is `{ rel_type, operations, name?, names?, description_override? }`; `batch` is `{ "enabled": true, "operations": { "invoices": ["create","update"] } }`.
 
@@ -156,7 +202,7 @@ A relationship `list` tool walks one hop from a record: given `record_type`, `re
 
 Every toolset with a relationship `list` tool also gets `describe_graph`, a generated tool that answers the map of what the toolset reaches, read from its current config on every call:
 
-- **`record_types`**: each record type the toolset has a record tool, a composite Action step or a `batch` entry for (a `batch` key with no relationship tool for it, when the base defines a record type by that id): its `key` (`record:<id>`), `name`, `description` (cut to 200 characters), `tools` (each operation, or `composite` or `batch`, to this toolset's tool name; a list when several share one), and `references`, its `x-fk` fields whose record type a hop can answer. On a [customer-scoped](#customer-scope) toolset each carries its `customer_scope` (`root`, `owned` or `shared`), and a [reviewed record type](#reviewed-record-types) the toolset only reads carries `"review": "approved_only"` (or `"refused"` when its review cannot be applied to this toolset, which then reads none of its records).
+- **`record_types`**: each record type the toolset has a record tool, a composite Action step, a [SQL Action](#sql-actions) or a `batch` entry for (a `batch` key with no relationship tool for it, when the base defines a record type by that id): its `key` (`record:<id>`), `name`, `description` (cut to 200 characters), `tools` (each operation, or `composite`, `sql_action` or `batch`, to this toolset's tool name; a list when several share one), and `references`, its `x-fk` fields whose record type a hop can answer. On a [customer-scoped](#customer-scope) toolset each carries its `customer_scope` (`root`, `owned` or `shared`), and a [reviewed record type](#reviewed-record-types) the toolset only reads carries `"review": "approved_only"` (or `"refused"` when its review cannot be applied to this toolset, which then reads none of its records).
 - **`relationship_types`**: each relationship type with a relationship tool, a composite step or a `batch` entry (a `batch` key counts as a relationship type when the toolset has a relationship tool for it; see [What a `batch` key names](#toolsets)), with `source` and `target`: the ends a hop of its `list` tool can answer, by key. A record type is an end when the toolset has a `get` or `list` tool for it, a file type (`file:<id>`) when one of its folders has a `list` or `get` tool, and `["*"]` marks a side the relationship type leaves open. A `create` tool may link other ends.
 - **`file_types`**: each file type with file tools, and its folders (`path_prefix`, `""` for the whole type), each with its tools. A folder whose tools are only `get_url`, `put` or `put_url` is listed, but a hop answers none of its files, so it makes its file type no end.
 - **`truncated`**: the map holds up to 64 KiB of whole entries; when it leaves some out, it says `true`.
@@ -242,6 +288,7 @@ A customer-scoped toolset is refused when it:
 
 - exposes `sql_query` or `batch` — both reach any record;
 - reaches, through an Action or a composite step, a record type that declares no role;
+- holds a [SQL Action](#sql-actions) that declares a record type other than `shared`: its query reads every row of the type;
 - creates or deletes the customer record (`root`): it may read and update it.
 
 A base is refused a second `root`, and an `owned` type whose `owner` does not point at the root.
@@ -355,13 +402,14 @@ A [reviewed record type](records.md#reviewed-records-x-review) holds drafts and 
 
 - `list`, `get` and a relationship `list` answer only approved records whose `audience` holds the toolset's own id or `*` (every approved record, when the type declares no audience). Any other record is answered as not found, and a link to one is left out; a relationship `list` starting from one is answered as not found. The rule is not a tool parameter: an agent cannot see it or turn it off, and it applies to every filter the agent sends. A list of archived records of the type answers none; a `get` still reads an archived record that meets the rule;
 - holds no write on the type: a create, update or delete Action, a composite step that writes it, or a `batch` that allows any operation on it under a key naming the record type ([What a `batch` key names](#toolsets): a key the toolset has a relationship tool for names that relationship type instead);
-- holds no `sql_query`, which reads every row of the base, unless the toolset is a writer of every reviewed type in the base.
+- holds no `sql_query`, which reads every row of the base, unless the toolset is a writer of every reviewed type in the base;
+- holds no [SQL Action](#sql-actions) that declares the type: its query reads every row of the type, drafts included.
 
 A toolset that breaks either list is refused when it, an Action it references, or the record type is written, and at [promotion](#promotion-blocking). A config restored without these checks — a rollback, or a preview clone of a source that already had the problem — still refuses each such call with `REVIEW_READER_REFUSED` (403). The same code refuses every reader of a type whose `x-review` is malformed, whose status or audience field is not one plain top-level name, or, when an audience is declared, a reader whose own toolset id reads as a date-time (`2026-01-01`).
 
 A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held to both rules at once.
 
-**What the resolve reports.** `wayai toolsets get --resolved` carries, under `record_types`, the schema (its `x-review` included) of each record type the toolset's Actions and composite record steps reach, and of every reviewed record type it reaches any other way: at either end of a relationship tool's or a composite relationship step's relationship type (every reviewed type, when that type names none on an end), in a `batch` entry that names a record type, and every reviewed type for `sql_query`. So whoever holds the toolset can tell from `x-review.writers` which reviewed types it writes.
+**What the resolve reports.** `wayai toolsets get --resolved` carries, under `record_types`, the schema (its `x-review` included) of each record type the toolset's Actions, composite record steps and SQL Actions reach, and of every reviewed record type it reaches any other way: at either end of a relationship tool's or a composite relationship step's relationship type (every reviewed type, when that type names none on an end), in a `batch` entry that names a record type, and every reviewed type for `sql_query`. So whoever holds the toolset can tell from `x-review.writers` which reviewed types it writes.
 
 On a WayAI hub, a customer-facing agent never holds the tools of a writer of a type they reach, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
 
@@ -394,8 +442,8 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects,
 - a toolset naming a tool `describe_graph`, the [reserved](#navigating-the-graph) name,
-- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role, an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target, or a trigger with `skip_cascade_writes: false` on a type such an `internal_write` patches.
-- breaking a [reviewed record type](#reviewed-record-types): a malformed `x-review`, a toolset its `writers` do not name holding a write on the type, `sql_query` on a toolset that is not a writer of every reviewed type, a writer's `writable_fields` naming the status or a stamp, or an `internal_write` trigger targeting the type.
+- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role or holding a SQL Action over a type that is not `shared`, an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target, or a trigger with `skip_cascade_writes: false` on a type such an `internal_write` patches.
+- breaking a [reviewed record type](#reviewed-record-types): a malformed `x-review`, a toolset its `writers` do not name holding a write on the type or a SQL Action that declares it, `sql_query` on a toolset that is not a writer of every reviewed type, a writer's `writable_fields` naming the status or a stamp, or an `internal_write` trigger targeting the type.
 
 So promote the Actions and the toolset **together with** the schema change. `--dry-run` lists any such conflicts first. Promotion is human-run.
 
@@ -563,7 +611,7 @@ wayai actions upsert list_free_slots --base my-base --record-type slots --operat
 - **One instant per call.** Every occurrence in one predicate resolves to the same value, so two conditions cannot straddle a tick and produce an empty window.
 - **Only a `base_filter` resolves it.** A precondition is checked against a live record at the write chokepoint and a trigger filter runs at dispatch — neither is a query the tool translator ever sees. An unresolved `"$now"` would stay a literal string, and a range comparison against it degrades to text ordering, which **matches every row**. So it is **rejected** in a precondition (both in an Action's config and in the raw `precondition` a REST or batch write may carry), in a trigger filter, and in a typed datetime param (`starts_at_after`). It stays an inert literal only in an agent's raw `filter` argument. Within a `base_filter` it must be the condition's own value — not an array member, which the substitution never reaches — and on a date/date-time field a near-miss spelling like `"$Now"` is refused rather than silently compared as text.
 
-**It binds this one tool, not the record type.** Every call of this `list` tool applies it — and nothing else does. A toolset-bound token can call only its toolset's tools, so what an agent can read is exactly what *any* of those tools returns: a tool that returns or reaches a record of the same type by key or by link (`get`, `update`, `delete`, a relationship `list`, a composite or `batch` write) returns rows the filter excludes, `sql_query` reads every row of the base, and a base token on the plain API reads everything. To keep rows from an agent, `base_filter` alone is not enough: no tool in its toolset may be able to return them.
+**It binds this one tool, not the record type.** Every call of this `list` tool applies it — and nothing else does. A toolset-bound token can call only its toolset's tools, so what an agent can read is exactly what *any* of those tools returns: a tool that returns or reaches a record of the same type by key or by link (`get`, `update`, `delete`, a relationship `list`, a composite or `batch` write) returns rows the filter excludes, a [SQL Action](#sql-actions) that declares the type reads every row of it, `sql_query` reads every row of the base, and a base token on the plain API reads everything. To keep rows from an agent, `base_filter` alone is not enough: no tool in its toolset may be able to return them.
 
 ### Conditional writes (`precondition`)
 
