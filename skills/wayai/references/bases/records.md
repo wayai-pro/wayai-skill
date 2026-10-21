@@ -41,6 +41,16 @@ wayai records history <id> --base <base> [--limit <n>] [--offset <n>] [--diff]
 `--external-id` is what makes a write idempotent: re-upserting the same external id updates the
 existing record in place instead of creating a twin. Set it on every record with a natural key.
 
+**Who wrote it.** Every record carries `created_by` and `updated_by`, and every relationship
+`created_by`. The server writes them from who is calling, and ignores any value a write sends for them,
+on every way of writing: a single write, a toolset's tool, a batch, a composite Action, an import, a
+seed fixture. They hold ids only, never a name or an email: `user:<WayAI user id>` for a person,
+`token:<id>` for an API token or an agent (the agent's id), `inbound_webhook` for an inbound webhook,
+and `system` for a trigger. `created_by` names the writer that created it and never changes;
+`updated_by` names the last writer that wrote its data; a delete and a cancel leave it as it was
+(`history` names them). Both are empty on a record an external source serves live, and a record or
+relationship written before the server wrote them keeps what that write sent.
+
 `history` returns every version as a snapshot with the actor, operation and timestamp. **Admin-only**
 — available to platform admins or a token granted `read:audit`; ordinary agent tokens are rejected.
 The same subcommand exists on `relationships`, `record-types` and `relationship-types`.
@@ -252,7 +262,7 @@ A record type can hold records that a person approves before agents read them, s
 
 A deleted record written again counts as a new record. A person may do anything; editing an approved record keeps it approved.
 
-A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` prints that count, and for a reviewed type its confirmation says "up to" its record count, which includes the records it will keep.
+A refused write answers `REVIEW_APPROVER_REQUIRED` (403), naming the record type. A batch, a composite or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `REVIEW_APPROVER_REQUIRED` as its `details.original_error.code`. An [import rollback](#bulk-import) by any other writer keeps the records that are approved now, and its REST answer reports them under `kept.records`; a person's rollback of the same import removes them. `wayai bases import rollback` prints that count, and for a reviewed type its confirmation says "up to" its record count, which includes the records it will keep. Before a rollback runs, its plan, asked for its counts (`GET /v1/<base>/import/<import_id>/rollback-plan?counts=true`), reports the same `kept.records` for the caller beside `matched_records`, so `matched_records` minus it is what the rollback would remove now. Neither answer carries `kept` when the rollback keeps nothing.
 
 **Stamps.** The server writes the fields `stamps` names, and ignores any value a write sends for them. They hold ids only, never a name or an email:
 

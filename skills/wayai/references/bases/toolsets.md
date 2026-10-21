@@ -358,7 +358,9 @@ A toolset that breaks either list is refused when it, an Action it references, o
 
 A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held to both rules at once.
 
-On a WayAI hub, a customer-facing agent never holds the tools of a writer whose Actions or composite steps reach the type, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
+**What the resolve reports.** `wayai toolsets get --resolved` carries, under `record_types`, the schema (its `x-review` included) of each record type the toolset's Actions and composite record steps reach, and of every reviewed record type it reaches any other way: at either end of a relationship tool's or a composite relationship step's relationship type (every reviewed type, when that type names none on an end), in a `batch` entry, and every reviewed type for `sql_query`. So whoever holds the toolset can tell from `x-review.writers` which reviewed types it writes.
+
+On a WayAI hub, a customer-facing agent never holds the tools of a writer of a type they reach, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
 
 For a worked example, with a writer toolset, a reader per agent kind and what a person approves, see [Recipe: notes for agent kinds](records.md#recipe-notes-for-agent-kinds).
 
