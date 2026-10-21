@@ -276,7 +276,7 @@ Browse what the agent can reach, by path. Discovery is a drill-down: no `path` l
 | `path` | string | No | What to list. Omit (or `""`) = the mounts. `conversation` = files attached to this conversation. `skills` = every skill mount. `skills/<slug>` = that skill's top level; `skills/<slug>/<folder>/<subfolder>` = that folder. `data` = the document mounts; `data/<file-type>` or `data/<file-type>/<folder>` = every document beneath it (see below) |
 | `query` | string | No | Search files by title or file name. Under a skill or `data/` path this searches the **whole subtree**, not just the level named |
 | `tags` | array | No | Match files with any of the tags (skill and `data/` files). Searches the subtree, like `query` |
-| `metadata_filter` | object | No | MongoDB-style operators (`$eq`, `$ne`, `$gt/$gte/$lt/$lte`, `$in/$nin`, `$contains`, `$and/$or/$not`; nested paths like `"location.city"`; a bare value means equality) against a skill's `file_metadata_schema`, or under `data/` the file type's metadata schema. Skill and `data/` files; searches the subtree |
+| `metadata_filter` | object | No | MongoDB-style operators (`$eq`, `$ne`, `$gt/$gte/$lt/$lte`, `$in/$nin`, `$contains`, `$and/$or/$not`; nested paths like `"location.city"`; a bare value means equality) against a file's metadata; under `data/`, the file type's metadata schema refuses a field it does not declare. Skill and `data/` files; searches the subtree |
 | `limit` | integer | No | Max rows (default 50, max 100) |
 | `offset` | integer | No | Pagination offset |
 

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.174.0
+version: 6.175.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -301,7 +301,7 @@ Knowledge resources are retired: documents (FAQ, catalogs, policies) live in the
 
 Agents link skills in `agents/<slug>.yaml` under a `skills:` block (by name and `skill_id`, with `priority`). Org-level skills shared across hubs live in `wayai-ws/org/` (`skills.yaml` + `skills/<skill_name>/`) via `wayai org pull/push` (push fans out to linked hubs). Push is declarative: removing a skill from `hub.yaml` (the last one too) deletes it.
 
-**Folders pulled before skills** hold `resources:` (in `hub.yaml` and the agent files) and a `resources/` folder (`org/resources.yaml` for an organization). `wayai push`, `diff` and `publish` (and `org push`/`org diff`) refuse them before sending anything; `wayai pull` (`wayai org pull`) converts them, and stops, naming it, on anything in `resources/` that is not the folder of a skill it writes, or already in its `skills/` (a knowledge backup: move it out of the workspace). This needs `@wayai/cli` 0.3.234 or later (`wayai update`). Details: [`references/skills.md`](references/skills.md#folders-pulled-before-skills-resources).
+**Folders pulled before skills** hold `resources:` (in `hub.yaml` and the agent files) and a `resources/` folder (`org/resources.yaml` for an organization). `wayai push`, `diff` and `publish` (and `org push`/`org diff`) refuse them before sending anything; `wayai pull` (`wayai org pull`) converts them, and stops, naming it, on anything in `resources/` that is not the folder of a skill it writes, or already in its `skills/` (a knowledge backup: move it out of the workspace). This needs `@wayai/cli` 0.3.234 or later (`wayai update`): an older CLI's push of an old-layout folder is refused with a `400` naming it, its push of a converted folder changes no skill, its `wayai pull` over an old-layout folder gets the same `400` on its comparison and cannot list its changes (update before pulling), and its `wayai org pull`/`push`/`diff` and `sync-skills` get a `404` (the old paths are gone). Details: [`references/skills.md`](references/skills.md#folders-pulled-before-skills-resources).
 
 File handling (text vs binary, 10 MB cap), skill authoring, execution modes: [`references/skills.md`](references/skills.md).
 

@@ -88,7 +88,7 @@ A CLI older than this layout wrote skills as `resources:` (in `hub.yaml` and eac
 - An organization folder holding both `skills.yaml` and `resources.yaml` is refused: keep `skills.yaml`.
 - A CI job that pushes a hub folder pulls once with the new CLI and commits the result.
 
-This layout needs `@wayai/cli` 0.3.234 or later (`wayai update`). An older CLI does not read a folder in this layout; once the platform stops accepting `resources` in a push, an older CLI's push fails instead.
+This layout needs `@wayai/cli` 0.3.234 or later (`wayai update`). An older CLI does not read a folder in this layout. What it gets from the platform: a `wayai push`, `diff` or `publish` of a folder in the old layout carries `resources`, a `400` naming the minimum CLI; on a folder in this layout it sends no skills at all, so the push applies the rest and leaves every skill and agent skill link as it is. Its `wayai pull` over an existing folder in the old layout gets the same `400` on the comparison it makes first, so it cannot list what the pull changes (depending on its version, it then asks before replacing your local files, or replaces them unasked): update before you pull. Its `wayai org pull`, `push` and `diff` and its `wayai sync-skills` call paths the platform no longer serves (`404`). Update the CLI, then pull once to convert the folder.
 
 ---
 
