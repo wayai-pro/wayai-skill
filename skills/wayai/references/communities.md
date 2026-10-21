@@ -1,13 +1,15 @@
 # Communities
 
 A community belongs to an organization: its members, rooms and courses, joined by its link. WayAI
-creates communities; once one exists, the organization's **owners and admins** manage it.
+creates communities (at most 10 per organization); once one exists, the organization's **owners and
+admins** manage it.
 
 | Task | Where |
 |------|-------|
-| List the organization's communities; read, rotate or turn off a join link; read the stats; the access list of an invite-only community | CLI (`wayai communities`) or the web console |
-| Settings (including who may join: `admission`), rules, the join link's on/off state, rooms and courses | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the web console |
-| Moderators and moderation | The web console: organization settings → Communities (`/settings/organizations/<org_id>/communities`) |
+| List the organization's communities; read, rotate or turn off a join link; read the stats; the access list of an invite-only community | CLI (`wayai communities`) or the [web console](#the-web-console) |
+| Settings (including who may join: `admission`), rules, the join link's on/off state, rooms and courses | Files in the workspace, applied with `wayai pull` / `wayai push communities/<folder>` ([Communities as code](#communities-as-code)), or the [web console](#the-web-console) |
+| Moderators and moderation | The [web console](#the-web-console) and the community's own rooms, never the CLI ([Moderation](#moderation)) |
+| What a member sees and can do — to answer a member's question | [For members](#for-members) |
 
 ## Sign-in
 
@@ -305,6 +307,184 @@ either side.
   moves, and each course it publishes, and states those requests and the time they take before it
   asks. A first import of a community at the limits — 20 published courses of 20 modules, 500
   lessons — makes 940 writes after its reads: about 19 minutes.
+
+## The web console
+
+The organization's communities are listed at
+`https://app.wayai.pro/settings/organizations/<org_id>/communities`, the organization's
+**Communities** tab, shown once it owns one. Each community's settings open at
+`https://app.wayai.pro/settings/organizations/<org_id>/communities/<community_id>/<section>`; inside
+the community, an owner's or admin's header carries **Community settings**, which opens them.
+
+| Section | `<section>` | Holds |
+|---------|-------------|-------|
+| Rooms | `rooms` | **New room**, **Rename**, **Archive** and **Bring back**. The kinds read **Chat**, **Forum** and **Announcements** (`discussion`, `forum`, `announcements` in `community.yaml`) |
+| General | `rules` | The name, the rules (shown on the join page), slow mode |
+| Join link | `link` | The link, its rotation and turning it off, the source tags |
+| Access | `access` | `admission` and the access list |
+| Moderators | `moderators` | The moderators, each with **Dismiss** ([Appointing moderators](#appointing-moderators)) |
+| Reports | `reports` | The reports inbox ([Reports](#reports)) |
+| Bans | `bans` | The banned people, each with **Lift ban** |
+| Log | `log` | The moderation log ([The moderation log](#the-moderation-log)) |
+| Stats | `stats` | What `wayai communities stats` prints |
+| Courses | `courses` | The courses and the tab's label; one course at `…/courses/<course_id>`, one lesson at `…/courses/<course_id>/lessons/<lesson_id>` |
+
+While WayAI keeps communities closed to members, the settings leave out Reports, Bans and Log (a
+link to one opens Rooms, as a link naming no section does) and the community's own pages send people to Chat. The other
+sections keep working, so rooms and courses can be ready before members arrive.
+
+## Moderation
+
+### Who does what
+
+A community has three ranks: the organization's **owners and admins** — the community's admins,
+whether or not they joined it (a hub's admins and team are not) — its **moderators**, and its
+**members**.
+
+| Action | Owners and admins | Moderators | Members |
+|--------|-------------------|------------|---------|
+| Delete someone else's message or post | Yes | Yes | No |
+| Remove or ban a member; lift a ban | Yes | Yes | No |
+| Pin a message or post (at most 3 per room; never a reply) | Yes | Yes | No |
+| Lock a forum post: it takes no more replies | Yes | Yes | No |
+| Mark a forum reply as the answer | Yes | Yes | On their own post |
+| Read and resolve reports; read the moderation log | Yes | Yes | No |
+| Post in an announcements room | Once joined | Yes | No |
+| Settings, rooms, the join link, access, courses; appoint and dismiss moderators | Yes | No | No |
+
+- **Moderation acts only on a lower rank**, and never on oneself: a moderator never deletes the
+  messages of, removes or bans another moderator or an owner or admin ("You can't do that to an
+  admin or another moderator.").
+- **Moderators, owners and admins skip slow mode.**
+- **An owner or admin who has not joined** reads every room and moderates, but posts nothing until
+  they join ("Join the community to post.").
+
+### Appointing moderators
+
+- **Make moderator** is in the menu of a member's message in a room: an owner or admin picks the
+  person from what they wrote, since no list of members exists. Only a current member can be made one.
+- **Dismiss** in the Moderators section makes them a plain member again. There is no limit on the
+  number of moderators.
+- A moderator who leaves or is removed comes back as a plain member if they join again.
+
+### Where moderators work
+
+- **In the rooms:** a message's menu (web) or a long press (mobile) deletes it, pins it, locks a
+  post, and removes or bans its author.
+- **The moderation pages:** `https://app.wayai.pro/community/<community_id>/moderation/<section>`
+  (`reports`, the default, `bans`, `log`), opened by **Moderation** in the community's header. They
+  are web only: the mobile app has the actions in the rooms, not the reports, bans or log.
+
+### Remove and ban
+
+| | Remove from community | Ban from community |
+|---|---|---|
+| Who it applies to | A current member | Anyone who ever joined, one who left included |
+| The person | Leaves the community now | Leaves the community now |
+| Their messages | Stay | Stay, unless **Also delete every message they wrote here** is checked: each of their messages, posts and replies, in every room, becomes "This message was deleted." |
+| Joining again | With the link, as `admission` allows | Refused — any link reads to them as not working — until the ban is lifted |
+
+**Lift ban** does not bring them back: they may join again with the link (in an invite-only community,
+once their email is on the access list). Taking an email off the access list also removes the people it let in
+([Invite-only](#invite-only-the-access-list)).
+
+### Reports
+
+- **Members report** a message, a post or a person from its menu (a long press on mobile), with a
+  reason — spam or scam, harassment or bullying, hate speech, sexual content, violence or threats,
+  something else — and an optional note of up to 500 characters; each person sends at most 20 a day.
+- **Every report reaches WayAI's own team.** The community's inbox gets a copy: the message as the
+  reporter saw it (its text, title, and an image's name, never the image), the reason and the note —
+  **never who sent it**. A report about a moderator, an owner or an admin reaches WayAI's team only,
+  and the inbox stops showing the reports about someone once they become a moderator.
+- **The inbox** shows the pending reports; **All** (`?filter=all`) adds the resolved ones. It keeps
+  the latest 10,000.
+- **Mark resolved** changes nothing else: deleting the message and banning its author are separate
+  actions, offered on the report. Resolving is not logged.
+
+### The moderation log
+
+It records who did what, and when: deleting a message, removing a member, a ban (with how many
+messages it deleted), lifting a ban, locking and unlocking a post, pinning and unpinning, and
+appointing and dismissing a moderator. It does not record resolving a report, marking an answer, a
+removal by the access list, a change to the settings or rooms, or WayAI's own removals. Moderators,
+owners and admins read it; it keeps the latest 10,000 entries.
+
+## For members
+
+What a member sees, on the web and in the mobile app's **Community** tab; members never need the
+CLI. Each link: [navigation.md → Community](navigation.md#community).
+
+### Joining
+
+- **The page** at the join link (`wayai communities join-link get`) shows the community before
+  sign-in: its name, its organization, how many members it has, its rules, and **Invite-only** on an
+  invite-only one. Joining needs a WayAI account: **Create account** and **I already have an
+  account** both come back to the page. On a phone, it offers to open the mobile app.
+- **The rules show only there**, and joining accepts them: there is no separate step.
+- **Joining a first community** asks how other members will see the person (**Change**). They then land
+  in the announcements room, or in the first room when there is none.
+- **Refusals:**
+
+| What the person sees | Why |
+|---|---|
+| This link doesn't work (on the page), or This link doesn't work anymore. Ask for a new one. (on **Join community**) | The link is wrong, was replaced or is turned off — or the person is banned |
+| You're not on this community's invite list | Invite-only, and the person's verified email (named there) is not on the access list: add it (`wayai communities access add`), or have them sign in with the email that is. An unverified email must be verified first |
+| This community is full. | It has 10,000 members |
+| You're in as many communities as you can join. | The person is in 50 communities |
+
+- **No button leaves a community** today, on the web or in the mobile app.
+
+### Rooms
+
+| Kind | Who writes |
+|------|-----------|
+| **Chat** (`discussion`) | Every member |
+| **Forum** (`forum`) | Every member: posts with a title (up to 200 characters), and replies one level deep |
+| **Announcements** (`announcements`) | Moderators, owners and admins; members read ("Only the community's admins and moderators post announcements.") |
+
+- **A message** holds up to 4,000 characters and at most one image (PNG, JPEG, GIF or WebP, up to
+  7 MB), which counts against the person's 1 GB of storage for images and files.
+- **A member edits** their own message ("(edited)") and **deletes** it ("This message was deleted.")
+  at any time; deleting a post hides its replies.
+- **A forum** searches titles and filters **All** / **Unanswered**; its posts are in order of latest
+  activity, marked **New activity** since the person's last visit. The post's author, a moderator, an
+  owner or an admin marks one reply **Answer**, shown first. A **Locked** post takes no more replies.
+- **Pinned** messages show at the top of a room.
+- **An archived room** is listed under **Archived** and reads "This room is archived. You can still
+  read it."
+- **Unread counts** show on each room; the community's badge leaves out archived rooms.
+
+| What the person sees | Why |
+|---|---|
+| Slow mode is on in this room. Wait a moment before sending again. | The community's slow mode (`slow_mode_seconds`, one setting for every room) has not passed since their last message in this room. No countdown is shown |
+| You've reached today's message limit in this community. | 500 messages a UTC day across its rooms, or 20 in the first 24 hours after joining (or joining again); deleting one gives none back |
+| The community is busy. Try again in a moment. | More than 5 messages a second across the community |
+| Daily limit of 3 announcements reached. … | 3 announcements a UTC day across the community, deleted ones included |
+| This community can't take more messages right now. | The community holds 500,000 messages |
+
+### Courses
+
+- **The courses tab**, beside **Rooms**, shows once a course is published, under the
+  `courses_label` (**Courses** when none is set). A draft course or lesson never shows, and a module
+  shows once it holds a published lesson.
+- **A lesson** shows its YouTube video (the mobile app opens it in YouTube or the browser), its text, its links,
+  **Discuss in <room>** when it has a room, and "This lesson needs a paid plan." when
+  `requires_paid_plan` is set — a mark only, nothing is withheld.
+- **Mark complete** is the only way a lesson counts as done — watching the video does not — and it
+  cannot be undone. A course shows "<n> of <total> lessons complete" and **Next lesson**. The
+  progress outlasts a removal or a ban and comes back when the person joins again.
+
+### Notifications
+
+- **The mobile app notifies** of an announcement, and of a reply to the member's own forum post
+  (once, then not again until they open the post). Chat messages and forum posts never notify.
+- **Email:** a member not signed in to an up-to-date mobile app gets each announcement by email
+  instead ("New announcement in <community>"). **Stop these emails** in it stops that community's
+  emails for good: nothing turns them back on.
+- **Muting** — the bell in the community's header on the web (**Mute notifications from this
+  community**), the same switch on the community's home in the mobile app — stops its notifications
+  and emails, never its unread counts.
 
 ## When a command fails
 

@@ -14,12 +14,13 @@ Canonical URL surface of the WayAI web app at `https://app.wayai.pro` (replace w
 
 ## Top-Level Map
 
-Visiting `https://app.wayai.pro/` opens `/chat`; a person with nothing in Chat is sent on to `/support` if they are on a hub's team or administer a hub, otherwise to `/settings`.
+Visiting `https://app.wayai.pro/` opens `/chat`; a person with nothing in Chat is sent on to `/support` if they are on a hub's team or administer a hub, else to `/community` if they are a member of a community, otherwise to `/settings`.
 
 | Prefix | Purpose | Who sees it |
 |--------|---------|-------------|
 | `/chat` | Every agent the signed-in user talks to as the **end user**: `chat` hubs (one ongoing thread each) and `task` hubs (one conversation per task) | Hub Users |
 | `/support` | Inbox / kanban for team members handling end-user conversations | Hub Team Users, Hub Admins |
+| `/community` | The communities the person belongs to: rooms, courses, and moderation for its moderators ([Community](#community)) | Community members; the owning organization's owners and admins |
 | `/settings` | Unified settings shell (account + org + hub) with sidebar nav | Account: all authenticated users; Org/Hub: admins |
 | `/user` | Legacy alias — 308 redirects to `/settings/account/*` (kept for external bookmarks) | All authenticated users |
 
@@ -60,8 +61,25 @@ One inbox across every hub the person supports. What the team can do on these sc
 | `/support/[conversationId]` | One conversation, with the team's controls |
 | `/support/hubs/[hubId]/users/[hubUserId]` | One Hub User's open conversation in that hub |
 
+### Community
+A community's rooms and courses, for its members. What members and moderators can do on these screens: [communities.md → For members](communities.md#for-members) and [communities.md → Moderation](communities.md#moderation). While WayAI keeps communities closed to members, these pages send people to Chat.
+
+| Path | Purpose |
+|------|---------|
+| `/join?c=[communityId]&k=[key]` | The join page, readable before sign-in. Never build it: hand over the link `wayai communities join-link get` prints ([source tags](communities.md#the-join-link)) |
+| `/community` | The community the person opened last in this browser, or their first |
+| `/community/[communityId]` | A community: its default room (its room list on a narrow screen) |
+| `/community/[communityId]/rooms/[roomId]` | A room: a chat, an announcements room, or a forum's posts (`?q=<text>` searches titles, `?filter=unanswered`) |
+| `/community/[communityId]/rooms/[roomId]/posts/[postId]` | A forum post with its replies |
+| `/community/[communityId]/courses` | The community's published courses, under its courses label |
+| `/community/[communityId]/courses/[courseId]` | A course's outline, with the person's progress |
+| `/community/[communityId]/courses/[courseId]/lessons/[lessonId]` | A lesson |
+| `/community/[communityId]/moderation/[section]` | Its moderation, for its moderators, owners and admins: `reports` (the default; `?filter=all` adds resolved reports), `bans`, `log` |
+
+An announcement email's **Stop these emails** opens `/communities/unsubscribe` (locale-prefixed, like the marketing pages), whose button stops that community's emails; never hand that page over, since only the email's own link carries the member's token.
+
 ### Mobile app
-The iOS and Android apps show the same agents as `/chat` and the team inbox of `/support`; what each tab offers is in [using-the-app.md → The Mobile App](using-the-app.md#the-mobile-app). The mobile apps have no links to hand over: send the user to a screen with the web links above. Inside an agent's message, a link to a screen the app has (among them `/chat`, `/chat/[hubId]`, `/chat/[hubId]/conversations/[conversationId]`, `/support`, `/support/[conversationId]`) opens that screen in the app, and any other page of the web app opens in the phone's browser. That is the app as built today: an older install opens these links in an in-app browser until it is updated.
+The iOS and Android apps show the same agents as `/chat`, the team inbox of `/support` and, for a member, the communities of `/community`; what each tab offers is in [using-the-app.md → The Mobile App](using-the-app.md#the-mobile-app). The mobile apps have no links to hand over: send the user to a screen with the web links above. Inside an agent's message, a link to a screen the app has (among them `/chat`, `/chat/[hubId]`, `/chat/[hubId]/conversations/[conversationId]`, `/support`, `/support/[conversationId]`) opens that screen in the app, and any other page of the web app opens in the phone's browser. That is the app as built today: an older install opens these links in an in-app browser until it is updated.
 
 ### Desktop app
 The desktop app is the web app in its own window, with the same screens, for macOS (Apple silicon and Intel) and Windows; there is none for Linux. Send the person to `https://wayai.pro/download`: it offers the one for their computer, on Windows the Microsoft Store listing plus a direct installer for a PC without the Store (Windows may warn when that installer is opened: choose **More info**, then **Run anyway**). Google, Microsoft and Apple sign-in finish in the computer's browser, then return to the app.
@@ -88,6 +106,8 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/skills` | Org-level skills, shared with its hubs |
 | `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
 | `/settings/organizations/[orgId]/contacts` | The organization's contact book: contacts, org lists, CSV import and account links (see [automations.md](automations.md#the-contact-book)) |
+| `/settings/organizations/[orgId]/communities` | The organization's communities (the tab shows once it owns one) |
+| `/settings/organizations/[orgId]/communities/[communityId]/[section]` | A community's settings: `rooms` (the default), `rules` (General), `link`, `access`, `moderators`, `reports`, `bans`, `log`, `stats`, `courses` (see [communities.md → The web console](communities.md#the-web-console)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
 
 ### Hub level

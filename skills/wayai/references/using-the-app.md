@@ -10,6 +10,7 @@ What a person who talks to a hub's AI agents (a **Hub User**) can do in the WayA
 - [Files the Agent Sends](#files-the-agent-sends)
 - [When a Person Answers](#when-a-person-answers)
 - [Your Account](#your-account)
+- [Communities](#communities)
 - [Notifications](#notifications)
 - [The Mobile App](#the-mobile-app)
 - [The Desktop App](#the-desktop-app)
@@ -80,12 +81,18 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 - **Language**: English, Português or Español, the language of the app;
 - **Theme**: **System**, **Light** or **Dark**. The account keeps one choice for the web, desktop and mobile apps; **System**, where a new account starts, makes each follow its own device's light or dark setting.
 
+## Communities
+
+A person who joined an organization's community reads and writes in its rooms and takes its courses at **`https://app.wayai.pro/community`**, and in the mobile app's **Community** tab. Joining, rooms, limits, courses and the community's notifications: [communities.md → For members](communities.md#for-members); its links: [navigation.md → Community](navigation.md#community).
+
 ## Notifications
 
 | Where | What notifies the person |
 |-------|--------------------------|
 | A browser tab | Nothing: unread counts show on the Chat nav and on each row. |
 | The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | A reply from the agent or from a support team member (other than a WhatsApp template the team sends), an answer the agent sends after a call, and a message the hub sends on its own. Tapping a notification opens the conversation. |
+| The mobile app, whether or not WayAI is open elsewhere | A community's announcement, and a reply to the person's own forum post, unless they muted the community ([communities.md → Notifications](communities.md#notifications)). |
+| Email | A community's announcement, for a member the mobile app cannot notify ([communities.md → Notifications](communities.md#notifications)). |
 | The desktop app | Its notifications are for support work, never for the person's own conversations ([navigation.md → Desktop app](navigation.md#desktop-app)). |
 
 ## The Mobile App
@@ -95,6 +102,7 @@ The iOS and Android apps hold the same agents and conversations as the web. This
 - **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community.
   - **Chat** is the list at `/chat`.
   - **Support** is the team inbox, which reads "No support conversations." for someone on no hub's team.
+  - **Community** opens the person's community, or lists them when they are in several. It holds the rooms, the courses, reporting and blocking, and its moderators' actions in the rooms; joining happens on the web join page, and the reports, bans and moderation log are web only ([communities.md → For members](communities.md#for-members)).
 - **Chat agents:** a chat agent opens its ongoing conversation, with earlier conversations above it as the person scrolls up.
 - **Task agents:** a task agent opens its task list:
   - **In progress**;

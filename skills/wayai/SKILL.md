@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.178.0
+version: 6.179.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -17,7 +17,8 @@ description: |
   org, init, communities, bases, records, record-types, relationships, files, toolsets, actions,
   triggers, inbound-webhooks, seed); managing an organization's communities (list, join link,
   stats, the access list of an invite-only community; settings including who may join, rules, rooms
-  and courses as code); analyzing LLM token/cost spend per message, model, agent, or credential;
+  and courses as code; moderators, moderation and what a community's members see); analyzing LLM
+  token/cost spend per message, model, agent, or credential;
   interpreting WayAI platform terminology (pilot/copilot, preview/production, kanban statuses,
   AI modes, agent roles, journeys, base, record type, promotion, external_id); or answering how
   people use the app: end users (agents, tasks, files, the mobile and desktop apps) and support
@@ -77,7 +78,8 @@ WayAI is where AI agents and people work together — serving your customers and
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
 | Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list of an invite-only community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
-| Communities — the name, settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md). Moderation: UI |
+| Communities — the name, settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md) |
+| Communities — moderators, reports, bans, the moderation log; what members see (joining, rooms, limits, courses, notifications) | UI only — see [`references/communities.md`](references/communities.md#moderation) and [For members](references/communities.md#for-members) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
 | Publish/sync a preview to production | CLI (`wayai publish`, alias `wayai sync`) or UI |
@@ -942,7 +944,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule, event or webhook trigger, contact-list or no target, `send_message` / `run_agent`), webhook deliveries (signing, the secret, rotation), valid combinations per hub type, task-hub tasks, gates, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |
-| **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats, an invite-only community's access list; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml` (its `admission`), `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs` |
+| **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats, an invite-only community's access list; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml` (its `admission`), `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs`. The web console's sections; moderation (ranks, appointing moderators, remove vs ban, reports, the log); what members see (joining and its refusals, rooms, send limits, courses, notifications and muting) |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
 | **Bases** | [`references/bases/records.md`](references/bases/records.md) | Record-type schemas, records, the Filter DSL and `search`, datetimes, partial updates, cancellation/archival, `x-fk`, reviewed records (`x-review`) and the agent notes recipe, relationship types, relationships, batch, bulk import |
@@ -954,7 +956,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `evals/` + `journeys/` cross-reference, and how its agent reads the organization's documents from a knowledge base. Read once before generating a new hub from scratch |
 | **Repository agent template** | [`references/repository-agent/README.md`](references/repository-agent/README.md) | A hosted agent that works on one GitHub repository: reads its `AGENTS.md` first, starts from a branch or commit (`repo_checkout`), pushes only a branch of its own. Files to copy into a hub's `agents/` |
-| **Using the app** | [`references/using-the-app.md`](references/using-the-app.md) | Answering an end user (a Hub User): the agent list, chat and task agents, writing and attaching, files, when a person answers, their account, notifications, the mobile and desktop apps |
+| **Using the app** | [`references/using-the-app.md`](references/using-the-app.md) | Answering an end user (a Hub User): the agent list, chat and task agents, writing and attaching, files, when a person answers, their account, communities, notifications, the mobile and desktop apps |
 | **Support inbox** | [`references/support-inbox.md`](references/support-inbox.md) | Answering a support team member or hub admin: the inbox and its tabs, the board, claim / take over, transfer, close, replying and the 24-hour window, Copilot suggestions, consults, contact approval, notifications, Support in the mobile app |
-| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL; how links open in the mobile apps, and the desktop app (where to get it, what it adds over a browser, its settings) |
+| **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/community`, `/join`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL; how links open in the mobile apps, and the desktop app (where to get it, what it adds over a browser, its settings) |
 | **AGENTS.md files** | [`references/agents-md-template.md`](references/agents-md-template.md) | The per-hub / per-base folder memory pattern — what belongs in an `AGENTS.md`, and which of the two the CLI seeds |
