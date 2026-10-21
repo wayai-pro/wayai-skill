@@ -131,9 +131,10 @@ last owning link removes it: whether that link is deleted on its own, in a batch
 relationship type or the record type at its other end; moved to archival storage after its record is
 deleted, or with its record when the record is archived; or rewritten by an upsert so it no longer
 owns the file. While another owning link still holds the file, dropping one keeps it. A non-cascade
-link is a plain reference, so a file shared across records survives. An agent's toolset deletes or
-rewrites an owning link, or deletes a record holding one, only when it has a file tool with `delete`
-over that file's type and folder; otherwise the call is refused and the file kept
+link is a plain reference, so a file shared across records survives. An agent's toolset deletes an
+owning link, rewrites one to another file or record, writes a deleted one back, or deletes a record
+holding one, only when it has a file tool with `delete` over that file's type and folder; otherwise the
+call is refused and nothing is written. Changing only a live owning link's data is not asked
 ([toolsets.md](toolsets.md#relationship-list-tools-one-hop)).
 
 A relationship type's `cascade` flag cannot change while the type has live links: an upsert of the
