@@ -53,7 +53,7 @@ hub:
       # Closing outcomes (terminal transitions only). `from_statuses` restricts
       # the eligible source slugs; omit it to accept any source. The chosen slug
       # lands in analytics as data.meta.outcome. An agent close (close_conversation,
-      # harness end_conversation) is routed through this transition and gated the
+      # a hosted agent's included) is routed through this transition and gated the
       # same way. The team Close button is routed through it as well and asks for
       # an outcome — falling back to a bare close only when none is eligible from
       # the conversation's status. Inactivity auto-close is never routed.
