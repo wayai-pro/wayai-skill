@@ -871,6 +871,8 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 - **A held reply's turn-ending actions are not carried out.** A hosted agent's calls that close the conversation, transfer it or move it on the kanban take effect once its reply is sent; when the reply is held they never do, and the conversation goes to your team as it is.
 - **The gate's time is not billed.** A hosted agent's turn is billed for the compute its session reports, which the gate does not add to.
 
+**When a hosted agent's turn fails and the hub's fallback connection answers instead**, that reply is written by a model, and the gate judges it as it judges any model reply: none of the differences above apply. `rewrite` asks the fallback connection's model for the revision, and the turn is billed for how long it runs.
+
 **One enabled gate per hub**, like the other firing triggers.
 
 ### Steering a live call — `call_utterance`
