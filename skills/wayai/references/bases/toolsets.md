@@ -253,7 +253,7 @@ Give a customer-facing agent `list` and `get` only: a hub refuses a pilot, pilot
 
 ### URL tools and hub agents
 
-`get_url` and `put_url` serve an external agent that connects to the toolset with its own token. A hub agent edits a large or binary document by copying it into its [code sandbox](../agents/native-tools.md#code-sandbox-tools) instead: a Base Toolset connection leaves those tools out of its tool list, and a tool call WayAI makes for a hub agent is refused when its answer carries a signed file URL, whatever the connection (a generic MCP connection to the toolset's MCP URL or a REST tool included). The one exception is a hosted agent's own MCP servers (`mcp_servers`), which its vendor calls directly, so WayAI's refusal never applies to their answers (they still land in the conversation's record, a live URL included): point those only at a toolset without `get_url` or `put_url`.
+`get_url` and `put_url` serve an external agent that connects to the toolset with its own token. A hub agent edits a large or binary document by copying it into its [code sandbox](../agents/native-tools.md#code-sandbox-tools) instead: a Base Toolset connection leaves those tools out of its tool list, and a tool call WayAI makes for a hub agent is refused when its answer carries a signed file URL, whatever the connection (a generic MCP connection to the toolset's MCP URL or a REST tool included). A hosted agent's MCP tools are calls WayAI makes too, so the refusal applies to them as well; the only MCP server its vendor calls directly holds no credential (`vendor_direct`, [MCP Server](../connections.md#mcp-server)), and a toolset's MCP URL always needs its token.
 
 ## Customer scope
 

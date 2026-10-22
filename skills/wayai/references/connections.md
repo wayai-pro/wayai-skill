@@ -388,7 +388,7 @@ A turn whose repository the App is not installed on, or whose connection has no 
 
 **Branch or commit** (the agent's `repo_checkout` setting, optional): the branch, or the full commit hash, each session clones. Unset or empty clones the repository's default branch. A full commit hash (40 or 64 hex characters) is read as a commit, anything else as a branch name; a value that is neither a valid branch name nor a full commit hash is refused when the agent is saved or pushed. A session keeps the checkout it started with: changing `repo_url` or `repo_checkout` starts the conversation's next turn in a new session.
 
-**Tools.** The platform runs the custom tools ([custom-tools.md](agents/custom-tools.md#hosted-agents)) and [Base Toolset](#base-toolset) tools a hosted agent is assigned, with their credentials kept in WayAI, as it runs a model-connection agent's.
+**Tools.** The platform runs the custom tools ([custom-tools.md](agents/custom-tools.md#hosted-agents)), [Base Toolset](#base-toolset) tools and MCP tools a hosted agent is assigned, with their credentials kept in WayAI, as it runs a model-connection agent's: no connection's credential is written to Anthropic. The one exception is an MCP server whose connection has the vendor call it directly ([MCP Server](#mcp-server), *Called by the vendor directly*), which holds no credential.
 
 For a ready-made agent that works on a repository (it reads the repository's `AGENTS.md` first and pushes only a branch of its own), copy the [repository agent template](repository-agent/README.md).
 
@@ -710,6 +710,10 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 5. Click Save → Tools auto-discovered (OAuth connections complete authorization flow first)
 
 **After setup:** Use the Sync button to refresh available tools when the MCP server is updated.
+
+**Hosted agents** (`Claude Agent (Managed)`): assign the server's tools to a hosted agent as to any agent ([`tools.mcp`](agents/native-tools.md#mcp-tools)). WayAI runs each call with the connection's own credential (an OAuth token is refreshed when it is about to expire, as for every agent), so no MCP credential ever reaches Anthropic. A hosted agent always gets the connection's synced tool catalog, never the server's live schema, so re-sync (`wayai sync-mcp --connection <name>`, or **Sync MCP tools**) after the server changes a tool.
+
+**Called by the vendor directly** (the connection's `vendor_direct` setting, off by default; in `hub.yaml`, `settings: { vendor_direct: true }` with `no_auth: true`, since without it a push binds the organization's single matching Bearer Token credential, and the connection is then refused): a hosted agent's vendor calls this server itself, for the vendor's own MCP features and less latency, instead of WayAI running its tools. Only the agent's assigned tools of it are enabled. Its calls are outside WayAI: they are recorded in the conversation as the agent's own work, with no replay protection, and native agents ignore the setting. Only for a server that needs no credential: saving or pushing it on a connection that has a token, OAuth, an organization credential or custom headers is refused (`An MCP Server connection is called by the vendor directly only while it holds no credential…`), and a server that holds one anyway (a publish that lands the setting over production's own token) is left out of the agent's tools at its next turn.
 
 > **MCP OAuth is UI-only.** `wayai push` auto-creates only the **Bearer Token** MCP variant; OAuth MCP needs the one-time UI flow. Hand the user the `…/connections?connector=mcp-server` deeplink and follow **SKILL.md → Connections & Credentials → OAuth connection handoff** (Add Connection → MCP Server → OAuth), then `wayai pull`.
 
