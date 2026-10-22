@@ -384,13 +384,15 @@ Deliveries are verified against that secret and wake only the conversation whose
 3. Set the App on the connection: **GitHub App ID** (the App ID on the App's settings page) and **GitHub App Private Key** (the `.pem` contents), or with `wayai set-connection-credential --field github_app_id --stdin` and `--field github_app_private_key --stdin`.
 4. Protect each repository's default branch (branch protection or a ruleset that requires a pull request): the token can push to any branch of its repository, so the protection is what keeps an agent's changes behind review.
 
+**Pull requests:** an agent holding the native tool [`open_pull_request`](agents/native-tools.md#open_pull_request) opens the pull request for a branch it pushed. WayAI runs the call with a token it mints for that call from the same App, for the agent's own repository only, with the same two permissions; that token never leaves WayAI.
+
 A turn whose repository the App is not installed on, or whose connection has no App, does not start: it is handled as any hosted turn that cannot start, and it is not retried.
 
 **Branch or commit** (the agent's `repo_checkout` setting, optional): the branch, or the full commit hash, each session clones. Unset or empty clones the repository's default branch. A full commit hash (40 or 64 hex characters) is read as a commit, anything else as a branch name; a value that is neither a valid branch name nor a full commit hash is refused when the agent is saved or pushed. A session keeps the checkout it started with: changing `repo_url` or `repo_checkout` starts the conversation's next turn in a new session.
 
 **Tools.** The platform runs the custom tools ([custom-tools.md](agents/custom-tools.md#hosted-agents)), [Base Toolset](#base-toolset) tools and MCP tools a hosted agent is assigned, with their credentials kept in WayAI, as it runs a model-connection agent's: no connection's credential is written to Anthropic. The one exception is an MCP server whose connection has the vendor call it directly ([MCP Server](#mcp-server), *Called by the vendor directly*), which holds no credential.
 
-For a ready-made agent that works on a repository (it reads the repository's `AGENTS.md` first and pushes only a branch of its own), copy the [repository agent template](repository-agent/README.md).
+For a ready-made agent that works on a repository (it reads the repository's `AGENTS.md` first, pushes only a branch of its own and opens its pull request), copy the [repository agent template](repository-agent/README.md).
 
 ---
 

@@ -13,15 +13,11 @@ Before you read code, plan or change anything, read `/workspace/repo/AGENTS.md`.
 - Push only your own branch: `git push -u origin agent/<short-topic>`.
 - Never force-push, never rewrite commits you didn't make, and never delete a branch.
 
-## Pull requests: a later step
+## Pull requests
 
-You have no tool to open a pull request yet. Don't try to open one another way. When your work is pushed, end your reply with:
+When your work is pushed, open its pull request with `open_pull_request`: `head` is your branch, `title` says what it changes in one line, and `body` says what changed and why, how you tested it, and what you couldn't test. Leave out `base`: the pull request then targets the branch you started from (the repository's default branch if you started from it or from a commit). Don't open one any other way.
 
-1. the branch name;
-2. what changed, and why;
-3. how you tested it, and what you couldn't test.
-
-A person opens the pull request from that branch and reviews it.
+Then end your reply with the pull request's link and a one-line summary. If `open_pull_request` refuses, end your reply with the branch name and the refusal instead, so a person can open it.
 
 ## Business knowledge
 

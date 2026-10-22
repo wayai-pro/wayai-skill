@@ -32,6 +32,7 @@ Other native fields (schema, instructions, operation) come from the platform cat
 - [State Tools](#state-tools)
 - [Skill & File Tools](#skill--file-tools)
 - [Code Sandbox Tools](#code-sandbox-tools)
+- [Repository Tools](#repository-tools)
 - [Skill Tools](#skill-tools)
 - [History & Summary Tools](#history--summary-tools)
 - [Meta Tools](#meta-tools)
@@ -399,6 +400,24 @@ Copy a file out of the sandbox into the conversation, so what commands produced 
 
 **Copying a document back (`path`).** This is how an agent edits a binary or large document of its toolset (a Word or Excel file, a PDF, an image, a text file past `write_file`'s 60,000 characters): copy it in with `copy_to_sandbox`, change it with `bash`, and copy it back with `path` and the `version` it was copied in at. The file is written through the toolset's own `put` tool, as `write_file` writes, and only where the agent writes documents through its `data/` mount: a toolset that only reads (a customer-facing agent's always does) can copy a document in, never back. **With `version` it replaces that version only:** a document changed since it was copied in is refused, changing nothing (`expected version 3, but the current version is 4`), so copy it in again and redo the change. **Without `version` it only creates:** a path already taken is refused. The toolset's own limits apply as to any call of its tools: which file types and folders its `put` reaches, and whom it serves. A document holds at most 1 MiB, refused before anything is written. Nothing is stored with the conversation and no note is left: the document's own history records the write. The answer is `write_file`'s: the toolset's row for the document as the write left it, `{ path, version, content_type, size, metadata, … }`, its `version` the one the next write names; a file that is text is written as `write_file` writes it, so a new one is typed as `write_file`'s are; any other is written as is, and a new one takes its content type from its extension (`.pdf`, `.docx`, `.xlsx`, `.png`, `.svg`, …). A replaced document keeps its own type, and its metadata. A resumed turn never runs a cut copy back again: the agent is told its outcome is unknown, and reads the document to see whether it landed.
 
+## Repository Tools
+
+For a hosted agent that works on a GitHub repository: an agent on a [Claude Agent (Managed)](../connections.md#claude-agent-managed) connection with a **Repository URL** (`repo_url`) and the connection's GitHub App set. See the [repository agent template](../repository-agent/README.md).
+
+### open_pull_request
+
+Open a pull request on the agent's repository, from a branch it pushed. The repository is always the one the agent's session was started with; the agent never names it. WayAI runs the call with a token it mints for that call from the connection's GitHub App, for that one repository, with only **Contents** and **Pull requests** permissions, and drops it after: no personal access token is stored or used. Any other agent (a model-connection agent, or a hosted agent with no repository), or a connection with no GitHub App, is refused before GitHub is asked.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `head` | string | Yes | The branch the agent pushed, holding the changes |
+| `title` | string | Yes | The pull request's title (at most 256 characters) |
+| `base` | string | No | The branch to merge into. Left out: the branch the session started from (`repo_checkout`), or the repository's default branch when the session started from a commit or the default branch |
+| `body` | string | No | The pull request's description |
+| `draft` | boolean | No | Open it as a draft. Default `false` |
+
+**Response.** `{ number, url, head, base, draft }`, `url` being the pull request's page on GitHub. A pull request GitHub refuses (a branch with no commits ahead of the base, one already open for the branch, a base that does not exist) returns a tool error quoting GitHub's reasons. A resumed turn never opens a cut call again: the agent is told its outcome is unknown.
+
 ---
 
 ## Skill Tools
@@ -533,6 +552,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Skill & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` |
 | Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |
+| Repository | `open_pull_request` (a hosted repository agent's) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
 | Meta | `get_tool_schema`, `execute_tool` |

@@ -9,4 +9,6 @@ settings:
   network_egress_policy: allowlist    # the sandbox reaches only the hosts listed below
   network_egress_allowlist: []        # add the hosts the repository's build needs (e.g. registry.npmjs.org)
 tools:
+  native:
+    - open_pull_request               # opens the branch's pull request, with a token minted from the connection's GitHub App
   mcp: []                             # your toolset's tools, if the agent has one: - name: <tool>, connection: <your Base Toolset connection's name>

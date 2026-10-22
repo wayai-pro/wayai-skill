@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.181.1
+version: 6.182.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -955,7 +955,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, base credentials, modeling & tool-design principles |
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `evals/` + `journeys/` cross-reference, and how its agent reads the organization's documents from a knowledge base. Read once before generating a new hub from scratch |
-| **Repository agent template** | [`references/repository-agent/README.md`](references/repository-agent/README.md) | A hosted agent that works on one GitHub repository: reads its `AGENTS.md` first, starts from a branch or commit (`repo_checkout`), pushes only a branch of its own. Files to copy into a hub's `agents/` |
+| **Repository agent template** | [`references/repository-agent/README.md`](references/repository-agent/README.md) | A hosted agent that works on one GitHub repository: reads its `AGENTS.md` first, starts from a branch or commit (`repo_checkout`), pushes only a branch of its own and opens its pull request (`open_pull_request`). Files to copy into a hub's `agents/` |
 | **Using the app** | [`references/using-the-app.md`](references/using-the-app.md) | Answering an end user (a Hub User): the agent list, chat and task agents, writing and attaching, files, when a person answers, their account, communities, notifications, the mobile and desktop apps |
 | **Support inbox** | [`references/support-inbox.md`](references/support-inbox.md) | Answering a support team member or hub admin: the inbox and its tabs, the board, claim / take over, transfer, close, replying and the 24-hour window, Copilot suggestions, consults, contact approval, notifications, Support in the mobile app |
 | **Navigation** | [`references/navigation.md`](references/navigation.md) | App URL surface (`/chat`, `/support`, `/community`, `/join`, `/settings/...`), hub-detail tabs, query-string deep links — any time you hand the user a URL; how links open in the mobile apps, and the desktop app (where to get it, what it adds over a browser, its settings) |
