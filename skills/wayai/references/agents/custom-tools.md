@@ -18,6 +18,10 @@ Custom tools allow agents to call external APIs. They require:
 1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI. Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
+### Hosted agents
+
+An agent on a hosted agent connection ([Claude Agent (Managed)](../connections.md#claude-agent-managed)) calls its custom tools too, and the platform runs each call as it runs a model-connection agent's: the connection's credential stays in WayAI, a write of a tool with an `idempotency_header` sends its call's key there, and an interrupted call is run again, answered as unknown, or handed to your team as [If a call is interrupted](#if-a-call-is-interrupted) describes. A custom tool whose `composed_tools` include `close_conversation` or `update_kanban_status` is not given to a hosted agent: a hosted agent's close or kanban move takes effect only once its reply is delivered, and a composed one would run with the tool, before it. Give the agent those tools themselves instead.
+
 ---
 
 ## Creating a Custom Tool

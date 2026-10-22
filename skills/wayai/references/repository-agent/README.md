@@ -26,7 +26,7 @@ repository-agent/
    - `repo_url`: the repository, as `https://github.com/<owner>/<repo>`.
    - `repo_checkout`: the branch, or the full commit hash, each session starts from. Remove it to start from the repository's default branch. A value that is neither a branch name nor a full commit hash is refused when you push.
    - `network_egress_allowlist`: the hosts the repository's build and tests need (package registries, for example). The attached repository stays reachable without being listed. Keep the list short: the sandbox can send anything to a listed host, `git push` included.
-   - `mcp_servers`: to give the agent a toolset's tools, the connection id of an [MCP Server](../connections.md#mcp-server) connection pointed at the toolset's MCP URL ([toolsets.md](../bases/toolsets.md#the-mcp-connection-url)). Leave it empty for none. Use a toolset without `get_url` or `put_url` ([URL tools and hub agents](../bases/toolsets.md#url-tools-and-hub-agents)).
+   - `tools.mcp`: to give the agent a toolset's tools, each tool's name and the name of the hub's [Base Toolset](../connections.md#base-toolset) connection to that toolset; the platform runs each call. The agent is a pilot, so it holds only a toolset a customer-facing agent may hold (*Customer-facing agents* there). Leave the list empty for none.
 3. Edit the instructions in `repository-agent.md` for your repository and the work you hand the agent. Keep the first section: a repository's `AGENTS.md` is not loaded for the agent, so it reads it because the instructions say so.
 4. `wayai push`.
 

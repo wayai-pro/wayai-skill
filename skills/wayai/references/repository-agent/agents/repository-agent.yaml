@@ -8,4 +8,5 @@ settings:
   max_session_minutes: 120            # the longest one turn may run
   network_egress_policy: allowlist    # the sandbox reaches only the hosts listed below
   network_egress_allowlist: []        # add the hosts the repository's build needs (e.g. registry.npmjs.org)
-  mcp_servers: []                     # the connection id of the MCP Server connection to your toolset, if the agent has one (a toolset without get_url/put_url: toolsets.md, URL tools and hub agents)
+tools:
+  mcp: []                             # your toolset's tools, if the agent has one: - name: <tool>, connection: <your Base Toolset connection's name>
