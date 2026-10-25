@@ -233,7 +233,7 @@ A record type can hold records that only some people, hubs and agents may reach,
   "x-access": [ { "field": "class", "dimension": "class", "mode": "report" } ] }
 ```
 
-`mode` is `report` for now: `enforce` is refused at config write and at promotion, so nothing is filtered yet. A native record type only. The declaration, the organization's dimensions, who is assigned which values and what an enforcing type will refuse are in [access.md](access.md).
+`mode` is `report` (counts what enforce would hide or refuse, filters nothing) or `enforce` (filters the type for calls bound to a toolset; switch back to `report` to undo). A native record type only. The declaration, the organization's dimensions, who is assigned which values and what an enforcing type refuses are in [access.md](access.md).
 
 ### Reviewed records (`x-review`)
 

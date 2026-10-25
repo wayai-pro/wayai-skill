@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.183.0
+version: 6.184.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -323,7 +323,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers`
-- **Access dimensions:** `x-access` on a record type names a field holding a value of one of the organization's dimensions (`class`: `7A`), and each hub agent call reaches only the records whose value is in the set worked out from the hub's, the people's and the agent's assigned values. `report` mode only for now: nothing is filtered yet ([`references/bases/access.md`](references/bases/access.md))
+- **Access dimensions:** `x-access` on a record type names a field holding a value of one of the organization's dimensions (`class`: `7A`), and each hub agent call reaches only the records whose value is in the set worked out from the hub's, the people's and the agent's assigned values. Start in `report` mode (counts, filters nothing), then switch to `enforce`; switching back to `report` is the undo ([`references/bases/access.md`](references/bases/access.md))
 - **Connecting a hub:** a **Base Toolset** connection gives agents a toolset's tools, a hosted agent's included, and native agents its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
@@ -388,7 +388,7 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 - **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
 - **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
-- **Access values** — which records of a base each org member, hub, hub admin, team member, hub user and agent may reach, per access dimension; set in the app (an agent's also as `access_values` in its YAML). Not filtering anything yet: see [`references/bases/access.md`](references/bases/access.md)
+- **Access values** — which records of a base each org member, hub, hub admin, team member, hub user and agent may reach, per access dimension; set in the app (an agent's also as `access_values` in its YAML). They filter only record types whose `x-access` is in `enforce` mode: see [`references/bases/access.md`](references/bases/access.md)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
 
 ## Hub Environments

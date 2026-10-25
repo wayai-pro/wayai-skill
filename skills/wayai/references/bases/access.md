@@ -10,10 +10,13 @@ the values they may read and write. A hub agent's call through a toolset then re
 records whose value is in its set.
 
 > [!IMPORTANT]
-> **Nothing is filtered yet.** Today a declaration can only be in `report` mode: a config write and
-> a promotion refuse `"mode": "enforce"`, and a stored `enforce` acts as `report`. Report mode hides
-> and refuses nothing. Everything below about an enforcing record type describes what will apply once
-> `enforce` becomes available; until then, declare `report` and assign values so they are in place.
+> **Start in `report`, then switch to `enforce`.** `"mode": "enforce"` is available from this release:
+> a record type in `enforce` is filtered, and its whole base refuses what
+> [an enforcing base refuses](#what-an-enforcing-base-refuses). `report` hides and refuses nothing; it
+> only counts what `enforce` would. Declare `report`, assign values, give every record a value, then
+> switch. **The undo is switching the type back to `report`**, which stops its filtering and refusals at
+> once. An `x-access` a record type already held before declarations were checked takes effect as it is
+> stored: `wayai pull bases/<base>` shows each type's declaration.
 
 ## How it fits together
 
@@ -48,13 +51,13 @@ sources: []
 
 - `field` — a top-level property of the record type declared `{ "type": "string" }`. Values are matched as text, so a field of any other type is refused.
 - `dimension` — the id of one of the organization's dimensions. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
-- `mode` — `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)) or `enforce` (not available yet).
+- `mode` — `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)) or `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo).
 - **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. The same field and dimension pair may not appear twice.
 - **A record with no value** in the field is reached only by a set holding `*` for that dimension.
 
 **Checked at config write and at promotion.** The list must be non-empty and each entry well formed
 (no other keys); the record type must be native (`sources: []`), since a source-backed type's rows are
-upstream, where nothing filters them; and `enforce` is refused for now. A refused write answers
+upstream, where nothing filters them. A refused write answers
 `Invalid x-access`, listing each problem. A promotion is refused for any of them, including one
 production already holds. `x-access` promotes like any other schema key.
 
