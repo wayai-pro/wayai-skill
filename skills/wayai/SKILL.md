@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.182.0
+version: 6.183.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -15,7 +15,9 @@ description: |
   using the wayai CLI (push, pull, publish, send-message, conversations, sync-skills,
   create-credential, update-credential, analytics, analytics sql, run-eval, eval capture, eval call, evals sql,
   org, init, communities, bases, records, record-types, relationships, files, toolsets, actions,
-  triggers, inbound-webhooks, seed); managing an organization's communities (list, join link,
+  triggers, inbound-webhooks, seed, dimensions, access explain); setting up access dimensions
+  (x-access on a record type, an organization's dimensions and values, the values each person, hub
+  and agent may reach, report mode); managing an organization's communities (list, join link,
   stats, the access list of an invite-only community; settings including who may join, rules, rooms
   and courses as code; moderators, moderation and what a community's members see); analyzing LLM
   token/cost spend per message, model, agent, or credential;
@@ -59,6 +61,10 @@ WayAI is where AI agents and people work together — serving your customers and
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
 | Org credentials — create / rotate / edit | CLI (`wayai create-credential` / `wayai update-credential`) or UI |
 | Org-level shared skills (org-as-code) | CLI (`wayai org pull` / `push` / `diff`) |
+| Access dimensions — an organization's dimensions and values (which records each person, hub and agent may reach; `x-access` on a record type) | CLI (`wayai dimensions`) or UI (organization settings → Access) — see [`references/bases/access.md`](references/bases/access.md) |
+| Access values — org members, hubs, hub public values, hub admins, team members, hub users | UI only (organization settings → Access; Hub → Users → **Access values**) |
+| Access values — an agent | CLI (`access_values` in `agents/<slug>.yaml`, `wayai push`, preview hub) or UI |
+| See the access set a hub agent's calls send for a person, and which layer removed each value | CLI (`wayai access explain --agent <agent_id> [--user <user_id>]`) |
 | Bases — schemas, records, relationships, files, toolsets (the Data surface) | CLI (`wayai bases`, `wayai records`, `wayai record-types`, …; config-as-code via `wayai pull`/`push bases/<base>`) — open [`references/bases/README.md`](references/bases/README.md) first |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
@@ -95,6 +101,7 @@ Organization                ← CLI (`wayai org create`) or UI
 ├── Org Credentials         ← CLI (`wayai create-credential`/`update-credential`) or UI — API keys stored once, reused across hubs
 ├── Org Tags                ← UI — gate which credentials each hub can resolve and which contacts it sees
 ├── Org Skills              ← CLI (`wayai org pull/push`) — shared skills, fan out to linked hubs
+├── Access dimensions       ← CLI (`wayai dimensions`) or UI — dimensions and values a base's `x-access` names; who may reach which (references/bases/access.md)
 ├── Bases                   ← CLI (`wayai bases`) — the Data surface. Org-level, NOT inside a hub (see Bases)
 ├── Contact book            ← UI (Contacts) or API — contacts + org lists that automations target. Org-level, NOT in `hub.yaml`
 └── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
@@ -316,6 +323,7 @@ A **base** is an org-level data container — the system of record behind your h
 - **Ids are immutable.** A base, record type, relationship type, Action or toolset `id` *is* its identity — there is no rename, only create-new + migrate. Choose stable lowercase slugs up front
 - **Workspace:** `wayai-ws/bases/<base>/` (`base.yaml` + one file per entity), reached by `wayai pull bases/<base>` / `wayai push bases/<base>`. A `pull`/`push` that names targets in both `hubs/` and `bases/` is **refused, never merged**
 - **Commands:** `wayai bases` plus the top-level `records`, `record-types`, `relationships`, `relationship-types`, `query-relationships`, `files`, `file-types`, `attachments`, `toolsets`, `actions`, `triggers`, `inbound-webhooks`, `seed` (each takes `--base`), and `wayai bases tokens|secrets|sql|import|batch|providers`
+- **Access dimensions:** `x-access` on a record type names a field holding a value of one of the organization's dimensions (`class`: `7A`), and each hub agent call reaches only the records whose value is in the set worked out from the hub's, the people's and the agent's assigned values. `report` mode only for now: nothing is filtered yet ([`references/bases/access.md`](references/bases/access.md))
 - **Connecting a hub:** a **Base Toolset** connection gives agents a toolset's tools, a hosted agent's included, and native agents its documents under `data/<file-type>/` in `list_files` and `read_file`, written with `write_file` and `edit_file` ([`references/connections.md`](references/connections.md#base-toolset)); an eval names a `target_base:`. The organization's documents live here, in its knowledge base ([`references/bases/files.md`](references/bases/files.md)); skills stay in the hub ([Skills](#skills))
 
 **Open [`references/bases/README.md`](references/bases/README.md) before doing any base work** — it carries the full object model and routes to the per-domain files below. Nothing in this section is enough to author a schema from.
@@ -380,6 +388,7 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 - **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
 - **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
+- **Access values** — which records of a base each org member, hub, hub admin, team member, hub user and agent may reach, per access dimension; set in the app (an agent's also as `access_values` in its YAML). Not filtering anything yet: see [`references/bases/access.md`](references/bases/access.md)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
 
 ## Hub Environments
@@ -593,6 +602,8 @@ wayai eval session delete   # Delete an eval session + its run history (<session
 wayai eval call         # Place scored voice calls for a journey whose responder is the pilot_voice agent (--journey <name|id>, --runs, --clips <dir> or OPENAI_API_KEY, cost caps); needs `npm install -g @roamhq/wrtc@0.10` once — see references/evals.md
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
+wayai dimensions        # An organization's access dimensions and values (changes: organization admins): list, create <dim> --label, relabel, add-value <dim> <value> --label, relabel-value, retire-value, restore-value (never delete); --org, --json. See references/bases/access.md
+wayai access explain    # The access set a hub agent's toolset calls send for a person, and which layer removed each value: --agent <agent_id> [--hub <uuid|folder>] [--user <user_id> — anyone but yourself needs an organization admin] [--json]
 wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>, access list|add|remove <community> [<email>…] (an invite-only community's access list; remove takes out the members the email admitted); --org, --json, -y. See references/communities.md
 wayai contacts          # A contact's customer record in a base (organization admins; browser `wayai login` only): link-customer <contact_id> --base <base_id> --record <record_id>, unlink-customer <contact_id> --base <base_id>; --org, --json. See references/bases/toolsets.md#linking-a-contact-to-its-customer-record
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
@@ -840,6 +851,7 @@ connection: anthropic              # connection display name
 # response_format:                 # {schema_name, schema_json} — force structured JSON output instead of free text (see references/agents/roles-and-settings.md#response-format-structured-output)
 # enabled: true                    # default; omitted
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
+# access_values:                  # this agent's access values per dimension ({class: {read: [7A, 7B], write: [7A]}}); omitted keeps them, null clears them (narrows nothing); needs hub:admin; with code_execution_enabled, sandbox_scope must be agent (see references/bases/access.md)
 # previous_conversations_count: 3  # off by default (max 20); this user's N most recent ended conversations, prepended to the FIRST user message and frozen at the first agent turn that uses it. Foreground roles only; `0` clears it (omitting the key on update leaves it as-is); summaries come from the conversation_evaluator (see references/agents/roles-and-settings.md#previous-conversations-context)
 settings:
   model: claude-sonnet-5-5
@@ -952,6 +964,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Bases** | [`references/bases/files.md`](references/bases/files.md) | File types, versioned path-addressed files, history/diff, S3 mounts, record attachments |
 | **Bases** | [`references/bases/config-as-code.md`](references/bases/config-as-code.md) | `wayai-ws/bases/<base>/`, subtree routing and mixed-invocation refusal, `base.yaml`, promote/rollback, eval mode, seed fixtures and leases |
 | **Bases** | [`references/bases/integrations.md`](references/bases/integrations.md) | Canonical-first modeling and the pattern catalog; external sources, inbound webhooks, triggers, provider adapters |
+| **Bases** | [`references/bases/access.md`](references/bases/access.md) | Access dimensions: `x-access` on a record type (report vs enforce), the organization's dimensions and values (`wayai dimensions`, retire never delete), assigning values to org members, hubs, hub public values, hub admins, team members, hub users and agents, how a turn's set is formed, what an enforcing base refuses, report mode, `wayai access explain`, limits |
 | **Bases** | [`references/bases/toolsets.md`](references/bases/toolsets.md) | Actions and toolsets (the agent-facing MCP surface), `filterable_fields`/`writable_fields`/`base_filter`/`precondition`, base API tokens, base credentials, modeling & tool-design principles |
 | **Bases** | [`references/bases/executors.md`](references/bases/executors.md) | Building the HTTP service that acts on the outside world for a trigger or external source |
 | **Canonical example** | [`references/canonical-example/README.md`](references/canonical-example/README.md) | End-to-end hub showing how `hub.yaml` + `agents/*` + `evals/` + `journeys/` cross-reference, and how its agent reads the organization's documents from a knowledge base. Read once before generating a new hub from scratch |

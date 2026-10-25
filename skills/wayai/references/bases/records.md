@@ -223,6 +223,18 @@ Checked at config write and at promotion: the declaration's shape on the record 
 - A single delete is not checked, since `--prune` deletes one record type at a time.
 - A base left with two roots or an owner without one refuses the customer-scoped calls that depend on it, and a promotion refuses it.
 
+### Access dimensions (`x-access`)
+
+A record type can hold records that only some people, hubs and agents may reach, by naming a `type: string` field that holds a value of one of the organization's access dimensions:
+
+```jsonc
+{ "type": "object",
+  "properties": { "class": { "type": "string" } },
+  "x-access": [ { "field": "class", "dimension": "class", "mode": "report" } ] }
+```
+
+`mode` is `report` for now: `enforce` is refused at config write and at promotion, so nothing is filtered yet. A native record type only. The declaration, the organization's dimensions, who is assigned which values and what an enforcing type will refuse are in [access.md](access.md).
+
 ### Reviewed records (`x-review`)
 
 A record type can hold records that a person approves before agents read them, such as knowledge notes: agents write drafts, a person approves them, and only approved records reach the agents that read them. Declare it with `x-review` at the root of the schema:

@@ -254,7 +254,7 @@ Lets the agent run code with the sandbox native tools, `bash`, `copy_to_sandbox`
 
 What each scope means:
 - **`conversation` ("Conversation", shared with the conversation's other agents)**: the conversation's sandbox, shared by every agent in it whose scope is `conversation`. Every agent sharing it sees its files, so delegations and file handoffs between those agents work through it.
-- **`agent` ("Agent", private to this agent)**: the agent's own sandbox in the conversation. No other agent sees its files, whatever that agent's scope, and its saved files are restored only into its own next sandbox. Set an agent that handles files others must not see to `agent`, such as a copilot working with internal documents its Base Toolset reaches.
+- **`agent` ("Agent", private to this agent)**: the agent's own sandbox in the conversation. No other agent sees its files, whatever that agent's scope, and its saved files are restored only into its own next sandbox. Set an agent that handles files others must not see to `agent`, such as a copilot working with internal documents its Base Toolset reaches. An agent with its own [access values](../bases/access.md#assigning-values) (`access_values`) must use `agent` while `code_execution_enabled` is on: an agent write that would leave it sharing the conversation's sandbox is refused.
 
 What each network setting allows:
 - **`none` ("No network")**: nothing leaves the sandbox.

@@ -109,6 +109,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/communities` | The organization's communities (the tab shows once it owns one) |
 | `/settings/organizations/[orgId]/communities/[communityId]/[section]` | A community's settings: `rooms` (the default), `rules` (General), `link`, `access`, `moderators`, `reports`, `bans`, `log`, `stats`, `courses` (see [communities.md → The web console](communities.md#the-web-console)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
+| `/settings/organizations/[orgId]/access` | The organization's access dimensions and values, and the values of its members and production hubs (see [bases/access.md](bases/access.md)) |
 
 ### Hub level
 Hub-detail tabs live under `/settings/organizations/[orgId]/hubs/[hubId]/<tab>`. Valid tabs (from `useSettingsPath.ts`):

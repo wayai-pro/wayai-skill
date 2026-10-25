@@ -38,7 +38,7 @@ relationship**. Files repeat the pattern (**file type → file**).
 | Primitive | What it is | Commands / reference |
 |---|---|---|
 | **Base** | Top-level data container. `production` (config changes only via promote; metadata like name/tags/timezone stays editable) or `preview` (`<origin>--<slug>`, a config-editable clone that promotes back to its origin) | `wayai bases` |
-| **Record type** | JSON Schema defining a kind of record — created at runtime, no migrations. Carries schema hints (`x-fk` foreign keys, `x-search` tuning, `x-archival` mode, `x-timezone`) and optionally declares **external sources**. Display config is a top-level `ui` key *beside* `json_schema`, not a schema hint, and is config-as-code only | `wayai record-types` — [records.md](records.md) |
+| **Record type** | JSON Schema defining a kind of record — created at runtime, no migrations. Carries schema hints (`x-fk` foreign keys, `x-search` tuning, `x-archival` mode, `x-timezone`, `x-access` access dimensions — [access.md](access.md)) and optionally declares **external sources**. Display config is a top-level `ui` key *beside* `json_schema`, not a schema hint, and is config-as-code only | `wayai record-types` — [records.md](records.md) |
 | **Record** | JSON row conforming to its record type. System-generated `id` plus your `external_id`/`external_source` for **idempotent upsert**. Can be **cancelled** (first-class state) or **archived** (terminal/inactive) | `wayai records` — [records.md](records.md) |
 | **Filter DSL** | The one condition language — `{field, op, value}` plus `and`/`or` groups — used by `records query`, trigger `--filter`, and Action `precondition` | [records.md](records.md) |
 | **Relationship type** | Config defining a `rel_type` (its id IS the type) with an optional metadata schema and source/target record-type allowlists. Must exist before any relationship of that type | `wayai relationship-types` — [records.md](records.md) |
@@ -105,6 +105,7 @@ large or binary content belongs in Files.
 | Integrate something the platform can't call directly | executor | [executors.md](executors.md) |
 | Give an LLM agent safe, domain-named tools | Actions + toolset + toolset-bound token | [toolsets.md](toolsets.md) |
 | Make a state-dependent write race-free | Action `precondition` (compare-and-set) | [toolsets.md](toolsets.md) |
+| Let each person, hub and agent reach only some records (a class, a region) | `x-access` on the record type + the organization's access dimensions and values (`wayai dimensions`, `wayai access explain`) | [access.md](access.md) |
 | Least-privilege machine/CI access | grant-scoped tokens (`bases tokens create --grants`) — a toolset-bound token calls only its toolset's tools, never the plain API | [toolsets.md](toolsets.md) |
 | Store integration credentials | base credentials (`credential:<name>` references) | [toolsets.md](toolsets.md) |
 | Manage config in git / review in PRs | `wayai pull bases/<base>` / `wayai push bases/<base>` | [config-as-code.md](config-as-code.md) |
