@@ -667,7 +667,7 @@ Generated tool schemas are otherwise **closed**: an argument not declared by the
 
 ### Tool-design warnings at push
 
-`wayai push bases/<base>` lints the `list` Actions in your config against the principles below and prints any suggestions to stderr. They are **advisory** — a rule encodes a heuristic about how a model behaves, and a heuristic that failed your push would be worse than the shape it objects to. Config validity is separate and still fails loudly.
+`wayai push bases/<base>` lints the `list` Actions in your config against the principles below, reports what an `x-access` declaration will stop serving, and prints any suggestions to stderr. They are **advisory** — a rule encodes a heuristic about how a model behaves, and a heuristic that failed your push would be worse than the shape it objects to. Config validity is separate and still fails loudly.
 
 | Rule | What it catches |
 |---|---|
@@ -675,6 +675,7 @@ Generated tool schemas are otherwise **closed**: an argument not declared by the
 | `many-optional-filters` | More than two optional filter **params** on one tool — each is a parameter a weaker model may fill with an invented value. A `range` field's two bounds do not count: they are optional by construction, so an anchor plus a date window stays clean. |
 | `unconstrained-string-filter` | A value-picking string param with no `enum` and no `pattern`, so a made-up value compiles to a real condition that matches nothing. A supported **root-property** `x-fk` on a native referencing record type is exempt: its valid values are whatever rows exist in the target record type, and the foreign-key probe rejects a bad one. A nested path such as `insurance.plan_id` stays flagged; nested/composed `x-fk` is rejected at config write, while grandfathered production config remains unenforced until corrected. |
 | `filter-escape-hatch` | `expose_filter` enabled alongside declared filter fields — the agent can bypass them with a raw expression, which is the untyped surface the typed params exist to replace. Fires on any truthy value, since `expose_filter: yes` is a *string* in YAML and still opens the hatch. |
+| `access-enforcement` | A record type in your config declares `x-access`, and this toolset (named where the other rules name an Action) has `sql_query`, `batch`, a file write tool, or a SQL Action reading such a type. Once a declaration switches to `enforce`, those tools are no longer served to calls bound to a toolset, since no access set confines them. Nothing changes while every declaration is in `report` mode. |
 
 Warnings appear on `wayai push bases/<base>`, on `--dry-run`, and on a push with no changes — that last case matters, because a config written before these rules existed is exactly the one that never diffs again.
 
