@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.185.0
+version: 6.186.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -232,7 +232,7 @@ Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with
 | Native | Platform built-ins (e.g., `update_kanban_status`, `get_state`, `send_files`, `close_conversation`, `read_file`) | Listed by name under `tools.native` |
 | Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
 | MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
-| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`, `start_consult_thread`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`, `start_consult_thread`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name) |
+| Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`, `start_consult_thread`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`, `start_consult_thread`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name — a hub name resolves only among the hubs an API token's grants cover; name any other hub by `target_id`) |
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. Full native catalog + params: [`references/agents/native-tools.md`](references/agents/native-tools.md); custom tool schema: [`references/agents/custom-tools.md`](references/agents/custom-tools.md); designing *which* tools/params to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md).
 
@@ -247,7 +247,7 @@ Treats **another hub as a consultant**. The tool spawns a task conversation in t
   context_boundary: summary  # instruction | summary | transcript
 ```
 
-- **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call).
+- **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call). With an API token, `target` resolves by name only among the hubs the token's grants cover with `hub:read` in production, and the push error lists only those; a token limited to some hubs, to tags, or to the `preview` environment names any other target by `target_id`, the target hub's id (`wayai pull` writes the hub's existing hub delegations in that form).
 - **The target hub must CLOSE the spawned conversation** — its close is the completion signal. The request text instructs it to, but a target whose agents can never close (no `close_conversation` tool, no terminal kanban status) will leave the asker waiting. (An **agent-started** consult carries an expiry — see `start_consult_thread`; a team-started hub delegation does not, so give the target hub a way to finish.)
 - **`context_boundary` is a data-sensitivity decision, not a tuning knob.** Hubs can differ in team membership and what they may see, so choose deliberately — there is no safe default that fits every pair of hubs:
 
@@ -272,6 +272,7 @@ Lets a **non-background agent** put a question to a configured consultant (or pa
 ```
 
 - **The mode follows the target.** A same-hub consultant answers inside the tool call; a partner hub answers **asynchronously** — the asking agent ends its turn ("I'll check and get back to you") and is brought back automatically when the answer lands. A slow sync consult converts to async by itself, so agent instructions must handle "the answer will follow" for any target. A consultant, like every role but a pilot, a copilot or their specialists, runs only on a model connection, never on a hosted agent connection (`Claude Agent (Managed)`): saving one there is refused, and one consulted there, or with no connection, is refused before anything is sent.
+- **A partner-hub target (`type: hub`) resolves like a `delegate_to_hub` target.** With an API token, `target` resolves by name only among the hubs the token's grants cover with `hub:read` in production; a token limited to some hubs, to tags, or to the `preview` environment names any other partner hub by `target_id`, the hub's id.
 - **Consultant→consultant chains are off by default, and sync-only when enabled** — set `allow_consultant_chain: true` on the tool to permit them, against a same-hub consultant. `monitor`, the evaluators, and `summarizer` can never initiate.
 - **Budgets are enforced**: consult chain depth, plus cycle refusal in both directions (agent A → B → A inside a hub, hub A → B → A across hubs), a cap per LLM call, and a durable cap per conversation. Every consult turn bills a foreground operation, so these caps are what stop an agent multiplying cost unattended.
 - **Nothing stays pending forever**: an unanswered consult expires and brings the asker back with a timeout notice; a consult outstanding when the conversation closes is recorded `cancelled_at_close`.
