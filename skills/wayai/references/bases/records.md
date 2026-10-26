@@ -230,10 +230,10 @@ A record type can hold records that only some people, hubs and agents may reach,
 ```jsonc
 { "type": "object",
   "properties": { "class": { "type": "string" } },
-  "x-access": [ { "field": "class", "dimension": "class", "mode": "report" } ] }
+  "x-access": [ { "field": "class", "dimension": "class", "mode": "enforce" } ] }
 ```
 
-`mode` is `report` (counts what enforce would hide or refuse, filters nothing) or `enforce` (filters the type for calls bound to a toolset; switch back to `report` to undo). A native record type only. The declaration, the organization's dimensions, who is assigned which values and what an enforcing type refuses are in [access.md](access.md).
+`mode` is `enforce` (filters the type for calls bound to a toolset; switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, filters nothing), for a type that already has live users. Assign values before declaring `enforce`: a hub or person with none reaches nothing on the type. A native record type only. The declaration, the organization's dimensions, who is assigned which values and what an enforcing type refuses are in [access.md](access.md).
 
 ### Reviewed records (`x-review`)
 

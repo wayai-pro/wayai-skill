@@ -10,13 +10,27 @@ the values they may read and write. A hub agent's call through a toolset then re
 records whose value is in its set.
 
 > [!IMPORTANT]
-> **Start in `report`, then switch to `enforce`.** `"mode": "enforce"` is available from this release:
-> a record type in `enforce` is filtered, and its whole base refuses what
-> [an enforcing base refuses](#what-an-enforcing-base-refuses). `report` hides and refuses nothing; it
-> only counts what `enforce` would. Declare `report`, assign values, give every record a value, then
-> switch. **The undo is switching the type back to `report`**, which stops its filtering and refusals at
-> once. An `x-access` a record type already held before declarations were checked takes effect as it is
-> stored: `wayai pull bases/<base>` shows each type's declaration.
+> **Declare `enforce` once values are assigned.** A record type in `enforce` is filtered, and its whole
+> base refuses what [an enforcing base refuses](#what-an-enforcing-base-refuses). Before you declare it:
+>
+> - **Assign values first.** Under `enforce`, a hub or a person with no values reaches nothing on the
+>   type, and neither does an assignment that leaves the type's dimension out; an agent with no values
+>   narrows nothing ([Who sets each layer](#who-sets-each-layer)). Give every record a value too: one
+>   without is reached only by a set holding `*`. [`wayai access explain`](#wayai-access-explain) shows
+>   what a set reaches.
+> - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
+>   `sql_query`, `batch`, file writes and each SQL Action that reads an enforcing type. If that base's
+>   toolsets need those tools, keep the types you enforce in a separate base.
+> - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
+>   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
+>   unfiltered ([Limits](#limits)).
+>
+> **`report` is for adding `x-access` to a type that already has live users**: it hides and refuses
+> nothing, and only counts what `enforce` would ([Report mode](#report-mode)). Declare `report`, assign
+> values, give every record a value, then switch. **The undo is switching the type back to `report`**,
+> which stops its filtering and refusals at once. An `x-access` a record type already held before
+> declarations were checked takes effect as it is stored: `wayai pull bases/<base>` shows each type's
+> declaration.
 
 ## How it fits together
 
@@ -45,13 +59,13 @@ json_schema:
     present: { type: boolean }
   required: [student_id, class]
   x-access:
-    - { field: class, dimension: class, mode: report }
+    - { field: class, dimension: class, mode: enforce }
 sources: []
 ```
 
 - `field` — a top-level property of the record type declared `{ "type": "string" }`. Values are matched as text, so a field of any other type is refused.
 - `dimension` — the id of one of the organization's dimensions. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
-- `mode` — `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)) or `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo).
+- `mode` — `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)), for a type that already has live users.
 - **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. The same field and dimension pair may not appear twice.
 - **A record with no value** in the field is reached only by a set holding `*` for that dimension.
 
@@ -67,8 +81,8 @@ tools, and each SQL Action that reads a record type declaring `x-access`
 ([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)). See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
-**Before switching a type to `enforce`,** give every record a value: a record without one stays
-hidden from every set that does not hold `*`. Report mode counts the records that would be hidden.
+**Before a type enforces,** give every record a value: a record without one stays hidden from every
+set that does not hold `*`. A type in `report` counts the records that would be hidden.
 
 ## Dimensions and values
 
@@ -225,7 +239,7 @@ a base API token), the calling agent or token, the toolset, whether it was refus
 where), and how many records. Only ids are kept, never a person's name or email or any record's
 content, and nothing is counted on a base with no `x-access`.
 
-Nothing in the CLI or the app reads these counts yet. To see what a set reaches before switching, use
+Nothing in the CLI or the app reads these counts yet. To see what a set reaches before enforcing, use
 [`wayai access explain`](#wayai-access-explain).
 
 ## `wayai access explain`
