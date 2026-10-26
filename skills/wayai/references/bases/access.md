@@ -66,7 +66,7 @@ sources: []
 - `field` — a top-level property of the record type declared `{ "type": "string" }`. Values are matched as text, so a field of any other type is refused.
 - `dimension` — the id of one of the organization's dimensions. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
 - `mode` — `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)), for a type that already has live users.
-- **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. The same field and dimension pair may not appear twice.
+- **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. A dimension may appear in only one entry of a record type, so it filters one field.
 - **A record with no value** in the field is reached only by a set holding `*` for that dimension.
 
 **Checked at config write and at promotion.** The list must be non-empty and each entry well formed
