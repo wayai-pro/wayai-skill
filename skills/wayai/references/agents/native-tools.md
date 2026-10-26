@@ -170,6 +170,8 @@ Schedule a custom manual followup at an exact future time. The receiver is deter
 | `scheduled_time` | string | Yes | ISO 8601 datetime with timezone; must be in the future |
 | `message` | string | Yes | The followup message. May embed AI instructions in brackets: `"Text [AI Context: instructions]"` |
 
+The message is delivered as written: [placeholders](instructions.md) such as `{{now()}}` or `{{file_content(…)}}` in it are not filled, whether the agent wrote it or a [composed chain](custom-tools.md#composed_tools-side-effects-on-success) or a monitor rule supplied it.
+
 ### run_monitor
 
 Run another monitor on this hub, and let it act on its own rules. Selected by a monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
