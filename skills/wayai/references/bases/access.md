@@ -19,8 +19,9 @@ records whose value is in its set.
 >   without is reached only by a set holding `*`. [`wayai access explain`](#wayai-access-explain) shows
 >   what a set reaches.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
->   `sql_query`, `batch`, file writes and each SQL Action that reads an enforcing type. If that base's
->   toolsets need those tools, keep the types you enforce in a separate base.
+>   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches
+>   ([SQL under an access set](#sql-under-an-access-set)). If that base's toolsets need `batch` or file
+>   writes, keep the types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
 >   unfiltered ([Limits](#limits)).
@@ -76,9 +77,9 @@ upstream, where nothing filters them. A refused write answers
 production already holds. `x-access` promotes like any other schema key.
 
 **What a push reports.** `wayai push bases/<base>` warns, without refusing anything, for each toolset
-that will stop serving some of its tools once a type enforces: `sql_query`, `batch`, its file write
-tools, and each SQL Action that reads a record type declaring `x-access`
-([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)). See
+that will stop serving some of its tools once a type enforces: `batch` and its file write tools
+([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)). `sql_query` and SQL Actions are
+not named: they stay served, held to each call's set. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
 **Before a type enforces,** give every record a value: a record without one stays hidden from every
@@ -217,13 +218,41 @@ back as a whole.
 
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
-- `sql_query` and `batch`, which reach any record of the base;
+- `batch`, which reaches any record of the base by id;
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too;
-- a SQL Action that reads an enforcing type: its own query is not held to a set;
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
-- a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool that reaches an enforcing type.
+- a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`.
 
 Reading config (`describe_graph`, the toolset's tool list) is always served.
+
+### SQL under an access set
+
+A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
+set reaches. This holds on every base, whether or not one of its types enforces:
+
+- **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
+  as the stored text. SQL never reaches a record a `get` would not; a value such as a date written
+  another way can be left out where a `get` matches it. Records of other types answer as usual.
+- **`relationships`, `audit_log` and `operations_log`:** a row only when every record it names is one
+  the set reads, by the record's current value, so a record moved out of the set takes its whole
+  history with it. Rows naming a deleted record (its history, its `record_delete` row, its
+  relationships) are left out, even for a set holding `*`, and so are the operations rows of a deleted
+  relationship. Rows naming no record answer as usual.
+- **Joins and subqueries** are held the same way: every table a query reads is filtered.
+- **A customer-only set** (the hub's public values, sent for everyone else) reads no record of an
+  enforcing type through SQL.
+- **Large bases:** each query over `relationships`, `audit_log` or `operations_log` first works out
+  which records the set reaches, so on a base of several million records it can exceed the query
+  limits, and it is refused rather than answered in part.
+
+**Refused for a moment after a change.** When a type's `enforce` entries change (switched to or from
+`enforce`, or an enforced field or dimension changed), the base takes a few seconds to update the
+values its SQL reads. Until then every call bound to a toolset is refused `sql_query` on that base
+and each SQL Action that reads the type, with `ACCESS_REFUSED`. That includes a base where nothing
+enforces any more, so a withdrawn rule never leaves rows quietly out of an answer. A refusal that
+persists means the update failed: SQL over the type stays refused until a retry succeeds, so report
+one that lasts. A stored `x-access` that is malformed and may enforce refuses them too, until it is
+corrected.
 
 **Not filtered:** anything that reaches a base without a toolset binding, such as the console, the
 `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset. Those
@@ -233,7 +262,9 @@ answer as they do today.
 
 A record type whose `x-access` is in `report` mode is filtered and refused nothing. Each call bound to
 a toolset is still judged as if every entry were `enforce`, and one that would be refused, or whose
-answer holds records that would be hidden, is counted. Each count records the base, the record type,
+answer holds records that would be hidden, is counted. SQL is the exception: a `sql_query` or SQL
+Action call carrying a set is not counted, since nothing it would leave out is seen; one carrying no
+set is counted as refused. Each count records the base, the record type,
 the dimension, the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
 a base API token), the calling agent or token, the toolset, whether it was refused or hidden (and
 where), and how many records. Only ids are kept, never a person's name or email or any record's
