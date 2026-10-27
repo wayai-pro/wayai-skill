@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.187.0
+version: 6.188.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -56,6 +56,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | A contact's customer record in a base (what a customer-scoped toolset serves when a conversation names the contact) | CLI (`wayai contacts link-customer` / `unlink-customer`, browser sign-in only) or API (`/api/contact-book/contacts/:id/customer`) — see [Linking a contact to its customer record](references/bases/toolsets.md#linking-a-contact-to-its-customer-record) |
 | Hub lists (a hub's own filters over the contact book, which its automations target) | CLI (`hub.yaml` `contact_lists:`, `wayai push`) or UI (hub → Automations → Lists) |
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
+| Pages (a hub's small working tools over its bases, for its team) — `pages/<slug>/page.yaml` + `index.html` | CLI (`wayai push` / `wayai pull`, `wayai publish`) — see [Pages](#pages) |
 | Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
 | Connections — OAuth (WhatsApp, Instagram, MCP OAuth) | Platform UI |
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
@@ -365,6 +366,17 @@ Contacts and org lists are **organization data, not hub config**: they live in t
 - **Refused at save, naming the automation:** unknown keys, a field the action does not use (a `channel` or `connection` on a task hub), the `none` target on a chat hub, an event trigger on a chat hub or with a list target, a webhook trigger on a chat hub, a gate whose monitor is not an `automation_fire` (or, on a contact list, `automation_item`) monitor on a decisions model, and `send_message` on Instagram (not available yet)
 
 Instagram reaches only contacts who wrote in the last 24 hours — check what each fire does before promising a result. Shapes, examples, references, what each fire does, message templates, limits: [`references/automations.md`](references/automations.md).
+
+## Pages
+
+A **page** is a small working tool a hub offers its team over the hub's bases: one self-contained HTML file (an [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) view, with WayAI as its host) plus a manifest, in `pages/<slug>/index.html` and `pages/<slug>/page.yaml`. The manifest names the page's audience (`team`; customer pages come later) and each Base Toolset tool it calls (`{ connection, tool, notify }`, tool names unique). A page reads and writes only through those tools, never the network.
+
+- **Who sees one:** a person whose grant on the hub includes `conversation:write`, or a team user when the page sets `team_writes: true`. Until person attribution arrives, the base records the page, not the person, as the writer.
+- **Push and publish:** a `pages/` folder is the hub's whole set of pages, so deleting a page's folder deletes the page. Without a `pages/` folder, push leaves the pages alone. Push checks each page it writes against the hub's own connections and synced tools; every publish that syncs a change checks every page again against production's.
+- **Rolling out:** pages can be pushed and published today, but people cannot open them in the app until the hub shows its Pages section. Don't tell anyone a page is ready to use before then.
+- **The sandbox:** no network, storage, popups, modals (`confirm()` returns false), downloads or navigation. Inline every library within 512 KiB, at most 20 pages per hub.
+
+Manifest, push and publish rules, the MCP Apps messages a page may send, the sandbox, and a minimal page: [`references/pages.md`](references/pages.md).
 
 ## Analytics
 
@@ -745,6 +757,7 @@ wayai-ws/                                # All WayAI config-as-code (init create
         ├── attachments/                 # Eval/journey turn attachment files (synced; hub-root, shared by evals + journeys)
         ├── call-openings/               # Voice agents' own call opening audio (synced; `call_openings` in agents/<slug>.yaml)
         ├── skills/<skill_name>/         # Skill files (synced)
+        ├── pages/<slug>/                # Pages (synced): page.yaml (manifest) + index.html (the page)
         ├── AGENTS.md                    # Hub-specific memory — scaffold seeded on pull/push (NOT synced; fill it in)
         └── references/                  # Hub-specific supporting files (NOT synced)
     └── <hub-slug>/                      # Linked production hub: READ-ONLY mirror (bare slug, no --label). Refreshed each pull; never pushed
@@ -957,6 +970,7 @@ One reference per domain, following the hub navigation order. Concepts live in t
 | **Voice calls** | [`references/calls.md`](references/calls.md) | Setting up a hub for live AI voice calls: the Realtime connection, the `pilot_voice` agent, the web call and its opening (the AI notice, WayAI's or your own), who the AI may answer, hand-offs, spoken confirmation, endings, what the team sees, recording calls, billing, limits |
 | **Evals** | [`references/evals.md`](references/evals.md) | Eval scenario YAML, scenario sets, journeys-as-code, seed fixtures + variables, `wayai eval capture` / `wayai eval journey capture`, run pacing, call evals (`run-eval --call-mode`, `wayai eval call`), authoring & interpreting principles |
 | **Automations** | [`references/automations.md`](references/automations.md) | Automations (schedule, event or webhook trigger, contact-list or no target, `send_message` / `run_agent`), webhook deliveries (signing, the secret, rotation), valid combinations per hub type, task-hub tasks, gates, absent-key vs `[]`, enabling, pausing and run now, message templates, limits, hub lists (`contact_lists:`), the organization's contact book (contacts, visibility, org lists, CSV import) |
+| **Pages** | [`references/pages.md`](references/pages.md) | Writing a team page: the folder layout, the manifest (`audience`, `team_writes`, `params`, `tools`, `notify`), who sees a page, push / pull / diff / publish (the `pages/` folder as the desired set, the checks against production), the MCP Apps messages a page may send and those the host refuses, the sandbox's rules, limits |
 | **Communities** | [`references/communities.md`](references/communities.md) | `wayai communities`: listing an organization's communities, reading, rotating or turning off a join link, source tags, stats, an invite-only community's access list; who may run it (owners and admins, browser sign-in only) and its errors. Communities as code: `community.yaml` (its `admission`), `rules.md` and courses (`course.yaml`, lesson files), room keys, names and revs, list order, how pull and push decide, conflicts, limits, `--dry-run` / `--theirs`. The web console's sections; moderation (ranks, appointing moderators, remove vs ban, reports, the log); what members see (joining and its refusals, rooms, send limits, courses, notifications and muting) |
 | **Analytics** | [`references/analytics.md`](references/analytics.md) | Variable categories/types, filter operators, time analysis, query workflows |
 | **Bases** | [`references/bases/README.md`](references/bases/README.md) | **Read first for any base work** — the Data object model, the preview/promote rule, and the routing map to the files below |
