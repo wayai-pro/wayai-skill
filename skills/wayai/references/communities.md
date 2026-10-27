@@ -381,7 +381,7 @@ whether or not they joined it (a hub's admins and team are not) — its **modera
 |---|---|---|
 | Who it applies to | A current member | Anyone who ever joined, one who left included |
 | The person | Leaves the community now | Leaves the community now |
-| Their messages | Stay | Stay, unless **Also delete every message they wrote here** is checked: each of their messages, posts and replies, in every room, becomes "This message was deleted." |
+| Their messages | Stay | Stay, unless **Also delete every message they wrote here** is checked: each of their messages, posts and replies, in every room, is deleted: it shows as "This message was deleted.", except in an announcements room, which leaves deleted messages out |
 | Joining again | With the link, as `admission` allows | Refused — any link reads to them as not working — until the ban is lifted |
 
 **Lift ban** does not bring them back: they may join again with the link (in an invite-only community,
@@ -445,7 +445,7 @@ CLI. Each link: [navigation.md → Community](navigation.md#community).
 
 - **A message** holds up to 4,000 characters and at most one image (PNG, JPEG, GIF or WebP, up to
   7 MB), which counts against the person's 1 GB of storage for images and files.
-- **A member edits** their own message ("(edited)") and **deletes** it ("This message was deleted.")
+- **A member edits** their own message ("(edited)") and **deletes** it ("This message was deleted."; an announcements room leaves a deleted message out)
   at any time; deleting a post hides its replies.
 - **A forum** searches titles and filters **All** / **Unanswered**; its posts are in order of latest
   activity, marked **New activity** since the person's last visit. The post's author, a moderator, an
