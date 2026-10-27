@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.188.0
+version: 6.189.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -373,7 +373,7 @@ A **page** is a small working tool a hub offers its team over the hub's bases: o
 
 - **Who sees one:** a person whose grant on the hub includes `conversation:write`, or a team user when the page sets `team_writes: true`. Until person attribution arrives, the base records the page, not the person, as the writer.
 - **Push and publish:** a `pages/` folder is the hub's whole set of pages, so deleting a page's folder deletes the page. Without a `pages/` folder, push leaves the pages alone. Push checks each page it writes against the hub's own connections and synced tools; every publish that syncs a change checks every page again against production's.
-- **Rolling out:** pages can be pushed and published today, but people cannot open them in the app until the hub shows its Pages section. Don't tell anyone a page is ready to use before then.
+- **Where people open them:** on web, from a support conversation's header (the pages with `show_in_conversation: true`) and the hub's Pages section, which that header also opens; not yet in the mobile app.
 - **The sandbox:** no network, storage, popups, modals (`confirm()` returns false), downloads or navigation. Inline every library within 512 KiB, at most 20 pages per hub.
 
 Manifest, push and publish rules, the MCP Apps messages a page may send, the sandbox, and a minimal page: [`references/pages.md`](references/pages.md).

@@ -4,7 +4,7 @@ A **page** is a small working tool a hub offers its people: a coach entering swi
 
 Pages are hub config: you write them in the hub folder, push them to a preview with `wayai push`, and publish them with the rest of the hub. Each page serves one audience. Today that is the hub's **team** only; customer pages come later.
 
-> **Rolling out.** Pages can be written, pushed, pulled and published today, but people cannot open them in the WayAI app yet: the page viewer and the hub's Pages section are still to come. Don't tell anyone a page is ready to use until the hub shows its Pages section.
+> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them and opens from that same header. The mobile app does not open pages yet.
 
 ## Table of Contents
 - [Folder Layout](#folder-layout)
@@ -120,6 +120,8 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 **Params** arrive in the host context, under a key in WayAI's namespace. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents.
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
+
+On web, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND` when the viewer may no longer use the page or the tool. A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
 
 A minimal page, with no SDK:
 
