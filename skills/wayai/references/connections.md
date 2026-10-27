@@ -87,6 +87,7 @@ Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_stat
 **Only an organization admin changes a hub's tags.** A hub's tags decide which tag-restricted org credentials it can use and which scope-tagged contacts it sees, so adding or removing one takes an owner or admin of the organization, or an API token whose grants carry `org:admin` over every hub of the org. A token whose `org:admin` grant is limited to some tags, or to one environment, changes only those tags, on hubs of that environment.
 - A push, a settings save or a publish that leaves the hub's tags as they are passes this rule for everyone, hub admins and CI tokens included.
 - One that adds or removes a tag is refused with `403`, naming the tags it would add and remove. If a push is refused because its `hub.yaml` lists tags the hub no longer has, `wayai pull` first.
+- A token limited by tag needs `hub:write` on the hub at the tags a change leaves, as it does at the tags the hub has now: a settings save or `wayai push` that moves the hub off every tag the token writes, or clears its tags, is refused with `403`. A CI sync into a branch preview asks this of the production hub the sync is for.
 - Publishing a preview whose tags differ from its production hub's carries a tag change to production, so only an organization admin can publish it. Until then, a hub admin's publish is refused: an organization admin publishes it, or sets the preview's tags back to production's.
 
 **Credential ↔ hub matching rule** (enforced in `OrgDO.listCredentialsForHub`):
