@@ -173,6 +173,7 @@ Only meaningful when the status has `triggersAgentResponse: true`. Lets a team m
 - `additional_instructions` — prose template injected into the agent turn on transition. Two placeholder forms:
   - `{{path.to.field}}` — dotted access, whitespace-tolerant. Strings/numbers/booleans render verbatim; arrays of primitives render comma-joined; nested objects/arrays of objects render as 2-space-indented JSON.
   - `{{additional_data}}` — full payload dumped as 2-space-indented JSON. Useful when the schema has lots of fields and you want them all in one block without per-field placeholders.
+  - Submitted values are data, never template text: a `{{…}}` the team member types reaches the agent unresolved, its paired braces written as `&#123;` / `&#125;`. Other placeholders (`{{now()}}`, `{{state(…)}}`, …) resolve only where you wrote them in `additional_instructions`.
 - The agent receives a single `<system_additional_instructions>` block containing the interpolated prose. The wrapper tag is **always emitted** on a `triggersAgentResponse` transition — empty body when there's no template or submitted data — so the agent turn fires unconditionally.
 
 ---
