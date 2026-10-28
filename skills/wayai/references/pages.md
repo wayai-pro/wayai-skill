@@ -87,7 +87,7 @@ A team page is offered only to people who may write through it:
 - an organization member or hub admin whose grant on the hub includes `conversation:write`;
 - one of the hub's team users, when the page sets `team_writes: true`.
 
-Anyone else does not see the page. Until person attribution arrives, the base records each write as made by **the page**, not by the person who made it.
+Anyone else does not see the page. The base records each write a page makes as made by **the person using it**, with their email in its audit. A page still writes as a tool does: a write to a reviewed record type stays a draft, as an agent's does.
 
 ## Push, Pull, Diff and Publish
 

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.189.0
+version: 6.189.1
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -371,7 +371,7 @@ Instagram reaches only contacts who wrote in the last 24 hours — check what ea
 
 A **page** is a small working tool a hub offers its team over the hub's bases: one self-contained HTML file (an [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) view, with WayAI as its host) plus a manifest, in `pages/<slug>/index.html` and `pages/<slug>/page.yaml`. The manifest names the page's audience (`team`; customer pages come later) and each Base Toolset tool it calls (`{ connection, tool, notify }`, tool names unique). A page reads and writes only through those tools, never the network.
 
-- **Who sees one:** a person whose grant on the hub includes `conversation:write`, or a team user when the page sets `team_writes: true`. Until person attribution arrives, the base records the page, not the person, as the writer.
+- **Who sees one:** a person whose grant on the hub includes `conversation:write`, or a team user when the page sets `team_writes: true`. The base records the person using the page as the writer of each change it makes.
 - **Push and publish:** a `pages/` folder is the hub's whole set of pages, so deleting a page's folder deletes the page. Without a `pages/` folder, push leaves the pages alone. Push checks each page it writes against the hub's own connections and synced tools; every publish that syncs a change checks every page again against production's.
 - **Where people open them:** on web, from a support conversation's header (the pages with `show_in_conversation: true`) and the hub's Pages section, which that header also opens; not yet in the mobile app.
 - **The sandbox:** no network, storage, popups, modals (`confirm()` returns false), downloads or navigation. Inline every library within 512 KiB, at most 20 pages per hub.
