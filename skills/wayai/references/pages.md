@@ -4,7 +4,9 @@ A **page** is a small working tool a hub offers its people: a coach entering swi
 
 Pages are hub config: you write them in the hub folder, push them to a preview with `wayai push`, and publish them with the rest of the hub. Each page serves one audience. Today that is the hub's **team** only; customer pages come later.
 
-> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them and opens from that same header. The mobile app does not open pages yet.
+Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look.
+
+> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. The mobile app does not open pages yet.
 
 ## Table of Contents
 - [Folder Layout](#folder-layout)
@@ -12,6 +14,7 @@ Pages are hub config: you write them in the hub folder, push them to a preview w
 - [Who Sees a Team Page](#who-sees-a-team-page)
 - [Push, Pull, Diff and Publish](#push-pull-diff-and-publish)
 - [Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)
+- [Designing a Page](#designing-a-page)
 - [The Sandbox: What a Page Cannot Do](#the-sandbox-what-a-page-cannot-do)
 - [Limits](#limits)
 
@@ -97,6 +100,7 @@ Anyone else does not see the page. The base records each write a page makes as m
 - **Diff** shows pages under **Pages:**: `+ <slug>` added, `- <slug>` deleted, and `~ <slug>: <fields>` changed, where `html` in the field list means the HTML changed. Every push-time refusal above prints with push's other warnings, and the push writes none of the refused pages. A page the push leaves in place keeps every connection it names from being deleted by that push.
 - **Publish** copies the preview's pages to production, by slug. The publish summary lists added, updated and removed pages under **Pages**. Every publish that syncs a change checks every page again against **production's own** connections and synced tool lists, the pages it does not change included, and a page production refuses fails the publish, naming its issues. A publish with nothing to sync (`Production is already up to date`) checks nothing.
 - **A connection with no token yet is checked only partly when a page is copied.** A toolset connection's token never travels with a copy. So on a first publish, a new preview or a CI branch preview, each toolset connection arrives with no token, and its pages are still copied. Only the checks that need the token wait: customer scope and signed file URLs. The page calls nothing through that connection until the hub sets its token (`wayai set-connection-credential` on a preview; the production credential in the connections tab on production). The first publish that syncs a change after production's token is saved checks the page fully; saving the token alone is no change to publish.
+- **Design warnings never stop a push.** Push and diff also print a warning for each design rule a page breaks, in the same block, marked `(design)`: [The Design Warnings](#the-design-warnings).
 - **A push checks only the pages it writes.** Pushing a page the hub already holds unchanged checks nothing, so a CI branch preview takes back its own pages. Pushing a changed or new page is held to every rule, so set the token of a preview's toolset connection before you push a page that calls it.
 
 ## Writing a Page as an MCP Apps View
@@ -117,7 +121,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 
 **What the host does not support:** display-mode requests, and the tool-input and tool-result notifications. No tool call opens the page: people open it from the hub, so a page never waits for a tool's input or result to start.
 
-**Params** arrive in the host context, under a key in WayAI's namespace. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents.
+**Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents.
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
@@ -154,15 +158,17 @@ A minimal page, with no SDK:
       window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     }
 
-    // The MCP Apps protocol version this page speaks (the SDK fills it in for you).
-    const PROTOCOL_VERSION = '<the MCP Apps protocol version>';
+    // The MCP Apps protocol version WayAI's host speaks (the SDK fills it in for you).
+    const PROTOCOL_VERSION = '2026-01-26';
 
     async function main() {
-      await request('ui/initialize', {
+      const { hostContext } = await request('ui/initialize', {
         protocolVersion: PROTOCOL_VERSION,
         appInfo: { name: 'results', version: '1.0.0' },
         appCapabilities: {},
       });
+      // The viewer's theme (Designing a Page has the rest: theme switches, language, states).
+      document.documentElement.setAttribute('data-theme', hostContext.theme);
       notify('ui/notifications/initialized', {});
       const list = document.getElementById('athletes');
       try {
@@ -184,6 +190,241 @@ A minimal page, with no SDK:
 ```
 
 Build each list from text nodes (`textContent`), never by pasting record values into `innerHTML`: a page shows data its viewers and agents wrote.
+
+## Designing a Page
+
+A page looks like the WayAI app by default. The host hands every page WayAI's look, and this guide says how to build on it. Nothing here is enforced: push warns about a few of these rules ([The Design Warnings](#the-design-warnings)) and never refuses a page for its design.
+
+### Start From the Scaffold
+
+```bash
+wayai page new results                          # pages/results/page.yaml and pages/results/index.html
+wayai page new review-queue --title "Review queue" --hub support
+```
+
+`wayai page new <slug>` writes a starter page into a hub folder, found by `wayai push`'s hub steps: the one `--hub` names, else the hub folder you are in, else the workspace's `default_hub`, else its only preview or new hub folder. Base folders and `default_base` play no part. `--title` sets what menus show (the slug in words by default), and `--audience` is `team`, the default and the only audience today. It never overwrites a file. Before writing anything, it refuses a slug that is not a folder name and `--audience customers` in the words push refuses them in, and it refuses a production mirror's folder and a hub folder already holding 20 pages.
+
+The starter page passes push as written, with no design warning. It already does what the rest of this section asks:
+
+- it is styled only with the tokens and the base classes;
+- it shows its list as one card per row on a narrow frame, and as a table once its container is 560px wide;
+- it speaks the MCP Apps messages by hand: no SDK to inline;
+- it follows the viewer's theme and language, and pads itself by the safe-area insets;
+- it shows loading, empty and error states, the host's refusal codes among the errors, with every string in English, Portuguese and Spanish.
+
+To make it list your records, add the tool to `page.yaml`'s `tools` and put its name in `LIST_TOOL` at the top of the page's script, then shape `nameOf` and `updatedOf` to your records' fields.
+
+### What Every Page Gets
+
+- **WayAI's base stylesheet**, placed before anything the page writes: every token for both themes, `body` defaults (the app font, 14px text, the theme's text and background colors, no margin), and the base classes. All of it sits in the `wayai-base` cascade layer, so any rule your page writes outside a layer wins over it, whatever its specificity. So does a rule in a layer of your own: `wayai-base` is declared first.
+- **The app font**, Plus Jakarta Sans, as `--font-sans`, already loaded.
+- **Neither counts toward the page's 512 KiB.** Do not inline them.
+- **The host context** in the answer to `ui/initialize`:
+
+| Field | What it holds |
+|-------|---------------|
+| `theme` | `light` or `dark`: the appearance the viewer chose in WayAI |
+| `locale` | `en`, `pt` or `es`: the viewer's app language |
+| `styles.variables` | Every MCP Apps standard style variable, at the current theme's values |
+| `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
+| `wayai.page` | The page's `slug` and `title` |
+| `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
+| `platform` | `web` |
+| `containerDimensions` | The page's frame: `width` and `height` in CSS pixels |
+| `safeAreaInsets` | How far the device's safe area reaches into the frame, per side, in CSS pixels |
+
+Once the page sends `ui/notifications/initialized`, a change reaches it as `ui/notifications/host-context-changed`, carrying only the fields that changed: a theme switch, a language switch, or a resize of its frame. A change made before `initialized` arrives right after it.
+
+### Styling With the Tokens
+
+Style with the tokens, never with fixed colors: a token holds each theme's value, so a page written with them follows the viewer's theme. Every token is a CSS custom property the base stylesheet sets on `:root`.
+
+**The MCP Apps standard style variables.** A page written for another MCP Apps host reads these too.
+
+| Family | Names |
+|--------|-------|
+| Backgrounds | `--color-background-{primary,secondary,tertiary,inverse,ghost,info,danger,success,warning,disabled}` |
+| Text | `--color-text-{primary,secondary,tertiary,inverse,ghost,info,danger,success,warning,disabled}` |
+| Borders | `--color-border-{primary,secondary,tertiary,inverse,ghost,info,danger,success,warning,disabled}` |
+| Focus rings | `--color-ring-{primary,secondary,inverse,info,danger,success,warning}` |
+| Fonts | `--font-{sans,mono}`, `--font-weight-{normal,medium,semibold,bold}` |
+| Text sizes | `--font-text-{xs,sm,md,lg}-{size,line-height}`: 12, 14, 16 and 18px |
+| Heading sizes | `--font-heading-{xs,sm,md,lg,xl,2xl,3xl}-{size,line-height}`: 16, 18, 22, 24, 32, 36 and 48px |
+| Radii | `--border-radius-{xs,sm,md,lg,xl,full}`: 2, 4, 6, 8 and 12px, and a pill |
+| Borders and shadows | `--border-width-regular`, `--shadow-{hairline,sm,md,lg}` |
+
+**WayAI's own tokens**, for what the standard has no name for:
+
+| Token | What it is for |
+|-------|----------------|
+| `--wayai-color-accent` | The brand accent: primary buttons, links, selection |
+| `--wayai-color-on-accent` | Text and icons on the accent or on a danger fill |
+| `--wayai-color-card` | A card, list or table surface |
+| `--wayai-color-input` | A form field's fill |
+| `--wayai-color-input-border` | A form field's border |
+| `--wayai-space-1` … `--wayai-space-6`, `--wayai-space-8`, `--wayai-space-10`, `--wayai-space-12` | Spacing: 4px times its number (`--wayai-space-3` is 12px) |
+| `--wayai-control-height` | The least height of a button, field or list row: 40px, 44px under `pointer: coarse` |
+
+```css
+.summary { padding: var(--wayai-space-4); background: var(--wayai-color-card); border-radius: var(--border-radius-lg); }
+.summary h2 { font-size: var(--font-heading-sm-size); color: var(--color-text-primary); }
+.summary .delta { color: var(--color-text-success); }
+```
+
+- **A color no token names**, such as a chart's series, goes in a custom property of your own (`--series-1`), with a value for each theme under `:root[data-theme="light"]` and `:root[data-theme="dark"]`.
+- **A `var()` fallback is fine** (`var(--color-text-primary, #151619)`): the token is always set, so the fallback never shows.
+
+### Light and Dark Mode
+
+The base stylesheet opens in the viewer's theme. To follow a switch while the page is open, set `data-theme` on `<html>` from the host context's `theme`, at `ui/initialize` and on every `host-context-changed` that carries one; the base stylesheet's `:root[data-theme="light"]` and `:root[data-theme="dark"]` rules do the rest. The MCP Apps SDK's `applyDocumentTheme` does the same. A page that never sets it keeps the theme it opened in until it is reopened.
+
+```js
+function applyContext(changed) {   // the ui/initialize answer's hostContext, then each change
+  if (changed.theme) document.documentElement.setAttribute('data-theme', changed.theme);
+}
+```
+
+- Take the theme from the host context, never from `prefers-color-scheme`: the host context's is the appearance the viewer chose in WayAI.
+- Each theme sets `color-scheme`, so form controls and scrollbars follow it.
+
+### Layout and Spacing
+
+- **Wrap the page in `wayai-page`**: full width on a phone, at most 960px wide and centered, padded 16px (24px from 640px wide).
+- **Stack with `wayai-stack`** (12px apart) and lay out a row with `wayai-row` (wraps, 8px apart). Space everything else with the spacing tokens.
+- **Type scale:** text is 14px (`--font-text-sm-size`). A page title is `wayai-title` (22px, semibold). Use `--font-text-xs-size` for captions and metadata, and `wayai-muted` for secondary text.
+- **Radii:** cards, lists and tables use `--border-radius-lg`; buttons and fields `--border-radius-md`.
+
+### The Base Classes
+
+The host's stylesheet defines these. A modifier goes beside its block's class: `class="wayai-button wayai-button--primary"`.
+
+| Class | What it is |
+|-------|------------|
+| `wayai-page` | The page's content column |
+| `wayai-stack` | A vertical stack |
+| `wayai-row` | A horizontal row that wraps, its items centered |
+| `wayai-title` | A page or section title |
+| `wayai-muted` | Secondary text: hints, captions, metadata |
+| `wayai-card` | A raised surface with a border, for a group of content |
+| `wayai-button` | A button, or a link styled as one: outlined, at least `--wayai-control-height` tall |
+| `wayai-button--primary` | The main action, filled with the accent |
+| `wayai-button--danger` | A destructive action, filled with the danger color |
+| `wayai-button--ghost` | A quiet action with no border or fill |
+| `wayai-field` | A form field: its label, its control and a hint, stacked |
+| `wayai-label` | A form label |
+| `wayai-input` | A text input, select or textarea, full width |
+| `wayai-list` | A list (`ul`/`ol`) on a card surface, rows divided |
+| `wayai-list-item` | One row of a `wayai-list` |
+| `wayai-table-wrap` | Wraps a `wayai-table`, so a wide table scrolls sideways instead of widening the page |
+| `wayai-table` | A data table |
+| `wayai-badge` | A small status label, with `wayai-badge--info`, `wayai-badge--success`, `wayai-badge--warning` and `wayai-badge--danger` |
+| `wayai-alert` | A message block, informational by default, with `wayai-alert--success`, `wayai-alert--warning` and `wayai-alert--danger` |
+| `wayai-empty` | An empty, loading or unavailable state: centered, muted |
+
+```html
+<main class="wayai-page">
+  <h1 class="wayai-title">Results</h1>
+  <form class="wayai-card wayai-stack" id="entry">
+    <div class="wayai-field">
+      <label class="wayai-label" for="time">Time</label>
+      <input class="wayai-input" id="time" name="time" inputmode="decimal" required>
+      <span class="wayai-muted">Seconds, e.g. 58.21</span>
+    </div>
+    <div class="wayai-row">
+      <button class="wayai-button wayai-button--primary" type="submit">Save result</button>
+      <button class="wayai-button wayai-button--ghost" type="reset">Clear</button>
+    </div>
+  </form>
+  <div class="wayai-table-wrap">
+    <table class="wayai-table">…</table>
+  </div>
+</main>
+```
+
+**`hidden` and the base classes.** A base class that sets `display`, such as `wayai-empty` or `wayai-stack`, wins over the browser's own rule for the `hidden` attribute, so a hidden element keeps showing. Add `[hidden] { display: none !important; }` to your styles, as the scaffold does.
+
+### Responsive Layout
+
+- **The frame is the page's screen.** It fills the area the page opens in. Media queries and container queries measure the frame, not the device, and resizing it re-lays the page out as it happens. A `<meta name="viewport">` does nothing inside the frame.
+- **Write mobile first.** Make the narrow layout the default, and widen it inside `@media (min-width: …)` or a container query; 640px is where `wayai-page` widens its padding. Give nothing a fixed width wider than a phone outside such a query.
+- **Prefer container queries for a component**: `container-type: inline-size` on its wrapper, then `@container (min-width: 560px) { … }`. It then fits whatever area it lands in.
+- **Tables scroll or become cards.** Wrap a table in `wayai-table-wrap`, so it scrolls sideways on a narrow frame, or show the rows as cards until the container is wide enough for columns (the scaffold does both).
+- **Touch.** Under `@media (pointer: coarse)`, the base stylesheet raises `--wayai-control-height` to 44px and sets `wayai-input`'s text to 16px, so a phone does not zoom into a focused field. Make your own tap targets at least `--wayai-control-height` tall, and do not hide an action behind hover alone.
+- **Safe area.** Pad the page by `safeAreaInsets` when they are not 0, so content clears a notch or a home indicator. They are 0 on every side the app already keeps clear.
+
+### Accessibility
+
+- **Contrast.** The token pairs (a text token on its background token, `--wayai-color-on-accent` on the accent) are the app's own. In light mode, `--color-text-danger` on the page background and white on `wayai-button--danger` reach 3.1:1: enough for large text and for a control's outline, not for body text. Write an error's sentence in `--color-text-primary`, as `wayai-alert--danger` does, and give a danger button a clear label.
+- **Focus.** `wayai-button` and `wayai-input` show a 2px `--color-ring-primary` ring on `:focus-visible`. Never remove an outline without a ring of your own, and give a control you build yourself the same ring.
+- **Real controls.** Use `<button>` for actions and `<a>` only for links; a clickable `<div>` is unreachable by keyboard.
+- **Labels.** Give every field a `<label for>` (`wayai-label`), or an `aria-label` when there is no room for one, and every icon-only button an `aria-label`. Put hints in text, not only in a placeholder.
+- **Language.** Set `<html lang>` from the host context's `locale`.
+- **Announce changes.** Mark the region a load or a save updates with `aria-live="polite"` (and `aria-busy="true"` while it loads), and an error with `role="alert"`.
+
+### Loading, Empty and Error States
+
+Every list or value a page reads from a tool has three states besides its data:
+
+- **Loading:** a `wayai-empty` reading "Loading…", with the region `aria-busy`. Disable the buttons that would start the same call again.
+- **Empty:** a `wayai-empty` saying what is missing and, when the viewer can fix it, how: "No results for this meet yet. Add the first one above."
+- **Error:** a `wayai-alert wayai-alert--danger` with `role="alert"`, a sentence saying what failed, and a "Try again" button. Never leave a spinner running or a list silently empty.
+
+Write each refusal of [a tool call](#writing-a-page-as-an-mcp-apps-view) for the viewer:
+
+| What came back | What to show |
+|----------------|--------------|
+| `isError` with `structuredContent.code` `PAGE_REVISION_STALE` | The page was updated: ask the viewer to reload it (the host also offers a reload). No call succeeds until then, so offer no retry |
+| `isError` with `RATE_LIMIT_EXCEEDED` | Too many requests: try again after `retry_after_seconds`, the buttons disabled until then (one timer, not a poll) |
+| `isError` with `AUTHORIZATION_ERROR` | The page is no longer available to this viewer |
+| `isError` with `NOT_FOUND` | In your words, that the page or what it shows is not available. The result's text says which: `Page not found` (no longer offered to this viewer) or `Page tool not found` (the page called a tool its `page.yaml` does not list) |
+| `isError` with `VALIDATION_ERROR` | The tool refused the arguments: point at the field, with the result's text |
+| `isError` with no `structuredContent` | The tool's own refusal: show its text |
+| A JSON-RPC error | The call did not get through: "Could not reach WayAI. Try again." |
+
+### UI Text
+
+- **Short and plain.** Sentence case, no exclamation marks, no jargon. Address the viewer as "you".
+- **Buttons name their action:** "Save result", "Delete athlete", not "OK" or "Submit".
+- **An error says what happened and what to do next**, never a code, an id or a stack trace.
+- **A confirmation names what it will do:** "Delete Ana's result?" with "Delete" and "Cancel" buttons (`confirm()` returns `false` in a page).
+- **Your text, every language.** Write each string in English, Portuguese and Spanish ([Switching Language](#switching-language)); a record's own values stay as written.
+
+### Switching Language
+
+The host context's `locale` is the viewer's app language, `en`, `pt` or `es`, and `host-context-changed` carries a new one when the viewer switches. Keep every string in one table per language, pick the table from `locale`, and redraw on a change:
+
+```js
+const STRINGS = {
+  en: { save: 'Save result', empty: 'No results yet.' },
+  pt: { save: 'Salvar resultado', empty: 'Nenhum resultado ainda.' },
+  es: { save: 'Guardar resultado', empty: 'Todavía no hay resultados.' },
+};
+let locale = 'en';
+const t = (key) => (STRINGS[locale] ?? STRINGS.en)[key];
+
+function applyContext(changed) {
+  if (changed.locale) {
+    locale = changed.locale;
+    document.documentElement.lang = locale;
+    render();   // redraw every string from STRINGS
+  }
+}
+```
+
+Format numbers and dates for the same locale: `new Intl.NumberFormat(locale).format(58.21)`, `date.toLocaleDateString(locale)`.
+
+### The Design Warnings
+
+`wayai push` and `wayai diff` read every page in the `pages/` folder, changed or not, and print a warning for each rule below a page breaks, in the same block as the platform's warnings: `page "<slug>" (design): …`. A warning never stops a push. Each rule reads the page's text, so each has limits:
+
+| Warning | When | Not read |
+|---------|------|----------|
+| Hard-coded colors | A hex color, or `rgb()`, `hsl()` and the other color functions, in a color property (`color`, `background`, `border`, `outline`, `fill`, `stroke`, …) of a `<style>` or a `style` attribute | A `var()` fallback, a `color-mix()` from a token, your own custom property's value, shadows, named colors (`white`), colors set from script or in SVG attributes |
+| No dark mode | The HTML never names `data-theme` (or `applyDocumentTheme`) | Whether it is actually set |
+| Fixed widths | A `width` or `inline-size` over 430px, outside every media and container query | `min-width`, `width` attributes |
+| Tables that overflow | A table with nothing in the page that lets it fit a phone: no `wayai-table-wrap`, no `overflow` of `auto` or `scroll`, and no table rule inside a media or container query | Which table is handled: one handled table passes them all |
+| Loads the sandbox refuses | A `<script src>`, a stylesheet `<link>`, an image loading anything but a `data:` or `blob:` URL, any frame, video or audio source (a `data:` one too), a CSS `url()` or `@import` of a file, and `fetch`, `WebSocket` or `EventSource` called with a literal URL | Markup inside script strings, URLs built at run time |
+| No empty state / no error state | A page that declares tools and builds a list, with no `wayai-empty` and no check for zero rows (`.length === 0`, `!rows.length`), or no `isError` and no `wayai-alert` | Whether the check guards that list: an inlined library holding those words passes too |
 
 ## The Sandbox: What a Page Cannot Do
 
