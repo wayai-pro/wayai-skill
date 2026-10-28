@@ -366,7 +366,7 @@ A gate is a decisions monitor that answers its own questions and lets its rules 
 # agents/holiday-check.yaml — the gate's monitor
 name: Holiday Check
 role: monitor
-connection: OpenRouter              # a connection that serves decisions models
+connection: OpenRouter              # a connection that serves decisions models (OpenRouter or TypeSafe)
 settings:
   model: jev-latest                 # a decisions model
 instructions: |
@@ -399,7 +399,7 @@ automations:
     gate: { monitor: "Holiday Check" }
 ```
 
-- **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) — or `automation_item` for an item gate — bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter today), which each run checks. A hub may hold one per automation; any number of automations may share one.
+- **The gate's monitor** is a `monitor` on `trigger: automation_fire` ([agents/roles-and-settings.md](agents/roles-and-settings.md#an-automations-fire-gate--automation_fire)) — or `automation_item` for an item gate — bound to a **decisions model** — what a save checks — on a connection that serves one (OpenRouter or TypeSafe), which each run checks. A hub may hold one per automation; any number of automations may share one.
 - **What it sees:** its own instructions, and the run as data: the automation (name, description, purpose, trigger, target, the action's type, channel and agent), the run's time in UTC and in the automation's timezone (local date, time and weekday), and what fired it (`schedule`, `event`, `webhook`, `run_now` or `retry`). An event's run — and its retries — also sees the event and its conversation, as its tasks receive them ([Event Triggers](#event-triggers)), and a webhook delivery's run the delivery's body, exactly as received, and when it was received ([Webhook Triggers](#webhook-triggers)), as `trigger_data`: data, never inside the instructions.
 - **What it decides:** the first rule whose conditions all hold, else `fallback`; with no `fallback`, the run is **skipped**. Its conditions read its answer's fields and their `{field}_confidence` directly — a gate needs no `evaluation_variables`.
   - `run` — the run fires as configured.

@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.190.2
+version: 6.191.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -190,7 +190,7 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 
 | Category | Examples |
 |----------|----------|
-| **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI (required for AI) |
+| **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI (required for AI); TypeSafe (decisions models for monitors and gates only) |
 | **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend (email), Telegram (API Key — auto-created) |
 | **Tool — Native** | Wayai (auto-created), External Resources (API Key), Base Toolset (Bearer Token — a token bound to one toolset of a base) |
 | **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |

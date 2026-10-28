@@ -194,6 +194,12 @@ settings:
   reasoning_effort: none        # low|medium|high|none (none omits the param; direct Grok, not via OpenRouter)
 ```
 
+**TypeSafe** (service: TypeSafe — closed-set `monitor`, `conversation_evaluator` and `message_evaluator` agents only):
+```yaml
+settings:
+  model: jev-latest             # jev-latest|jev-1.14.0|jev-1.13.0 — a decisions model; no other setting applies
+```
+
 ### Reasoning / thinking by provider
 
 Each provider exposes one or more reasoning controls, named to match its schema. The key name must be exact — a mismatched key (e.g. a nested `thinking:` object on Anthropic, or `max_output_tokens` on Gemini) is **silently stripped on `wayai push`**.
@@ -959,7 +965,7 @@ monitor_config:
 | `skip` | The run does not fire. |
 
 - **Only these three.** A gate has no tools and no conversation, so `none`, `call_tool`, `hold`, `rewrite` and `steer` are refused on it — and its three actions are refused on every other trigger. With no rule matching and no `fallback`, the run is **skipped**.
-- **A decisions model only.** An automation can name the monitor as its gate only while its model is a decisions model — a save, a push and a publish refuse any other. Each run also needs the monitor enabled and on a connection that serves decisions models (OpenRouter today), which only the run checks: a gate moved off a decisions model later, disabled, or on another connection skips every run of the automations it gates with the reason shown, until it is fixed.
+- **A decisions model only.** An automation can name the monitor as its gate only while its model is a decisions model — a save, a push and a publish refuse any other. Each run also needs the monitor enabled and on a connection that serves decisions models (OpenRouter or TypeSafe), which only the run checks: a gate moved off a decisions model later, disabled, or on another connection skips every run of the automations it gates with the reason shown, until it is fixed.
 - **Its conditions read its answer directly**: each field of its schema and its `{field}_confidence`. A gate needs no `evaluation_variables`.
 - **Refused on this trigger:** `flag_conditions` (there is no conversation to flag), `history_messages` and `include_tool_results` (there is no conversation to read). Like every monitor with `rules`, it needs a `response_format`.
 - **Not limited per hub**: each automation names its own gate, and several automations may share one.

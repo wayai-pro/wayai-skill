@@ -108,7 +108,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 ---
 
 **Supported connectors (non-OAuth):**
-- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI)
+- All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI, TypeSafe)
 - Channel connectors with API Key auth (Resend, Telegram)
 - Tool / custom variant (REST API)
 - Tool / mcp variant (MCP Server — Bearer Token auth)
@@ -281,7 +281,7 @@ The **category**, not the HTTP status, says what to fix. A rejected key shows as
 
 | Type | Description |
 |------|-------------|
-| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI) |
+| `Agent` | LLM providers for AI agents (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI), and TypeSafe's decisions models |
 | `Channel` | Messaging channels (WhatsApp, Instagram, Resend, Telegram) |
 | `Tool` | Agent tools. One type with three variants (disambiguate with `service:`): **native** — platform built-ins (Wayai, External Resources, Base Toolset); **custom** — your own API integrations (REST API); **mcp** — external MCP servers (MCP Server) |
 | `STT` | Speech-to-text services (Groq STT, OpenAI STT, ElevenLabs STT) |
@@ -303,6 +303,7 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | API Key | LLM provider for Google Gemini models. |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | API Key | Multi-provider LLM gateway with access to OpenAI, Anthropic, Google, xAI, DeepSeek, MiniMax, Kimi, GLM, Qwen, and Xiaomi models. |
 | xAI | `59b0864f-55ec-4284-9af3-62ebd82e33ce` | API Key | LLM provider for xAI Grok models. |
+| TypeSafe | `0da558b0-e4b6-43f4-b945-aeaf432965e2` | API Key | Decisions models from TypeSafe (Jev) for closed-set monitors and automation gates. |
 
 ### OpenAI
 
@@ -365,6 +366,20 @@ LLM providers for AI functionality. **At least one Agent connection required bef
 4. Click Save
 
 Direct access to Grok models (grok-4.7 default). Reaches xAI's API without the OpenRouter hop; Grok is also available via the OpenRouter connector (`x-ai/grok-*`).
+
+### TypeSafe
+
+**Prerequisites:** TypeSafe API key from [console.typesafe.ai](https://console.typesafe.ai)
+
+**Setup:**
+1. Settings → Organizations → Hub → Connections
+2. In the **Agent** group, click the **TypeSafe** card
+3. Fill the form:
+   - **Connection Name** (required): A name to identify this connection
+   - **API Key** (required): Your TypeSafe API key
+4. Click Save
+
+Direct access to TypeSafe's decisions models: `jev-latest` (default), `jev-1.14.0`, `jev-1.13.0`. A decisions model answers typed questions and writes no text, so a TypeSafe connection serves only a closed-set `monitor`, `conversation_evaluator` or `message_evaluator`, or an automation gate. The agent editor offers it to no other role, and a turn on it with a model that is not a decisions model fails with the `model_connector_mismatch` diagnostic rather than running. Enabling it binds no agent on its own, and it cannot be a hub's fallback connection. Jev is also available via the OpenRouter connector (`jev-latest`, `typesafe/jev-1.13`); a monitor moved from OpenRouter onto TypeSafe keeps working with either id.
 
 ### Claude Agent (Managed)
 
@@ -922,6 +937,7 @@ connections:
 | Google AI Studio | `c4d5e6f7-a8b9-0123-cdef-234567890123` | Agent | API Key |
 | OpenRouter | `4d7e9f23-1a2b-4c3d-9e8f-5a6b7c8d9e0f` | Agent | API Key |
 | xAI | `59b0864f-55ec-4284-9af3-62ebd82e33ce` | Agent | API Key |
+| TypeSafe | `0da558b0-e4b6-43f4-b945-aeaf432965e2` | Agent | API Key |
 | WhatsApp | `5fb214cb-aaa8-4b3d-8c65-c9370b3e7c85` | Channel | OAuth |
 | Instagram | `f9e8d7c6-5b4a-3210-9876-543210fedcba` | Channel | OAuth |
 | Resend | `a1b2c3d4-e5f6-4a89-b012-3e5e0d000001` | Channel | API Key |
