@@ -14,6 +14,7 @@ Start a page with `wayai page new <slug>`, which writes one already styled like 
 - [Who Sees a Team Page](#who-sees-a-team-page)
 - [Push, Pull, Diff and Publish](#push-pull-diff-and-publish)
 - [Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)
+- [Live Refresh](#live-refresh)
 - [Designing a Page](#designing-a-page)
 - [The Sandbox: What a Page Cannot Do](#the-sandbox-what-a-page-cannot-do)
 - [Limits](#limits)
@@ -209,6 +210,28 @@ A minimal page, with no SDK:
 
 Build each list from text nodes (`textContent`), never by pasting record values into `innerHTML`: a page shows data its viewers and agents wrote.
 
+## Live Refresh
+
+On web, an open team page hears when the data its tools reach may have changed. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
+
+```js
+let refresh;   // hostContext.wayai.refresh from the ui/initialize answer
+
+function onContextChanged(changed) {   // each host-context-changed's params
+  // `wayai` arrives whole whenever any of its fields changes (a theme switch too), so compare.
+  if (changed.wayai && changed.wayai.refresh !== refresh) {
+    refresh = changed.wayai.refresh;
+    loadAthletes();   // the same tools/call reads the page made when it opened
+  }
+}
+```
+
+- **What raises it:** a change in a base that one of the page's Base Toolset connections reaches, in that connection's environment, and the app's live connection coming back after a drop. Changes made while the connection was down are not replayed; the raise on its return stands for them.
+- **It is a hint, and it can be wrong both ways.** It says that something in those bases may have changed, never what. It rises for changes your page does not show. It can also miss one: when a base changes several times within about 5 seconds, only the first change may raise it. So read again after your page's own writes instead of waiting for it, and treat what your tool calls answer as the truth.
+- **It rises at most once until your page reads.** After a raise, WayAI raises it again only once a tool call your page makes has been answered, then once for every change since. While the page is hidden (another browser tab is in front), it does not rise; it rises once when the page is shown again.
+- **Every read counts toward the call limits** ([Limits](#limits)). Read again only what the page shows.
+- **Where it does not exist:** in the mobile app, and on customer pages. A change signal does not say whose record changed, so a customer page will never hear another customer's activity. Such a page has no `wayai.refresh`: read again after its own writes and when the viewer asks.
+
 ## Designing a Page
 
 A page looks like the WayAI app by default. The host hands every page WayAI's look, and this guide says how to build on it. Nothing here is enforced: push warns about a few of these rules ([The Design Warnings](#the-design-warnings)) and never refuses a page for its design.
@@ -248,11 +271,12 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
 | `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
+| `wayai.refresh` | A team page on web only: a number WayAI raises when the page's data may have changed ([Live Refresh](#live-refresh)) |
 | `platform` | `web` in the web app, `mobile` in the mobile app |
 | `containerDimensions` | The page's frame: `width` and `height` in CSS pixels |
 | `safeAreaInsets` | How far the device's safe area reaches into the frame, per side, in CSS pixels |
 
-Once the page sends `ui/notifications/initialized`, a change reaches it as `ui/notifications/host-context-changed`, carrying only the fields that changed: a theme switch, a language switch, a resize of its frame, or a change of its safe-area insets. A change made before `initialized` arrives right after it.
+Once the page sends `ui/notifications/initialized`, a change reaches it as `ui/notifications/host-context-changed`, carrying only the fields that changed: a theme switch, a language switch, a resize of its frame, a change of its safe-area insets, or a rise of `wayai.refresh`. A change made before `initialized` arrives right after it.
 
 ### Styling With the Tokens
 
