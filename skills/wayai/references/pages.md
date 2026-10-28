@@ -44,7 +44,7 @@ slug: results
 title: Resultados
 description: Enter times and placings per athlete and race
 audience: team
-team_writes: true               # team users without a grant may use this page
+team_writes: true               # team users without a grant may write through this page
 show_in_conversation: true
 order: 1
 params:                         # what a link may open the page with: a JSON Schema object
@@ -64,7 +64,7 @@ tools:                          # tool names must be unique across the manifest
 | `title` | Yes | 1–120 characters; what menus show |
 | `description` | No | Up to 500 characters; shown under the title in web menus (the mobile app's menus show titles only) |
 | `audience` | Yes | `team`. Customer pages are not available yet |
-| `team_writes` | No (`false`) | Opens the page to team users without a grant on the hub ([Who Sees a Team Page](#who-sees-a-team-page)) |
+| `team_writes` | No (`false`) | Lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)) |
 | `show_in_conversation` | No (`false`) | Offers the page from the conversation header to people who may open it. It orders what a conversation offers first; it never hides a page: on web every page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)) |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
 | `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link may open the page with |
@@ -86,14 +86,14 @@ tools:                          # tool names must be unique across the manifest
 - **What a note holds:** the page, the team member who called, and, per tool and record type, the number of calls and the ids of the records they answered (UUIDs only, at most the newest 10). Never the arguments, field values or any text from the page. One note per person and page, updated in place until the agent has read it.
 - **Never noted:** a `none` call, a call the tool refused or that failed, a page opened from the Pages section, and a page in the mobile app.
 
-The platform decides whether a tool reads or writes from the toolset, never from the manifest. Anyone a page admits may call any tool it declares, with any arguments that tool's schema accepts, so declare only the tools the page needs. The toolset's own rules (`writable_fields`, `base_filter`, `precondition`: [bases/toolsets.md](bases/toolsets.md)) still hold for every call.
+The platform decides whether a tool reads or writes from the toolset, never from the manifest. Anyone a page lets write may call any tool it declares, and anyone it offers reads only may call any of its read tools, each with any arguments that tool's schema accepts ([Who Sees a Team Page](#who-sees-a-team-page)), so declare only the tools the page needs. The toolset's own rules (`writable_fields`, `base_filter`, `precondition`: [bases/toolsets.md](bases/toolsets.md)) still hold for every call.
 
 ## Who Sees a Team Page
 
-A team page is offered only to people who may write through it:
+A team page is offered to everyone who may see the hub's conversations: an organization member or hub admin whose grant on the hub includes `conversation:read`, and each of the hub's team users. What the page does for them depends on whether they may write:
 
-- an organization member or hub admin whose grant on the hub includes `conversation:write`;
-- one of the hub's team users, when the page sets `team_writes: true`.
+- **Everything the page declares:** a grant on the hub that includes `conversation:write`, or a team user on a page that sets `team_writes: true`.
+- **Reads only:** everyone else. The platform runs only the tools the toolset itself classifies as reads: a record `get` or `list`, a relationship or file `list`, a file `get`, a SQL Action, `sql_query` and `describe_graph`. Any other tool, including one it cannot classify, is refused with nothing changed, as an `isError` result whose text says the person can view the page but not change data through it. Design the page so it still works for them: show the data, and expect its writes to be refused.
 
 Anyone else does not see the page. The base records each write a page makes as made by **the person using it**, with their email in its audit. A page still writes as a tool does: a write to a reviewed record type stays a draft, as an agent's does.
 
@@ -453,3 +453,8 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 | `params` schema | 16 KiB of JSON |
 | `title` / `description` | 120 / 500 characters |
 | Audiences | `team` |
+| Calls by one person through one page | 60 a minute |
+| Calls by one person through all of a hub's pages | 150 a minute |
+| Calls through all of a hub's pages, everyone together | 500 a minute |
+
+A call by a person who may only read counts twice toward the last two limits: the platform checks the tool's kind with the base before calling it. Opening a page counts once toward each limit for each Base Toolset connection its tools use, while the platform reads their kinds. A call past a limit is refused with `RATE_LIMIT_EXCEEDED` ([the refusal table](#loading-empty-and-error-states)). Opening a page past a limit still opens it.

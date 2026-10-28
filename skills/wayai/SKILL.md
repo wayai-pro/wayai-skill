@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.192.0
+version: 6.193.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -371,7 +371,7 @@ Instagram reaches only contacts who wrote in the last 24 hours — check what ea
 
 A **page** is a small working tool a hub offers its team over the hub's bases: one self-contained HTML file (an [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) view, with WayAI as its host) plus a manifest, in `pages/<slug>/index.html` and `pages/<slug>/page.yaml`. The manifest names the page's audience (`team`; customer pages come later) and each Base Toolset tool it calls (`{ connection, tool, notify }`, tool names unique). A page reads and writes only through those tools, never the network.
 
-- **Who sees one:** a person whose grant on the hub includes `conversation:write`, or a team user when the page sets `team_writes: true`. The base records the person using the page as the writer of each change it makes.
+- **Who sees one:** a person whose grant on the hub includes `conversation:read`, and the hub's team users. Each runs only the tools the toolset classifies as reads, unless their grant includes `conversation:write` or they are a team user on a page that sets `team_writes: true`. The base records the person using the page as the writer of each change it makes. Calls are limited to 60 a minute per person per page, 150 per person across a hub's pages, and 500 per hub ([references/pages.md](references/pages.md#limits)).
 - **Push and publish:** a `pages/` folder is the hub's whole set of pages, so deleting a page's folder deletes the page. Without a `pages/` folder, push leaves the pages alone. Push checks each page it writes against the hub's own connections and synced tools; every publish that syncs a change checks every page again against production's.
 - **Where people open them:** on web, from a support conversation's header (the pages with `show_in_conversation: true`) and the hub's Pages section, which that header and the Support nav's Pages item open; in the mobile app, from a support conversation's overflow menu, in a full-screen sheet.
 - **Start one and style it:** `wayai page new <slug>` writes a starter page styled like the app (tokens and base classes the host provides, light and dark mode, en/pt/es strings, loading, empty and error states, mobile-first). Style with the host's tokens, never fixed colors; push warns, and never refuses, when a page breaks a design rule.
