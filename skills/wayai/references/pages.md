@@ -6,7 +6,7 @@ Pages are hub config: you write them in the hub folder, push them to a preview w
 
 Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look.
 
-> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. The mobile app does not open pages yet.
+> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section.
 
 ## Table of Contents
 - [Folder Layout](#folder-layout)
@@ -62,10 +62,10 @@ tools:                          # tool names must be unique across the manifest
 |-------|----------|---------|
 | `slug` | No (the folder's name) | The page's immutable id |
 | `title` | Yes | 1–120 characters; what menus show |
-| `description` | No | Up to 500 characters; shown under the title in menus |
+| `description` | No | Up to 500 characters; shown under the title in web menus (the mobile app's menus show titles only) |
 | `audience` | Yes | `team`. Customer pages are not available yet |
 | `team_writes` | No (`false`) | Opens the page to team users without a grant on the hub ([Who Sees a Team Page](#who-sees-a-team-page)) |
-| `show_in_conversation` | No (`false`) | Offers the page from the conversation header to people who may open it |
+| `show_in_conversation` | No (`false`) | Offers the page from the conversation header to people who may open it. It orders what a conversation offers first; it never hides a page: on web every page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)) |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
 | `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link may open the page with |
 | `tools` | No (`[]`) | Up to 50 toolset tools the page calls, each `{ connection, tool, notify }` |
@@ -125,7 +125,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
-On web, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND`, whose causes, and what to show for each, are in [the refusal table](#loading-empty-and-error-states). A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
+On web and in the mobile app, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND`, whose causes, and what to show for each, are in [the refusal table](#loading-empty-and-error-states). A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
 
 A minimal page, with no SDK:
 
@@ -229,11 +229,11 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
-| `platform` | `web` |
+| `platform` | `web` in the web app, `mobile` in the mobile app |
 | `containerDimensions` | The page's frame: `width` and `height` in CSS pixels |
 | `safeAreaInsets` | How far the device's safe area reaches into the frame, per side, in CSS pixels |
 
-Once the page sends `ui/notifications/initialized`, a change reaches it as `ui/notifications/host-context-changed`, carrying only the fields that changed: a theme switch, a language switch, or a resize of its frame. A change made before `initialized` arrives right after it.
+Once the page sends `ui/notifications/initialized`, a change reaches it as `ui/notifications/host-context-changed`, carrying only the fields that changed: a theme switch, a language switch, a resize of its frame, or a change of its safe-area insets. A change made before `initialized` arrives right after it.
 
 ### Styling With the Tokens
 
