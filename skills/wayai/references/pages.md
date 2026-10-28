@@ -125,7 +125,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
-On web, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND` when the viewer may no longer use the page or the tool. A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
+On web, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND`, whose causes, and what to show for each, are in [the refusal table](#loading-empty-and-error-states). A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
 
 A minimal page, with no SDK:
 
@@ -258,7 +258,8 @@ Style with the tokens, never with fixed colors: a token holds each theme's value
 | Token | What it is for |
 |-------|----------------|
 | `--wayai-color-accent` | The brand accent: primary buttons, links, selection |
-| `--wayai-color-on-accent` | Text and icons on the accent or on a danger fill |
+| `--wayai-color-on-accent` | Text and icons on the accent or on the danger fill |
+| `--wayai-color-danger-fill` | A destructive action's fill, as `wayai-button--danger` uses it |
 | `--wayai-color-card` | A card, list or table surface |
 | `--wayai-color-input` | A form field's fill |
 | `--wayai-color-input-border` | A form field's border |
@@ -268,7 +269,7 @@ Style with the tokens, never with fixed colors: a token holds each theme's value
 ```css
 .summary { padding: var(--wayai-space-4); background: var(--wayai-color-card); border-radius: var(--border-radius-lg); }
 .summary h2 { font-size: var(--font-heading-sm-size); color: var(--color-text-primary); }
-.summary .delta { color: var(--color-text-success); }
+.summary .delta { padding: 0 var(--wayai-space-1); border-radius: var(--border-radius-sm); background: var(--color-background-success); color: var(--color-text-primary); }
 ```
 
 - **A color no token names**, such as a chart's series, goes in a custom property of your own (`--series-1`), with a value for each theme under `:root[data-theme="light"]` and `:root[data-theme="dark"]`.
@@ -308,7 +309,7 @@ The host's stylesheet defines these. A modifier goes beside its block's class: `
 | `wayai-card` | A raised surface with a border, for a group of content |
 | `wayai-button` | A button, or a link styled as one: outlined, at least `--wayai-control-height` tall |
 | `wayai-button--primary` | The main action, filled with the accent |
-| `wayai-button--danger` | A destructive action, filled with the danger color |
+| `wayai-button--danger` | A destructive action, filled with `--wayai-color-danger-fill` |
 | `wayai-button--ghost` | A quiet action with no border or fill |
 | `wayai-field` | A form field: its label, its control and a hint, stacked |
 | `wayai-label` | A form label |
@@ -354,7 +355,7 @@ The host's stylesheet defines these. A modifier goes beside its block's class: `
 
 ### Accessibility
 
-- **Contrast.** The token pairs (a text token on its background token, `--wayai-color-on-accent` on the accent) are the app's own. In light mode, `--color-text-danger` on the page background and white on `wayai-button--danger` reach 3.1:1: enough for large text and for a control's outline, not for body text. Write an error's sentence in `--color-text-primary`, as `wayai-alert--danger` does, and give a danger button a clear label.
+- **Contrast.** Every text the base classes color, except a disabled control's, reaches 4.5:1 on the page and on a card in both themes, hover included: white on `wayai-button--danger`'s `--wayai-color-danger-fill` is 4.83:1, and a colored badge or alert writes `--color-text-primary` on its tint. The status text tokens on their own do not. `--color-text-danger` is 3.06:1 on the light page background: enough for large text and for a control's outline, not for body text. `--color-text-info` and `--color-text-success` are 2.6:1 on a dark card: below even that, so on a card let a tint carry them, as the colored badges do. Write a sentence in `--color-text-primary`, as `wayai-alert--danger` does, and give a danger button a clear label.
 - **Focus.** `wayai-button` and `wayai-input` show a 2px `--color-ring-primary` ring on `:focus-visible`. Never remove an outline without a ring of your own, and give a control you build yourself the same ring.
 - **Real controls.** Use `<button>` for actions and `<a>` only for links; a clickable `<div>` is unreachable by keyboard.
 - **Labels.** Give every field a `<label for>` (`wayai-label`), or an `aria-label` when there is no room for one, and every icon-only button an `aria-label`. Put hints in text, not only in a placeholder.
