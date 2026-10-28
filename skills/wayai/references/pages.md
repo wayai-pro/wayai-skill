@@ -95,6 +95,8 @@ A team page is offered to everyone who may see the hub's conversations: an organ
 - **Everything the page declares:** a grant on the hub that includes `conversation:write`, or a team user on a page that sets `team_writes: true`.
 - **Reads only:** everyone else. The platform runs only the tools the toolset itself classifies as reads: a record `get` or `list`, a relationship or file `list`, a file `get`, a SQL Action, `sql_query` and `describe_graph`. Any other tool, including one it cannot classify, is refused with nothing changed, as an `isError` result whose text says the person can view the page but not change data through it. Design the page so it still works for them: show the data, and expect its writes to be refused.
 
+On web and in the mobile app, the page's top bar, drawn by WayAI outside the page, shows a reads-only viewer **View only**, and the page hears it as `wayai.viewerLevel: "read"` in the [host context](#what-every-page-gets): hide or disable its write controls then. The host itself refuses such a viewer's call to a tool it knows is not a read, without sending it, with the same kind of result: `isError: true`, a text for the viewer, no `structuredContent`. A call whose kind the host does not know (the platform could not read the kinds as the page opened) is sent, and the platform runs it only if it is a read. The platform refuses a write either way.
+
 Anyone else does not see the page. The base records each write a page makes as made by **the person using it**, with their email in its audit. A page still writes as a tool does: a write to a reviewed record type stays a draft, as an agent's does.
 
 ## Push, Pull, Diff and Publish
@@ -125,6 +127,17 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 **What the host refuses**, each with a JSON-RPC error: `ui/open-link`, `ui/update-model-context`, `ui/message`, `ui/download-file` and `resources/read`.
 
 **What the host does not support:** display-mode requests, and the tool-input and tool-result notifications. No tool call opens the page: people open it from the hub, so a page never waits for a tool's input or result to start.
+
+**Deletes and composite Actions are confirmed by the host.** On web and in the mobile app, when a page calls a tool the toolset classifies as a delete (a record, relationship or file delete, or a `batch` that allows a delete) or as a [composite Action](bases/toolsets.md#composite-actions), the host asks the viewer first, in a confirmation of its own drawn outside the page that names the page's title and the tool's name. The page cannot draw over it, restyle it or answer it.
+
+- **Run** sends the call, and the page gets the tool's result as usual.
+- **Cancel** (or dismissing the confirmation, or closing the page) sends nothing. The call is answered with a JSON-RPC error, code `-32000`, whose `data.code` is `TOOL_CALL_DECLINED`.
+- **Close page** on the confirmation closes the page without running the call, since the confirmation covers the page's own close.
+- **No asking again at once.** For 3 seconds after the viewer cancels, every call of the page's that needs a confirmation is answered `TOOL_CALL_DECLINED` without asking. So never re-send a declined call: the viewer said no.
+- **One confirmation at a time per page.** Another call that needs one while it is open is answered at once with the same error, `data.code` `CONFIRMATION_PENDING`, and nothing is asked or sent. Calls that need no confirmation go through meanwhile.
+- **It is a guard for the person, not a permission.** Who may write is the platform's rule ([Who Sees a Team Page](#who-sees-a-team-page)), checked on every call. When the platform could not read the tools' kinds as the page opened, the host does not know which tools delete, so it confirms nothing and sends the call.
+
+A page may still confirm a destructive action in its own UI, naming what will change ("Delete Ana's result?"); the viewer then confirms twice.
 
 **Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents.
 
@@ -234,6 +247,7 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
+| `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
 | `platform` | `web` in the web app, `mobile` in the mobile app |
 | `containerDimensions` | The page's frame: `width` and `height` in CSS pixels |
 | `safeAreaInsets` | How far the device's safe area reaches into the frame, per side, in CSS pixels |
@@ -385,14 +399,16 @@ Write each refusal of [a tool call](#writing-a-page-as-an-mcp-apps-view) for the
 | `isError` with `NOT_FOUND` | In your words, that the page or what it shows is not available. The result's text says which: `Page not found` (no longer offered to this viewer) or `Page tool not found` (the page called a tool its `page.yaml` does not list) |
 | `isError` with `VALIDATION_ERROR` | The tool refused the arguments: point at the field, with the result's text |
 | `isError` with no `structuredContent` | The tool's own refusal: show its text |
-| A JSON-RPC error | The call did not get through: "Could not reach WayAI. Try again." |
+| A JSON-RPC error with `data.code` `TOOL_CALL_DECLINED` | The viewer cancelled [the host's confirmation](#writing-a-page-as-an-mcp-apps-view): nothing was sent. Leave the page as it was, with no error, and never re-send the call |
+| A JSON-RPC error with `data.code` `CONFIRMATION_PENDING` | Another call is waiting for the viewer's confirmation: nothing was sent. Disable the action while a call runs |
+| Any other JSON-RPC error | The call did not get through: "Could not reach WayAI." with a "Try again" button the viewer presses. Never retry a call by itself: a call that writes may run twice, and a declined one would ask the viewer again |
 
 ### UI Text
 
 - **Short and plain.** Sentence case, no exclamation marks, no jargon. Address the viewer as "you".
 - **Buttons name their action:** "Save result", "Delete athlete", not "OK" or "Submit".
 - **An error says what happened and what to do next**, never a code, an id or a stack trace.
-- **A confirmation names what it will do:** "Delete Ana's result?" with "Delete" and "Cancel" buttons (`confirm()` returns `false` in a page).
+- **A confirmation names what it will do:** "Delete Ana's result?" with "Delete" and "Cancel" buttons (`confirm()` returns `false` in a page). The host also confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)), naming only the page and the tool.
 - **Your text, every language.** Write each string in English, Portuguese and Spanish ([Switching Language](#switching-language)); a record's own values stay as written.
 
 ### Switching Language
@@ -439,7 +455,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 - **An opaque origin.** The page runs in a sandboxed frame of its own. Inline `<script>` and `<style>`, and `eval` / `new Function`, work.
 - **No network.** `fetch`, XHR, WebSockets, remote scripts, stylesheets, images and fonts are all refused. Images and fonts work only as `data:` (or `blob:`) URLs. **Inline every library, the MCP Apps SDK included, inside the 512 KiB cap.** The page's only way out is `tools/call`.
 - **No storage.** No cookies, `localStorage`, `sessionStorage` or IndexedDB. Keep state in memory, and in the base through the page's tools.
-- **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`, so confirm a delete in the page's own UI (an "Are you sure?" button pair). A page cannot download or export a file.
+- **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download or export a file.
 - **No navigation.** Links and `location` changes do not leave the page, and `ui/open-link` is refused.
 - **Forms work, but a submit never navigates.** `<form onsubmit>` and Enter-to-save fire your handler. Call `event.preventDefault()` and save through `tools/call`.
 
