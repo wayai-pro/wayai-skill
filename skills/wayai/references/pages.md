@@ -79,7 +79,12 @@ tools:                          # tool names must be unique across the manifest
 - the tool is not in the connection's synced tool list, or is turned off there (sync its tools first: `wayai sync-mcp --connection "<name>"`);
 - the tool hands back a signed file URL, which a page never receives.
 
-**`notify`** (`none`, the default, or `summary`) is the most the conversation's agent may hear of the page's calls to that tool. Today the agent hears nothing of a page's calls. `notify` declares the ceiling the page will keep once page summaries arrive.
+**`notify`** (`none`, the default, or `summary`) is the most the conversation's agent hears of the page's calls to that tool. Put `summary` on the tools whose calls the agent should hear of: in practice, the write tools.
+
+- **What is noted:** a `summary` call that the tool answered, made on web from a page opened from a conversation's header. It is noted in that conversation, and the agent reads the note on its next turn.
+- **Only where the person may send:** a call is noted only when the person using the page may send a team message in that conversation, and, when the conversation has a contact, only once that contact is approved. A pending or blocked contact's conversation is never noted, and a page call never approves a contact.
+- **What a note holds:** the page, the team member who called, and, per tool and record type, the number of calls and the ids of the records they answered (UUIDs only, at most the newest 10). Never the arguments, field values or any text from the page. One note per person and page, updated in place until the agent has read it.
+- **Never noted:** a `none` call, a call the tool refused or that failed, a page opened from the Pages section, and a page in the mobile app.
 
 The platform decides whether a tool reads or writes from the toolset, never from the manifest. Anyone a page admits may call any tool it declares, with any arguments that tool's schema accepts, so declare only the tools the page needs. The toolset's own rules (`writable_fields`, `base_filter`, `precondition`: [bases/toolsets.md](bases/toolsets.md)) still hold for every call.
 
