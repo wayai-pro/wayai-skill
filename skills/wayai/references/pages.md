@@ -1,17 +1,18 @@
 # Pages
 
-A **page** is a small working tool a hub offers its people: a coach entering swim-meet results at the pool, a back-office review queue. It is one self-contained HTML file plus a manifest. The page reads and writes the hub's [bases](bases/README.md) through the hub's **Base Toolset** connections ([connections.md](connections.md#base-toolset)), calling only the toolset tools its manifest names. A page is an [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) view, and WayAI is its host. A coding agent that knows MCP Apps already knows the page API.
+A **page** is a small working tool a hub offers its people: a coach entering swim-meet results at the pool, a back-office review queue, an athlete checking their own results. It is one self-contained HTML file plus a manifest. The page reads and writes the hub's [bases](bases/README.md) through the hub's **Base Toolset** connections ([connections.md](connections.md#base-toolset)), calling only the toolset tools its manifest names. A page is an [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) view, and WayAI is its host. A coding agent that knows MCP Apps already knows the page API.
 
-Pages are hub config: you write them in the hub folder, push them to a preview with `wayai push`, and publish them with the rest of the hub. Each page serves one audience. Today that is the hub's **team** only; customer pages come later.
+Pages are hub config: you write them in the hub folder, push them to a preview with `wayai push`, and publish them with the rest of the hub. Each page serves one audience: the hub's **team**, or its **customers**, each of whom reaches only their own records and shared ones ([Customer Pages](#customer-pages)).
 
 Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look.
 
-> **Where people open them.** On web, a team member opens a page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section.
+> **Where people open them.** On web, a Hub User opens a customer page from the header of their own conversation with the hub, the one `https://app.wayai.pro/chat/<hubId>` opens, before its first message too; the mobile app does not offer customer pages yet. On web, a team member opens a team page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section.
 
 ## Table of Contents
 - [Folder Layout](#folder-layout)
 - [The Manifest](#the-manifest)
 - [Who Sees a Team Page](#who-sees-a-team-page)
+- [Customer Pages](#customer-pages)
 - [Push, Pull, Diff and Publish](#push-pull-diff-and-publish)
 - [Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)
 - [Live Refresh](#live-refresh)
@@ -64,9 +65,10 @@ tools:                          # tool names must be unique across the manifest
 | `slug` | No (the folder's name) | The page's immutable id |
 | `title` | Yes | 1–120 characters; what menus show |
 | `description` | No | Up to 500 characters; shown under the title in web menus (the mobile app's menus show titles only) |
-| `audience` | Yes | `team`. Customer pages are not available yet |
-| `team_writes` | No (`false`) | Lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)) |
-| `show_in_conversation` | No (`false`) | Offers the page from the conversation header to people who may open it. It orders what a conversation offers first; it never hides a page: on web every page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)) |
+| `audience` | Yes | `team` or `customers` ([Customer Pages](#customer-pages)) |
+| `team_writes` | No (`false`) | A team page's: lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)). Push refuses it on a customer page |
+| `customer_writes` | No (unset) | A customer page's: lets each customer run its tools that change data, on their own records only ([Customer Pages](#customer-pages)). Push refuses `true` on a team page |
+| `show_in_conversation` | No (`false`); `true` on a customer page | Offers the page from the conversation header to people who may open it. On a team page it orders what a conversation offers first and never hides a page: on web every team page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)). The header is a customer's only way into a page, so push refuses a customer page without it |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
 | `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link may open the page with |
 | `tools` | No (`[]`) | Up to 50 toolset tools the page calls, each `{ connection, tool, notify }` |
@@ -76,18 +78,19 @@ tools:                          # tool names must be unique across the manifest
 - the hub has no connection of that name, or two connections share it;
 - the connection is not a Base Toolset;
 - the connection has no token yet (save it first);
-- the toolset is customer-scoped, since a team member names no single customer;
+- on a team page, the toolset is customer-scoped, since a team member names no single customer;
+- on a customer page, the customer-facing rule refuses the toolset; the refusal says what it reaches ([Customer Pages](#customer-pages));
 - the tool is not in the connection's synced tool list, or is turned off there (sync its tools first: `wayai sync-mcp --connection "<name>"`);
 - the tool hands back a signed file URL, which a page never receives.
 
-**`notify`** (`none`, the default, or `summary`) is the most the conversation's agent hears of the page's calls to that tool. Put `summary` on the tools whose calls the agent should hear of: in practice, the write tools.
+**`notify`** (`none`, the default, or `summary`) is the most the conversation's agent hears of the page's calls to that tool. Put `summary` on the tools whose calls the agent should hear of: in practice, the write tools. A customer page's tools are all `none`: push refuses `summary` on one, since the agent hears nothing of a customer page's calls yet.
 
 - **What is noted:** a `summary` call that the tool answered, made on web from a page opened from a conversation's header. It is noted in that conversation, and the agent reads the note on its next turn.
 - **Only where the person may send:** a call is noted only when the person using the page may send a team message in that conversation, and, when the conversation has a contact, only once that contact is approved. A pending or blocked contact's conversation is never noted, and a page call never approves a contact.
 - **What a note holds:** the page, the team member who called, and, per tool and record type, the number of calls and the ids of the records they answered (UUIDs only, at most the newest 10). Never the arguments, field values or any text from the page. One note per person and page, updated in place until the agent has read it.
-- **Never noted:** a `none` call, a call the tool refused or that failed, a page opened from the Pages section, and a page in the mobile app.
+- **Never noted:** a `none` call, a call the tool refused or that failed, a page opened from the Pages section, a page in the mobile app, and every call of a customer page.
 
-The platform decides whether a tool reads or writes from the toolset, never from the manifest. Anyone a page lets write may call any tool it declares, and anyone it offers reads only may call any of its read tools, each with any arguments that tool's schema accepts ([Who Sees a Team Page](#who-sees-a-team-page)), so declare only the tools the page needs. The toolset's own rules (`writable_fields`, `base_filter`, `precondition`: [bases/toolsets.md](bases/toolsets.md)) still hold for every call.
+The platform decides whether a tool reads or writes from the toolset, never from the manifest. Anyone a page lets write may call any tool it declares, and anyone it offers reads only may call any of its read tools, each with any arguments that tool's schema accepts, whatever the page's own code does ([Who Sees a Team Page](#who-sees-a-team-page), [Customer Pages](#customer-pages)), so declare only the tools the page needs. The toolset's own rules (`writable_fields`, `base_filter`, `precondition`: [bases/toolsets.md](bases/toolsets.md)) still hold for every call.
 
 ## Who Sees a Team Page
 
@@ -100,6 +103,46 @@ On web and in the mobile app, the page's top bar, drawn by WayAI outside the pag
 
 Anyone else does not see the page. The base records each write a page makes as made by **the person using it**, with their email in its audit. A page still writes as a tool does: a write to a reviewed record type stays a draft, as an agent's does.
 
+## Customer Pages
+
+A customer page (`audience: customers`) serves the hub's customers: each person using it reaches only their own records and shared ones, through the hub's Base Toolset connections, as a customer-facing agent does.
+
+```yaml
+# pages/my-results/page.yaml: for the athletes
+title: My results
+audience: customers
+show_in_conversation: true      # required: the conversation header is a customer's only way in
+tools:                          # from a customer-scoped toolset; notify is always none
+  - { connection: athlete-base, tool: list_my_results, notify: none }
+```
+
+**Who sees one.** The hub's **Hub Users**: people given access to the hub (Hub → Users tab), signed in to the WayAI app. On web they open it from the header of their own conversation with the hub ([Where people open them](#pages)), which lists the hub's customer pages in their `order`: one opens with a tap, several open a menu. A customer never sees a team page there, and never the Pages section, which is the team's. Organization members, hub admins and team users do not see a customer page unless they are also a Hub User of the hub; someone who is both sees the team pages from the Support nav and the customer pages from their own conversation.
+
+**Which customer.** The person's customer is the contact the organization's contact book links to their WayAI account, as the hub sees the book (its scope tags and environment), read again on every open and every call. The page is **not available to their account** when no contact is linked, several are, or the linked one is outside the hub's scope tags or environment: the page's read and each call are refused with `PAGE_CUSTOMER_UNAVAILABLE`, nothing is sent to the base, and on web the page shows "This page is not available to your account." in place of the page. In the base, the customer is the record linked to that contact ([Linking a contact to its customer record](bases/toolsets.md#linking-a-contact-to-its-customer-record)); a call to a customer-scoped tool for a contact with no such record is refused by the toolset, as an agent's is.
+
+**Which toolsets it may declare.** Only those the customer-facing rule admits, the rule a customer-facing agent's Base Toolset connections are held to ([connections.md → Base Toolset](connections.md#base-toolset), *Customer-facing agents*):
+
+- a [customer-scoped](bases/toolsets.md#customer-scope) toolset: each call reaches the customer's own record, the records it owns, and `shared` records, and a SQL Action there reads only `shared` record types;
+- a toolset with no customer scope only when every record type its tools reach is a reviewed `shared` type that it only reads, so it reads approved records alone, which hold no customer data, or when it reaches no records, only files;
+- never one that exposes `sql_query` or `batch`, a file `put`, `delete` or `put_url`, a write of a reviewed record type, or a tool WayAI does not classify.
+
+Push and publish refuse any other toolset on a customer page, saying what it reaches. Before every call the platform checks the rule again against what the connection records and, for a reader of approved records with no customer scope, against what the toolset reaches at that moment: a toolset the rule now refuses is refused, with nothing sent, and the connection raises a tool credential alert. While a customer page names a connection, saving that connection a token, changing its settings or syncing its tools in a way that would break the rule is refused, naming the page, and so is giving its name to a connection the rule refuses.
+
+**What a customer can do.**
+
+- **Reads only, by default.** The platform runs only the tools the toolset itself classifies as reads, as for a team page's read-only viewer ([Who Sees a Team Page](#who-sees-a-team-page)); any other tool is refused with nothing changed.
+- **Writes, only with `customer_writes: true`,** and then only through a customer-scoped toolset, inside the customer's own records ([Serving a customer](bases/toolsets.md#serving-a-customer), *Writes*). A tool of a toolset with no customer scope still runs only if it is a read.
+- The page's top bar shows **View only**, and the host context carries `wayai.viewerLevel: "read"`, on a page without `customer_writes: true`; with it, `write`.
+- The base records each write a customer page makes as made by the page itself, labelled with its title, never by the person using it, for the customer the call served.
+
+**Why writes are opt-in.** Without a page, a customer's writes to a scoped toolset go through the agent and its instructions. A page with `customer_writes: true` lets the customer call each write tool it declares directly, with any arguments the tool's schema accepts, whatever the page's own code does: the person using a page can send any call the page could. Set it only for changes you would let a customer make on their own, such as an athlete correcting their own race times.
+
+**A create tool tells a customer whether a key is taken.** On a customer-scoped toolset, a record `create` whose `external_id` a record outside the customer's reach already holds is refused with `CONFLICT`, and a free key creates the record. So a customer page that declares such a create tool, with `customer_writes: true`, lets any customer try keys and learn whether another customer's record, or any record they cannot reach, holds one, though nothing of that record ([Serving a customer](bases/toolsets.md#serving-a-customer)). A link `create` does the same with a link's `external_id`. So key those record types by values no one can guess (random ids), never by something a customer should not learn is in use, such as another person's email or document number; or leave the create tool off customer pages.
+
+**Live refresh.** A customer page never hears another customer's activity. On web its `wayai.refresh` rises when the person comes back to the page: when the app's browser tab is shown again after it was hidden ([Live Refresh](#live-refresh)). Read again then, and after the page's own writes.
+
+**Limits.** Each person may make 30 calls a minute through one customer page, and a hub's customer pages together make at most 200 requests a minute to its bases, on top of the limits every page shares ([Limits](#limits)). A call past any of them gets `RATE_LIMIT_EXCEEDED` with `retry_after_seconds`.
+
 ## Push, Pull, Diff and Publish
 
 - **The `pages/` folder is the desired set, when it exists.** A hub folder with a `pages/` folder sends every page in it. If `pages/` is empty, push deletes every page.
@@ -107,7 +150,7 @@ Anyone else does not see the page. The base records each write a page makes as m
 - **Pull** writes each page's folder whenever the hub has pages, removes the folders of deleted pages, and removes `pages/` once the hub has none. `page.yaml` comes back with its defaults left out.
 - **Diff** shows pages under **Pages:**: `+ <slug>` added, `- <slug>` deleted, and `~ <slug>: <fields>` changed, where `html` in the field list means the HTML changed. Every push-time refusal above prints with push's other warnings, and the push writes none of the refused pages. A page the push leaves in place keeps every connection it names from being deleted by that push.
 - **Publish** copies the preview's pages to production, by slug. The publish summary lists added, updated and removed pages under **Pages**. Every publish that syncs a change checks every page again against **production's own** connections and synced tool lists, the pages it does not change included, and a page production refuses fails the publish, naming its issues. A publish with nothing to sync (`Production is already up to date`) checks nothing.
-- **A connection with no token yet is checked only partly when a page is copied.** A toolset connection's token never travels with a copy. So on a first publish, a new preview or a CI branch preview, each toolset connection arrives with no token, and its pages are still copied. Only the checks that need the token wait: customer scope and signed file URLs. The page calls nothing through that connection until the hub sets its token (`wayai set-connection-credential` on a preview; the production credential in the connections tab on production). The first publish that syncs a change after production's token is saved checks the page fully; saving the token alone is no change to publish.
+- **A connection with no token yet is checked only partly when a page is copied.** A toolset connection's token never travels with a copy. So on a first publish, a new preview or a CI branch preview, each toolset connection arrives with no token, and its pages are still copied. Only the checks that need the token wait: on a team page whether the toolset is customer-scoped, on a customer page the customer-facing rule ([Customer Pages](#customer-pages)), and signed file URLs on both. The page calls nothing through that connection until the hub sets its token (`wayai set-connection-credential` on a preview; the production credential in the connections tab on production). The first publish that syncs a change after production's token is saved checks the page fully; saving the token alone is no change to publish.
 - **Design warnings never stop a push.** Push and diff also print a warning for each design rule a page breaks, in the same block, marked `(design)`: [The Design Warnings](#the-design-warnings).
 - **A push checks only the pages it writes.** Pushing a page the hub already holds unchanged checks nothing, so a CI branch preview takes back its own pages. Pushing a changed or new page is held to every rule, so set the token of a preview's toolset connection before you push a page that calls it.
 
@@ -144,7 +187,7 @@ A page may still confirm a destructive action in its own UI, naming what will ch
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
-On web and in the mobile app, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND`, whose causes, and what to show for each, are in [the refusal table](#loading-empty-and-error-states). A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
+On web and in the mobile app, a refusal of the call itself comes back as a tool result with `isError: true`, a text written for the viewer, and a `structuredContent.code`: `PAGE_REVISION_STALE` when the page was updated (the host also offers the viewer a reload), `RATE_LIMIT_EXCEEDED` with `retry_after_seconds` when the page called too often (the host answers every call inside that wait the same way, without sending it), `PAGE_CUSTOMER_UNAVAILABLE` on a customer page that can name no customer for the viewer's account (on web the host then shows that in place of the page), or the refusal's own code otherwise: for example `VALIDATION_ERROR` for arguments the tool's schema refuses, and `AUTHORIZATION_ERROR` or `NOT_FOUND`, whose causes, and what to show for each, are in [the refusal table](#loading-empty-and-error-states). A refusal by the tool itself, or by a connection that no longer reaches it, is `isError: true` with its text and no `structuredContent`. A call that fails on the network or with a server error gets a JSON-RPC error.
 
 A minimal page, with no SDK:
 
@@ -212,7 +255,7 @@ Build each list from text nodes (`textContent`), never by pasting record values 
 
 ## Live Refresh
 
-On web, an open team page hears when the data its tools reach may have changed. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
+On web, an open team page hears when the data its tools reach may have changed, and a customer page when the person comes back to it. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
 
 ```js
 let refresh;   // hostContext.wayai.refresh from the ui/initialize answer
@@ -226,11 +269,12 @@ function onContextChanged(changed) {   // each host-context-changed's params
 }
 ```
 
-- **What raises it:** a change in a base that one of the page's Base Toolset connections reaches, in that connection's environment, and the app's live connection coming back after a drop. Changes made while the connection was down are not replayed; the raise on its return stands for them.
+- **What raises it on a team page:** a change in a base that one of the page's Base Toolset connections reaches, in that connection's environment, and the app's live connection coming back after a drop. Changes made while the connection was down are not replayed; the raise on its return stands for them.
 - **It is a hint, and it can be wrong both ways.** It says that something in those bases may have changed, never what. It rises for changes your page does not show. It can also miss one: when a base changes several times within about 5 seconds, only the first change may raise it. So read again after your page's own writes instead of waiting for it, and treat what your tool calls answer as the truth.
 - **It rises at most once until your page reads.** After a raise, WayAI raises it again only once a tool call your page makes has been answered, then once for every change since. While the page is hidden (another browser tab is in front), it does not rise; it rises once when the page is shown again.
 - **Every read counts toward the call limits** ([Limits](#limits)). Read again only what the page shows.
-- **Where it does not exist:** in the mobile app, and on customer pages. A change signal does not say whose record changed, so a customer page will never hear another customer's activity. Such a page has no `wayai.refresh`: read again after its own writes and when the viewer asks.
+- **On a customer page it rises only when the person comes back.** A change signal does not say whose record changed, so a customer page never hears of changes in the base, which would tell a customer of other customers' activity. Its `wayai.refresh` rises when the app's browser tab is shown again after it was hidden, at most once until the page reads, as above. Read again then, after the page's own writes, and when the viewer asks.
+- **Where it does not exist:** in the mobile app.
 
 ## Designing a Page
 
@@ -241,9 +285,10 @@ A page looks like the WayAI app by default. The host hands every page WayAI's lo
 ```bash
 wayai page new results                          # pages/results/page.yaml and pages/results/index.html
 wayai page new review-queue --title "Review queue" --hub support
+wayai page new my-results --audience customers  # a customer page
 ```
 
-`wayai page new <slug>` writes a starter page into a hub folder, found by `wayai push`'s hub steps: the one `--hub` names, else the hub folder you are in, else the workspace's `default_hub`, else its only preview or new hub folder. Base folders and `default_base` play no part. `--title` sets what menus show (the slug in words by default), and `--audience` is `team`, the default and the only audience today. It never overwrites a file. Before writing anything, it refuses a slug that is not a folder name and `--audience customers` in the words push refuses them in, and it refuses a production mirror's folder and a hub folder already holding 20 pages.
+`wayai page new <slug>` writes a starter page into a hub folder, found by `wayai push`'s hub steps: the one `--hub` names, else the hub folder you are in, else the workspace's `default_hub`, else its only preview or new hub folder. Base folders and `default_base` play no part. `--title` sets what menus show (the slug in words by default), and `--audience` is `team`, the default, or `customers`. A customer page starts with `show_in_conversation: true`, no tools and no `customer_writes`, so it only reads; its `page.yaml` comments say to add its list tool from a customer-scoped Base Toolset connection ([Customer Pages](#customer-pages)). It never overwrites a file. Before writing anything, it refuses a slug that is not a folder name and any other audience in the words push refuses them in, and it refuses a production mirror's folder and a hub folder already holding 20 pages.
 
 The starter page passes push as written, with no design warning. It already does what the rest of this section asks:
 
@@ -251,7 +296,8 @@ The starter page passes push as written, with no design warning. It already does
 - it shows its list as one card per row on a narrow frame, and as a table once its container is 560px wide;
 - it speaks the MCP Apps messages by hand: no SDK to inline;
 - it follows the viewer's theme and language, and pads itself by the safe-area insets;
-- it shows loading, empty and error states, the host's refusal codes among the errors, with every string in English, Portuguese and Spanish.
+- it shows loading, empty and error states, the host's refusal codes among the errors, with every string in English, Portuguese and Spanish;
+- it reads its list again when `wayai.refresh` rises ([Live Refresh](#live-refresh)).
 
 To make it list your records, add the tool to `page.yaml`'s `tools` and put its name in `LIST_TOOL` at the top of the page's script, then shape `nameOf` and `updatedOf` to your records' fields.
 
@@ -270,8 +316,8 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
-| `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
-| `wayai.refresh` | A team page on web only: a number WayAI raises when the page's data may have changed ([Live Refresh](#live-refresh)) |
+| `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)); on a customer page, `write` when it sets `customer_writes: true` ([Customer Pages](#customer-pages)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
+| `wayai.refresh` | On web only: a number WayAI raises when a team page's data may have changed, or when the person comes back to a customer page ([Live Refresh](#live-refresh)) |
 | `platform` | `web` in the web app, `mobile` in the mobile app |
 | `containerDimensions` | The page's frame: `width` and `height` in CSS pixels |
 | `safeAreaInsets` | How far the device's safe area reaches into the frame, per side, in CSS pixels |
@@ -420,6 +466,7 @@ Write each refusal of [a tool call](#writing-a-page-as-an-mcp-apps-view) for the
 | `isError` with `structuredContent.code` `PAGE_REVISION_STALE` | The page was updated: ask the viewer to reload it (the host also offers a reload). No call succeeds until then, so offer no retry |
 | `isError` with `RATE_LIMIT_EXCEEDED` | Too many requests: try again after `retry_after_seconds`, the buttons disabled until then (one timer, not a poll) |
 | `isError` with `AUTHORIZATION_ERROR` | The page is no longer available to this viewer |
+| `isError` with `PAGE_CUSTOMER_UNAVAILABLE` | A customer page: it is not available to this viewer's account ([Customer Pages](#customer-pages)). On web the host replaces the page with that message, so the page needs no state of its own for it |
 | `isError` with `NOT_FOUND` | In your words, that the page or what it shows is not available. The result's text says which: `Page not found` (no longer offered to this viewer) or `Page tool not found` (the page called a tool its `page.yaml` does not list) |
 | `isError` with `VALIDATION_ERROR` | The tool refused the arguments: point at the field, with the result's text |
 | `isError` with no `structuredContent` | The tool's own refusal: show its text |
@@ -492,9 +539,11 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 | Tools per page | 50 |
 | `params` schema | 16 KiB of JSON |
 | `title` / `description` | 120 / 500 characters |
-| Audiences | `team` |
-| Calls by one person through one page | 60 a minute |
+| Audiences | `team`, `customers` |
+| Calls by one person through one team page | 60 a minute |
+| Calls by one person through one customer page | 30 a minute |
 | Calls by one person through all of a hub's pages | 150 a minute |
+| Calls through all of a hub's customer pages, everyone together | 200 a minute |
 | Calls through all of a hub's pages, everyone together | 500 a minute |
 
-A call by a person who may only read counts twice toward the last two limits: the platform checks the tool's kind with the base before calling it. Opening a page counts once toward each limit for each Base Toolset connection its tools use, while the platform reads their kinds. A call past a limit is refused with `RATE_LIMIT_EXCEEDED` ([the refusal table](#loading-empty-and-error-states)). Opening a page past a limit still opens it.
+A call by a person who may only read counts once toward its page's limit and twice toward each of the others: the platform checks the tool's kind with the base before calling it. On a customer page, that is every call except one to a customer-scoped toolset on a page with `customer_writes: true`. Opening a page counts once toward each limit for each Base Toolset connection its tools use, while the platform reads their kinds. A call past a limit is refused with `RATE_LIMIT_EXCEEDED` ([the refusal table](#loading-empty-and-error-states)). Opening a page past a limit still opens it.
