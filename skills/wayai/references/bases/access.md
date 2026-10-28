@@ -139,6 +139,36 @@ class:
 - **Team member values** go on the person's membership of one team; a person in several teams gets the union of those teams' values. An invite not yet accepted matches the person who signs in with its email address. Deleting a team removes its members' values.
 - **An agent with its own values that can run code needs a sandbox of its own** ([Limits](#limits)).
 
+### Every person's records (`$person`)
+
+Beside its dimensions, an assignment may hold the reserved key `$person`, which reaches **every
+person's records**, read and written:
+
+```yaml
+$person: { read: ["*"], write: ["*"] }   # its only value
+class:
+  read: ["7A"]
+  write: []
+```
+
+- It is for record types whose rows belong to people (a patient's records), once `x-access` can
+  name the field that holds each record's people. **Until then it is stored and changes nothing.**
+- It is always explicit, never automatic, not even for admins, and it is not a dimension: it counts
+  against no dimension limit, and leaves every dimension as the assignment states it. An agent whose
+  values hold only `$person` has values, with no dimension, so it reaches nothing on the record types
+  that enforce a dimension.
+- **Who may hold it:** org members, hub admins, team members (per team) and agents. Never hub users,
+  a hub's values or its public values: those writes are refused.
+- **A customer-facing agent never holds it** (roles `pilot`, `pilot_specialist`, `pilot_advisor`). A
+  write that gives it one is refused, and so is a role change, a `wayai push` or a `wayai publish`
+  that would leave a customer-facing agent holding it. To move an agent holding it to such a role,
+  remove `$person` first; a push that does both in one file writes the values first.
+- **In a customer's conversation, it never reaches past that customer.** The customer is always one
+  of the people a turn is for, and never holds `$person`, so a call there reaches only records the
+  customer reaches too.
+- Set it in the app with the **Every person's records** switch where the values are edited, or, for an
+  agent, as `$person` in `access_values` in `agents/<slug>.yaml`.
+
 ## How a turn's set is formed
 
 Every hub toolset call a turn makes carries one set, worked out for that turn and agent. **Every layer

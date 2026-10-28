@@ -867,7 +867,7 @@ connection: anthropic              # connection display name
 # response_format:                 # {schema_name, schema_json} — force structured JSON output instead of free text (see references/agents/roles-and-settings.md#response-format-structured-output)
 # enabled: true                    # default; omitted
 # include_message_timestamps: false  # default; when true, appends [timestamp, weekday, daypart] to user messages
-# access_values:                  # this agent's access values per dimension ({class: {read: [7A, 7B], write: [7A]}}); omitted keeps them, null clears them (narrows nothing); needs hub:admin; with code_execution_enabled, sandbox_scope must be agent (see references/bases/access.md)
+# access_values:                  # this agent's access values per dimension ({class: {read: [7A, 7B], write: [7A]}}), and optionally every person's records ($person: {read: ['*'], write: ['*']}, never on a customer-facing role: the roles are in references/bases/access.md); omitted keeps them, null clears them (narrows nothing); needs hub:admin; with code_execution_enabled, sandbox_scope must be agent (see references/bases/access.md)
 # previous_conversations_count: 3  # off by default (max 20); this user's N most recent ended conversations, prepended to the FIRST user message and frozen at the first agent turn that uses it. Foreground roles only; `0` clears it (omitting the key on update leaves it as-is); summaries come from the conversation_evaluator (see references/agents/roles-and-settings.md#previous-conversations-context)
 settings:
   model: claude-sonnet-5-5
