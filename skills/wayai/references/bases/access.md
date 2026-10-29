@@ -20,11 +20,13 @@ records whose value is in its set.
 >   what a set reaches.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
 >   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches
->   ([SQL under an access set](#sql-under-an-access-set)). If that base's toolsets need `batch` or file
+>   ([SQL under an access set](#sql-under-an-access-set)); a type whose [person entries](#person-entries)
+>   are in `enforce` refuses them, and file reads, instead. If that base's toolsets need `batch` or file
 >   writes, keep the types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
->   unfiltered ([Limits](#limits)).
+>   unfiltered ([Limits](#limits)), save a download URL on a base with a type whose
+>   [person entries](#person-entries) are in `enforce`.
 >
 > **`report` is for adding `x-access` to a type that already has live users**: it hides and refuses
 > nothing, and only counts what `enforce` would ([Report mode](#report-mode)). Declare `report`, assign
@@ -46,7 +48,8 @@ call. The base only compares the set with each record's value.
 
 ## Declaring `x-access` on a record type
 
-`x-access` is a list at the root of the schema. Each entry names a field, a dimension and a mode:
+`x-access` is a list at the root of the schema. A dimension entry names a field, a dimension and a mode
+(a list may also hold [person entries](#person-entries) and `{ shared: true }`):
 
 ```yaml
 # record-types/attendance.yaml
@@ -65,25 +68,74 @@ sources: []
 ```
 
 - `field` — a top-level property of the record type declared `{ "type": "string" }`. Values are matched as text, so a field of any other type is refused.
-- `dimension` — the id of one of the organization's dimensions. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
+- `dimension` — the id of one of the organization's dimensions: ASCII letters, digits, `_` or `-`, starting with a letter or digit, as every dimension id is. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
 - `mode` — `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)), for a type that already has live users.
 - **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. A dimension may appear in only one entry of a record type, so it filters one field.
 - **A record with no value** in the field is reached only by a set holding `*` for that dimension.
 
 **Checked at config write and at promotion.** The list must be non-empty and each entry well formed
-(no other keys); the record type must be native (`sources: []`), since a source-backed type's rows are
+(no other keys) — a dimension entry, a [person entry](#person-entries) or `{ shared: true }`; the
+record type must be native (`sources: []`), since a source-backed type's rows are
 upstream, where nothing filters them. A refused write answers
 `Invalid x-access`, listing each problem. A promotion is refused for any of them, including one
 production already holds. `x-access` promotes like any other schema key.
 
 **What a push reports.** `wayai push bases/<base>` warns, without refusing anything, for each toolset
 that will stop serving some of its tools once a type enforces: `batch` and its file write tools
-([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)). `sql_query` and SQL Actions are
-not named: they stay served, held to each call's set. See
+([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)); and, once a type declares a person
+entry, `sql_query` and its file read tools too. Otherwise `sql_query` and SQL Actions are not named:
+they stay served, held to each call's set. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
 **Before a type enforces,** give every record a value: a record without one stays hidden from every
 set that does not hold `*`. A type in `report` counts the records that would be hidden.
+
+### Person entries
+
+A record type whose rows belong to people (a patient's records) names, in a **person entry**, the field
+that holds the ids of the people each record belongs to:
+
+```yaml
+# record-types/patient.yaml
+json_schema:
+  type: object
+  properties:
+    clinic: { type: string }
+    guardian_ids: { type: array, items: { type: string } }
+    doctor_id: { type: string }
+  x-access:
+    - { field: clinic, dimension: clinic, mode: enforce }                # a dimension entry
+    - { field: guardian_ids, person: true, owner: true, mode: enforce }  # a person entry
+    - { field: doctor_id, person: true, mode: enforce }                  # a person entry
+```
+
+- `field` — a top-level property declared `{ "type": "string" }`, or a list of strings
+  (`{ "type": "array", "items": { "type": "string" } }`). A field is named by one entry only: never
+  twice, and never by a dimension entry too.
+- `person: true` — marks a person entry.
+- `owner: true` — on exactly one of the type's person entries.
+- `mode` — `enforce` or `report`, the same on every person entry of the type. Dimension entries beside
+  them keep their own modes.
+- `inherit` entries are refused.
+
+**What a person entry does today.** Calls do not yet carry the people a person entry is matched
+against, so:
+
+- **In `enforce`, the type reaches nothing for every call bound to a toolset**, reads and writes alike,
+  whatever its set (`*` and [`$person`](#every-persons-records-person) included): a `get` answers as not
+  found, a `list` or a relationship `list` returns none of its records, and every write of one is
+  refused. The type also counts as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
+  and its base refuses more: `sql_query`, each SQL Action that reads the type, and direct file reads
+  (`list`, `get`, `get_url`), each with `ACCESS_REFUSED`.
+- **In `report`, person entries change nothing**, and report mode counts nothing for them.
+- Calls not bound to a toolset are not filtered ([Limits](#limits)), with one exception: on such a base
+  no call is given a download URL (`get_url`), since the URL would not open. Read the file with `get`.
+
+So declare person entries in `report`, or keep the type in a base whose toolsets nothing else
+depends on, until you mean that type to be unreachable through toolsets.
+
+**`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
+only (never beside a person entry). It is stored and changes nothing today.
 
 ## Dimensions and values
 
@@ -141,8 +193,8 @@ class:
 
 ### Every person's records (`$person`)
 
-Beside its dimensions, an assignment may hold the reserved key `$person`, which reaches **every
-person's records**, read and written:
+Beside its dimensions, an assignment may hold the reserved key `$person`, which is meant to reach
+**every person's records**, read and written:
 
 ```yaml
 $person: { read: ["*"], write: ["*"] }   # its only value
@@ -151,8 +203,9 @@ class:
   write: []
 ```
 
-- It is for record types whose rows belong to people (a patient's records), once `x-access` can
-  name the field that holds each record's people. **Until then it is stored and changes nothing.**
+- It is for record types whose rows belong to people (a patient's records), named by
+  [person entries](#person-entries). **It changes nothing today**: a type whose person entries are in
+  `enforce` reaches nothing for every call bound to a toolset, a call holding `$person` included.
 - It is always explicit, never automatic, not even for admins, and it is not a dimension: it counts
   against no dimension limit, and leaves every dimension as the assignment states it. An agent whose
   values hold only `$person` has values, with no dimension, so it reaches nothing on the record types
@@ -249,16 +302,18 @@ back as a whole.
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
 - `batch`, which reaches any record of the base by id;
-- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too;
+- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well;
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
-- a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`.
+- a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
+- on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type.
 
 Reading config (`describe_graph`, the toolset's tool list) is always served.
 
 ### SQL under an access set
 
 A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
-set reaches. This holds on every base, whether or not one of its types enforces:
+set reaches. This holds on every base, whether or not one of its types enforces, except a base with a
+type whose [person entries](#person-entries) are in `enforce`, which refuses them:
 
 - **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
   as the stored text. SQL never reaches a record a `get` would not; a value such as a date written
@@ -286,12 +341,14 @@ corrected.
 
 **Not filtered:** anything that reaches a base without a toolset binding, such as the console, the
 `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset. Those
-answer as they do today.
+answer as they do today, save a download URL on a base with a person-ruled type
+([Person entries](#person-entries)).
 
 ## Report mode
 
 A record type whose `x-access` is in `report` mode is filtered and refused nothing. Each call bound to
-a toolset is still judged as if every entry were `enforce`, and one that would be refused, or whose
+a toolset is still judged as if every dimension entry were `enforce` ([person entries](#person-entries)
+are not counted yet), and one that would be refused, or whose
 answer holds records that would be hidden, is counted. SQL is the exception: a `sql_query` or SQL
 Action call carrying a set is not counted, since nothing it would leave out is seen; one carrying no
 set is counted as refused. Each count records the base, the record type,
@@ -343,4 +400,6 @@ the hub.
 - **Trigger webhooks.** A [trigger](integrations.md#triggers) delivers its records' payloads as the
   base is configured; no set filters them.
 - **Unbound tokens.** A base API token not bound to a toolset reaches everything its grants allow,
-  unfiltered, wherever it is placed, a hub's HTTP or MCP connection included.
+  unfiltered, wherever it is placed, a hub's HTTP or MCP connection included. The one exception: on a
+  base with a type whose [person entries](#person-entries) are in `enforce`, it is refused `get_url`
+  and reads the file with `get`.
