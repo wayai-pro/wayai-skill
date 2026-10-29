@@ -10,7 +10,7 @@ toolsets, Actions, seed fixtures — live as version-controlled YAML under `waya
 file per entity, so changes review cleanly in a pull request.
 
 > **File types** are `file-types/<id>.yaml`: a file type's name, description, icon, color, `max_size`,
-> `allowed_content_types` and `metadata_schema`. `push` writes them before toolsets, so one push can
+> `allowed_content_types`, `metadata_schema` and `shared` ([Shared file types](access.md#shared-file-types)). `push` writes them before toolsets, so one push can
 > add a file type and a toolset whose file tools name it. The files inside a file type are data, not
 > config: keep them as a folder with `wayai files pull`/`push`
 > ([files.md](files.md#syncing-files-as-a-folder)), which write any base, production included.

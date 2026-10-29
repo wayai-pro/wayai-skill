@@ -27,7 +27,7 @@ records whose value is in its set.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
 >   unfiltered ([Limits](#limits)), save a download URL on a base with a type whose
->   [person entries](#person-entries) are in `enforce`.
+>   [person entries](#person-entries) are in `enforce` (but of a [shared file type](#shared-file-types)).
 >
 > **`report` is for adding `x-access` to a type that already has live users**: it hides and refuses
 > nothing, and only counts what `enforce` would ([Report mode](#report-mode)). Declare `report`, assign
@@ -108,7 +108,8 @@ production already holds. `x-access` promotes like any other schema key.
 that will stop serving some of its tools once a type enforces: `batch` and its file write tools
 ([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)); and, once a type declares a person
 entry, `sql_query` and its file read tools too (file reads then served only as
-[person entries](#person-entries) allow); and, once a type declares a dimension entry on a
+[person entries](#person-entries) allow, the file types it names as marked
+[shared](#shared-file-types) still read by calls for team members); and, once a type declares a dimension entry on a
 [list field](#list-fields), `sql_query`. Otherwise `sql_query` and SQL Actions are not named:
 they stay served, held to each call's set. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
@@ -170,19 +171,31 @@ neither an eval run declaring a contact nor a task delegated from any other call
   found when the call does not read the record.
 - **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
   and refuses `sql_query` and each SQL Action that reads the type, with `ACCESS_REFUSED`. Files carry no
-  person: a call holding every person's records (above) is served every file read but `get_url`; any other
-  call for team members reads with `get` only a file an owning link holds from a record the call reads (any
-  other answers as not found), and is refused `list` and `get_url`; every other call is refused file reads.
+  person: a call for team members reads every file of a [shared file type](#shared-file-types) (`list`,
+  `get` and `get_url`). Of any other file type, a call holding every person's records (above) is served
+  every file read but `get_url`; any other call for team members reads with `get` only a file an owning
+  link holds from a record the call reads (any other answers as not found), and is refused `list` and
+  `get_url`. Every other call is refused file reads, of a shared file type too.
 - **In `report`, person entries filter and refuse nothing**; report mode counts what enforcing them would
   hide from, or refuse, a call for team members ([Report mode](#report-mode)).
 - Calls not bound to a toolset are not filtered ([Limits](#limits)), with one exception: on such a base
-  no call is given a download URL (`get_url`), since the URL would not open. Read the file with `get`.
+  no call is given a download URL (`get_url`) but of a shared file type, since the URL would not open.
+  Read the file with `get`.
 
 So declare person entries in `report` first, and switch them to `enforce` once each record names its
 people and those meant to reach every person's records hold `$person`.
 
 **`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
 only (never beside a person entry). It is stored and changes nothing today.
+
+### Shared file types
+
+A file type marked `shared: true` ([files.md](files.md#file-types)) holds files every call for team
+members reads directly on a base whose person entries are in `enforce`: forms, price lists, clinic
+policies. Mark it in the preview and promote it; a file type with no mark is not shared. The mark lives
+on the file type only: a folder whose files must be open becomes a file type of its own, since there is
+no folder-level mark. A call for a customer, or any other call the person rules refuse files to, still
+reads none of them. Taking the mark off stops the download URLs already given for its files.
 
 ## Dimensions and values
 
@@ -351,7 +364,7 @@ back as a whole.
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
 - `batch`, which reaches any record of the base by id;
-- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow;
+- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
 - a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
@@ -392,8 +405,8 @@ corrected.
 
 **Not filtered:** anything that reaches a base without a toolset binding, such as the console, the
 `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset. Those
-answer as they do today, save a download URL on a base with a person-ruled type
-([Person entries](#person-entries)).
+answer as they do today, save a download URL on a base with a person-ruled type, but of a
+[shared file type](#shared-file-types) ([Person entries](#person-entries)).
 
 ## Report mode
 
@@ -454,5 +467,5 @@ the hub.
   base is configured; no set filters them.
 - **Unbound tokens.** A base API token not bound to a toolset reaches everything its grants allow,
   unfiltered, wherever it is placed, a hub's HTTP or MCP connection included. The one exception: on a
-  base with a type whose [person entries](#person-entries) are in `enforce`, it is refused `get_url`
-  and reads the file with `get`.
+  base with a type whose [person entries](#person-entries) are in `enforce`, it is refused `get_url`, but
+  of a [shared file type](#shared-file-types), and reads the file with `get`.

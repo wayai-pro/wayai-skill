@@ -15,7 +15,11 @@ connection. **Skills** stay in the hub ([`../skills.md`](../skills.md)).
 ## File types
 
 A file type is a bucket that configures storage policy — max size, allowed content types — plus an
-optional metadata schema. It is **config**: write it in a preview base, then promote.
+optional metadata schema, and whether it is **shared** (`shared: true`): on a base whose
+[person entries](access.md#person-entries) are in `enforce`, every call for team members reads a shared
+file type's files directly, while any other file there is read only through a record
+([Shared file types](access.md#shared-file-types)). A folder that must be open is a file type of its own:
+there is no folder-level mark. It is **config**: write it in a preview base, then promote.
 
 - **Promote** adds new file types to production and updates changed ones. A changed policy or
   metadata schema applies to later writes; existing files are not re-checked.
@@ -36,11 +40,14 @@ writes it to `file-types/<id>.yaml`, and `wayai push` applies it to a preview
 
 ```bash
 wayai file-types upsert <id> --base <base> --name <name> \
-  [--description <desc>] [--max-size <bytes>] [--allowed-content-types <json|@file>] [--metadata-schema <json|@file>]
+  [--description <desc>] [--max-size <bytes>] [--allowed-content-types <json|@file>] [--metadata-schema <json|@file>] [--shared]
 wayai file-types list --base <base>
 wayai file-types get <id> --base <base>
 wayai file-types delete <id> --base <base> [-y]
 ```
+
+`upsert` replaces the file type's policy: `--max-size`, `--allowed-content-types`, `--metadata-schema` and
+`--shared` left out go back to their defaults, so leaving `--shared` out takes the mark off.
 
 ## Files
 
