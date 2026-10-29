@@ -21,8 +21,9 @@ records whose value is in its set.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
 >   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches
 >   ([SQL under an access set](#sql-under-an-access-set)); a type whose [person entries](#person-entries)
->   are in `enforce` refuses them, and file reads, instead. If that base's toolsets need `batch` or file
->   writes, keep the types you enforce in a separate base.
+>   are in `enforce` refuses them, and file reads, instead, and so does a type enforcing an entry on a
+>   [list field](#list-fields) (SQL only). If that base's toolsets need `batch` or file writes, keep the
+>   types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
 >   unfiltered ([Limits](#limits)), save a download URL on a base with a type whose
@@ -67,11 +68,34 @@ json_schema:
 sources: []
 ```
 
-- `field` — a top-level property of the record type declared `{ "type": "string" }`. Values are matched as text, so a field of any other type is refused.
+- `field` — a top-level property of the record type declared `{ "type": "string" }`, or a list of strings (`{ "type": "array", "items": { "type": "string" } }`; see [List fields](#list-fields)). Values are matched as text, so a field of any other type is refused.
 - `dimension` — the id of one of the organization's dimensions: ASCII letters, digits, `_` or `-`, starting with a letter or digit, as every dimension id is. The base cannot check it against the organization's list: a misspelled dimension is accepted, and once enforced it reaches nothing.
 - `mode` — `enforce` (filters the type and turns on [the refusals](#what-an-enforcing-base-refuses); switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, and changes nothing; [Report mode](#report-mode)), for a type that already has live users.
 - **Several entries combine with AND**: a record is reached only when every entry's field holds a value the set has for that entry's dimension. Within one dimension, the set's values combine with OR. A dimension may appear in only one entry of a record type, so it filters one field.
 - **A record with no value** in the field is reached only by a set holding `*` for that dimension.
+
+### List fields
+
+A dimension entry may name a field that holds a list of value ids, for a record that belongs to several
+values at once (a lesson shared by classes `7A` and `7B`):
+
+```yaml
+properties:
+  classes: { type: array, items: { type: string } }   # ["7A", "7B"]
+x-access:
+  - { field: classes, dimension: class, mode: enforce }
+```
+
+- **Reads**: a record is reached when **any one** of its list's values is one the set reads. An empty
+  list, like a missing field, is no value: reached only by a set holding `*`.
+- **Writes**: **every** value of the list must be one the set writes: the new list on a create, both
+  the current list and the new one on an update, the current list on a delete. An empty or missing
+  list is written only by a set holding `*`.
+- **SQL**: once such an entry is in `enforce`, every call bound to a toolset is refused `sql_query` on
+  that base, and each SQL Action that reads the type, with `ACCESS_REFUSED`: SQL is not held to the
+  values of a list field. Records reached through `list`, `get`, search and relationships are not
+  affected. Keep the entry in `report` (where SQL stays served) until the base's toolsets can do
+  without SQL, or hold the values in a text field instead.
 
 **Checked at config write and at promotion.** The list must be non-empty and each entry well formed
 (no other keys) — a dimension entry, a [person entry](#person-entries) or `{ shared: true }`; the
@@ -83,7 +107,8 @@ production already holds. `x-access` promotes like any other schema key.
 **What a push reports.** `wayai push bases/<base>` warns, without refusing anything, for each toolset
 that will stop serving some of its tools once a type enforces: `batch` and its file write tools
 ([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)); and, once a type declares a person
-entry, `sql_query` and its file read tools too. Otherwise `sql_query` and SQL Actions are not named:
+entry, `sql_query` and its file read tools too; and, once a type declares a dimension entry on a
+[list field](#list-fields), `sql_query`. Otherwise `sql_query` and SQL Actions are not named:
 they stay served, held to each call's set. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
@@ -287,7 +312,7 @@ declaration is in `report` mode refuses and filters nothing.
 
 | Operation | Allowed when |
 |---|---|
-| `create` | the new value is one the set writes |
+| `create` | the new value is one the set writes (on a [list field](#list-fields), every value of the list) |
 | `update` | the current value and the new one are both ones the set writes |
 | `delete` | the current value is one the set writes |
 | linking or unlinking two records | each end on an enforcing type is one the set writes |
@@ -305,7 +330,8 @@ back as a whole.
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well;
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
 - a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
-- on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type.
+- on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
+- on a base with a type enforcing a [list field](#list-fields): `sql_query`, and each SQL Action that reads such a type.
 
 Reading config (`describe_graph`, the toolset's tool list) is always served.
 
@@ -313,7 +339,8 @@ Reading config (`describe_graph`, the toolset's tool list) is always served.
 
 A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
 set reaches. This holds on every base, whether or not one of its types enforces, except a base with a
-type whose [person entries](#person-entries) are in `enforce`, which refuses them:
+type whose [person entries](#person-entries) are in `enforce`, or one enforcing a
+[list field](#list-fields), which refuses them:
 
 - **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
   as the stored text. SQL never reaches a record a `get` would not; a value such as a date written
@@ -350,8 +377,9 @@ A record type whose `x-access` is in `report` mode is filtered and refused nothi
 a toolset is still judged as if every dimension entry were `enforce` ([person entries](#person-entries)
 are not counted yet), and one that would be refused, or whose
 answer holds records that would be hidden, is counted. SQL is the exception: a `sql_query` or SQL
-Action call carrying a set is not counted, since nothing it would leave out is seen; one carrying no
-set is counted as refused. Each count records the base, the record type,
+Action call carrying a set is not counted, since nothing it would leave out is seen, except where a
+type's entry on a [list field](#list-fields) would refuse it, which is counted as refused; one carrying
+no set is counted as refused. Each count records the base, the record type,
 the dimension, the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
 a base API token), the calling agent or token, the toolset, whether it was refused or hidden (and
 where), and how many records. Only ids are kept, never a person's name or email or any record's

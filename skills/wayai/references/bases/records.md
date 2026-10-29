@@ -225,7 +225,7 @@ Checked at config write and at promotion: the declaration's shape on the record 
 
 ### Access dimensions (`x-access`)
 
-A record type can hold records that only some people, hubs and agents may reach, by naming a `type: string` field that holds a value of one of the organization's access dimensions:
+A record type can hold records that only some people, hubs and agents may reach, by naming a `type: string` field (or a list of strings, [List fields](access.md#list-fields)) that holds a value of one of the organization's access dimensions:
 
 ```jsonc
 { "type": "object",
