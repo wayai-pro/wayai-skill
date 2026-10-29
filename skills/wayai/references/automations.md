@@ -463,7 +463,7 @@ automations:
 
 ## References
 
-`connection`, `template` and `agent` take a **name**; each has an id twin (`connection_id`, `template_id`, `agent_id`). Give either or both — **the id wins** when both are present. `wayai pull` writes both.
+`connection`, `template` and `agent` take a **name**; each has an id twin (`connection_id`, `template_id`, `agent_id`). Give either or both — **the id wins** when both are present, except that a `connection_id` the hub does not hold gives way to the `connection` name, so an automation copied from another hub's folder reaches this hub's connection of that name. `wayai pull` writes both.
 
 - `connection` is the connection's display name; `template` is matched among the templates of the action's connection. A template name that matches more than one template is refused — name it by `template_id`.
 - A reference to an agent the same push creates or renames resolves on that push, by the name the push gives it. A push whose agents are refused writes none of them, so an automation naming one of them is refused too.
