@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.199.0
+version: 6.199.1
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -277,7 +277,7 @@ Lets a **non-background agent** put a question to a configured consultant (or pa
 - **Consultant→consultant chains are off by default, and sync-only when enabled** — set `allow_consultant_chain: true` on the tool to permit them, against a same-hub consultant. `monitor`, the evaluators, and `summarizer` can never initiate.
 - **Budgets are enforced**: consult chain depth, plus cycle refusal in both directions (agent A → B → A inside a hub, hub A → B → A across hubs), a cap per LLM call, and a durable cap per conversation. Every consult turn bills a foreground operation, so these caps are what stop an agent multiplying cost unattended.
 - **Nothing stays pending forever**: an unanswered consult expires and brings the asker back with a timeout notice; a consult outstanding when the conversation closes is recorded `cancelled_at_close`.
-- **A team member posting in an agent-started thread takes it over permanently** — the AI is no longer brought back for that thread, and further consults into it return a fixed "taken over by the team" notice.
+- **The team cannot post in an agent-started thread** — Support shows it as a record, and a team member's consult always goes to a thread the team started.
 - **Configured via CI/YAML only in v1**, like `delegate_to_hub`.
 
 Full parameters and YAML shapes: [`references/agents/native-tools.md`](references/agents/native-tools.md#start_consult_thread).

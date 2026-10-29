@@ -112,33 +112,29 @@ tomorrow: 2026-06-12/Friday
 
 ### `{{user_name()}}`
 
-User's display name.
-
-| Property | Description |
-|----------|-------------|
-| `.user_name` | Profile name |
+The user's name, as text: the same value as `{{user_info().user_name}}`. It takes no property path — `{{user_name().user_name}}` is left literal.
 
 ```
-The user's name is {{user_name().user_name}}.
+The user's name is {{user_name()}}.
 ```
 
 ---
 
 ### `{{user_info()}}`
 
-Extended user profile data.
+The conversation's user, as an object. These are all its properties:
 
-| Property | Example |
-|----------|---------|
-| `.user_name` | `João Silva` |
-| `.user_phone` | `+5511999999999` |
-| `.user_email` | `joao@example.com` |
-| `.user_timezone` | `America/Sao_Paulo` |
-| `.user_language` | `pt` |
+| Property | Example | Source |
+|----------|---------|--------|
+| `.user_id` | `8f14e45f-…` | The user's id |
+| `.user_name` | `João Silva` | The name the hub holds for the user (an operator's rename, the channel's profile name), else the name on their WayAI account |
+| `.user_email` | `joao@example.com` | The email the hub holds for the user |
+| `.user_language` | `pt` | Their WayAI account's language: `en`, `pt` or `es` |
+
+A property the user has no value for is absent, so a path to it is left literal, like any missing path.
 
 ```
 Respond in the user's language: {{user_info().user_language}}.
-User timezone: {{user_info().user_timezone}}.
 ```
 
 ---
@@ -342,7 +338,7 @@ Conversation ID: {{current_conversation_id().conversation_id}}
 You are a friendly assistant for Acme Corp.
 
 Current time: {{now()}}
-User: {{user_name().user_name}}
+User: {{user_name()}}
 
 Greet the user by name and adjust your tone to the time of day ({{now().time_of_day}}).
 ```
@@ -368,9 +364,8 @@ If the cart is empty, suggest popular items.
 You are a support agent.
 
 ## User Info
-- Name: {{user_name().user_name}}
+- Name: {{user_name()}}
 - Language: {{user_info().user_language}}
-- Timezone: {{user_info().user_timezone}}
 
 ## Previous Conversations
 {{previous_conversations(3)}}
