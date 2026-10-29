@@ -167,7 +167,8 @@ neither an eval run declaring a contact nor a task delegated from any other call
   a `list` the search store serves (a `search` filter, a filter on `archived`, or more records than the
   base lists itself) and a `get` of an archived record, which answers as not found when the call does not
   read it.
-- **No write of one of its records is served:** each is refused with `ACCESS_REFUSED`, or answers as not
+- **A call for team members writes its records for the people it is for** ([Person writes](#person-writes)).
+  Every other call writes none of them: each write is refused with `ACCESS_REFUSED`, or answers as not
   found when the call does not read the record.
 - **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
   and refuses `sql_query` and each SQL Action that reads the type, with `ACCESS_REFUSED`. Files carry no
@@ -184,6 +185,48 @@ neither an eval run declaring a contact nor a task delegated from any other call
 
 So declare person entries in `report` first, and switch them to `enforce` once each record names its
 people and those meant to reach every person's records hold `$person`.
+
+#### Person writes
+
+With person entries in `enforce`, a call for team members (above) writes a record of the type only as the
+people it is for allow. A person field's ids are judged one by one, against what the field held before:
+
+- **Adding** an id a field did not hold: every person the call is for must hold that id — it is one of
+  their own ids — or hold `$person`. With a team member holding `$person` beside another person, the
+  other person must hold it too.
+- **Keeping** an id the field already held: always allowed.
+- **Removing** an id: allowed when some person the call is for holds it; any other id only when every
+  person the call is for holds `$person` (or, on a turn for no one, the agent does). A full replace
+  (`create` keyed onto an existing record) removes what it leaves out, and **a `delete` removes every id
+  the record names**.
+- **The record it leaves** must still name each person the call is for who does not hold `$person`
+  (one id of theirs in any person field), unless every one holds it. So a `create` naming no one in its
+  person fields is allowed only to a call holding every person's records.
+
+Each refusal is `ACCESS_REFUSED` (403); one for adding or removing names the field and the id. Dimension entries hold beside
+them as on any enforcing type ([What an enforcing base refuses](#what-an-enforcing-base-refuses)), and so
+does the rest of that section: an update or delete of a record the call does not read answers as not
+found, a `create` keyed onto one as a held key (`CONFLICT`), and a reference (`x-fk`) to one as a
+reference to a record that does not exist. Linking or unlinking a record changes no person field: it is
+allowed when the call reads the record. A composite holds every step to these rules and rolls back as a
+whole. `batch` and file writes stay refused on the base.
+
+**The owner field is not filled for you yet.** A `create` that leaves out the field marked `owner`
+leaves it empty, so name the person the record belongs to. Filling it with the conversation's customer
+comes with calls for customers.
+
+**Triggers.** A record write is refused when an `internal_write` trigger it sets off writes a record
+type that enforces an access rule ([What an enforcing base refuses](#what-an-enforcing-base-refuses)),
+with one exception: a trigger that writes a type whose only rule is its person entries, set off by a call
+for team members, runs when
+
+- it locates its target through a top-level field declaring an `x-fk` into that type, keyed as it
+  matches (`match.source_field: data.<field>`), so it patches only a record the call reads;
+- every trigger on the target type sets `skip_cascade_writes: true`;
+- and its `patch` sets no person field of the target, unless every person the call is for holds
+  `$person`.
+
+Otherwise the write that would set it off is refused with `ACCESS_REFUSED`, naming the trigger.
 
 **`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
 only (never beside a person entry). It is stored and changes nothing today.
@@ -267,7 +310,8 @@ class:
   [person entries](#person-entries). **What it reaches today:** a call for team members whose every
   person holds it reads every record of those types, and their files; so does a turn for no one whose
   agent holds it. Where only some of the people hold it, each other person must be named in a record for
-  the call to reach it. No call bound to a toolset writes those records yet.
+  the call to reach it. Such a call writes those records too: with every person holding it, any record;
+  otherwise as [Person writes](#person-writes) allows.
 - It is always explicit, never automatic, not even for admins, and it is not a dimension: it counts
   against no dimension limit, and leaves every dimension as the assignment states it. An agent whose
   values hold only `$person` has values, with no dimension, so it reaches nothing on the record types
@@ -359,13 +403,14 @@ A write never reveals a record the set does not read: an update or delete of one
 found, a create keyed onto one as a held key (`CONFLICT`, 409), and a reference to one as a reference
 to a record that does not exist, as [customer scope](toolsets.md#serving-a-customer) answers. A record
 the set reads but does not write is refused. A composite runs every step under these rules and rolls
-back as a whole.
+back as a whole. A type whose [person entries](#person-entries) are in `enforce` holds a write's person
+fields too ([Person writes](#person-writes)).
 
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
 - `batch`, which reaches any record of the base by id;
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
-- a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
+- a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person entries, held as [Person writes](#person-writes) states);
 - a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
 - on a base with a type enforcing a [list field](#list-fields): `sql_query`, and each SQL Action that reads such a type.
