@@ -21,8 +21,8 @@ records whose value is in its set.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
 >   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches
 >   ([SQL under an access set](#sql-under-an-access-set)); a type whose [person entries](#person-entries)
->   are in `enforce` refuses them, and file reads, instead, and so does a type enforcing an entry on a
->   [list field](#list-fields) (SQL only). If that base's toolsets need `batch` or file writes, keep the
+>   are in `enforce` refuses them instead, and serves file reads only as its person entries allow, and a
+>   type enforcing an entry on a [list field](#list-fields) refuses SQL too. If that base's toolsets need `batch` or file writes, keep the
 >   types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
@@ -107,7 +107,8 @@ production already holds. `x-access` promotes like any other schema key.
 **What a push reports.** `wayai push bases/<base>` warns, without refusing anything, for each toolset
 that will stop serving some of its tools once a type enforces: `batch` and its file write tools
 ([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)); and, once a type declares a person
-entry, `sql_query` and its file read tools too; and, once a type declares a dimension entry on a
+entry, `sql_query` and its file read tools too (file reads then served only as
+[person entries](#person-entries) allow); and, once a type declares a dimension entry on a
 [list field](#list-fields), `sql_query`. Otherwise `sql_query` and SQL Actions are not named:
 they stay served, held to each call's set. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
@@ -143,21 +144,42 @@ json_schema:
   them keep their own modes.
 - `inherit` entries are refused.
 
-**What a person entry does today.** Calls do not yet carry the people a person entry is matched
-against, so:
+**What a person entry does today.** Every hub toolset call carries the people its turn is for
+([Whose sets bound a turn](#whose-sets-bound-a-turn)). A person entry in `enforce` is matched against
+them only on a **call for team members**: one whose agent is not customer-facing (roles `pilot`,
+`pilot_specialist`, `pilot_advisor`, or the host turn's agent of a background agent's call), whose every person
+is an organization member, a hub admin or a hub team member ([A person's kind](#a-persons-kind)), and which is
+neither an eval run declaring a contact nor a task delegated from any other call. In `enforce`:
 
-- **In `enforce`, the type reaches nothing for every call bound to a toolset**, reads and writes alike,
-  whatever its set (`*` and [`$person`](#every-persons-records-person) included): a `get` answers as not
-  found, a `list` or a relationship `list` returns none of its records, and every write of one is
-  refused. The type also counts as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
-  and its base refuses more: `sql_query`, each SQL Action that reads the type, and direct file reads
-  (`list`, `get`, `get_url`), each with `ACCESS_REFUSED`.
-- **In `report`, person entries change nothing**, and report mode counts nothing for them.
+- **A call for team members reads a record when every person it is for is named in one of the type's
+  person fields** (one id of a list field is enough), or holds [`$person`](#every-persons-records-person).
+  With two people on a turn (a team member consulting another, say), a record naming only one of them is
+  not reached. Dimension entries still hold beside them.
+- **Every person's records:** when every person the call is for holds `$person` (or, on a turn for no
+  one, such as a hub automation's, when the agent does), the call reads every record of the type. A turn
+  for no one whose agent does not hold it reaches none of them.
+- **Every other call reaches none of its records:** a customer-facing agent's call (a team member's own
+  conversation with one included), a turn in a customer's conversation, a hub user's or everyone else's, a
+  [customer-scoped](toolsets.md#customer-scope) toolset's call, and a customer-only set.
+- **Only the reads the base serves itself:** `get`, `list`, a relationship `list` and a reference
+  (`x-fk`) to a record follow these rules; a reference to a record the call does not read answers as one
+  to a record that does not exist. A `list` that needs the search store (a `search` filter, a filter on
+  `archived`, or more records than the base lists itself) is refused with `ACCESS_REFUSED`, and a `get`
+  of an archived record answers as not found.
+- **No write of one of its records is served:** each is refused with `ACCESS_REFUSED`, or answers as not
+  found when the call does not read the record.
+- **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
+  and refuses `sql_query` and each SQL Action that reads the type, with `ACCESS_REFUSED`. Files carry no
+  person: a call holding every person's records (above) is served every file read but `get_url`; any other
+  call for team members reads with `get` only a file an owning link holds from a record the call reads (any
+  other answers as not found), and is refused `list` and `get_url`; every other call is refused file reads.
+- **In `report`, person entries filter and refuse nothing**; report mode counts what enforcing them would
+  hide from, or refuse, a call for team members ([Report mode](#report-mode)).
 - Calls not bound to a toolset are not filtered ([Limits](#limits)), with one exception: on such a base
   no call is given a download URL (`get_url`), since the URL would not open. Read the file with `get`.
 
-So declare person entries in `report`, or keep the type in a base whose toolsets nothing else
-depends on, until you mean that type to be unreachable through toolsets.
+So declare person entries in `report` first, and switch them to `enforce` once each record names its
+people and those meant to reach every person's records hold `$person`.
 
 **`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
 only (never beside a person entry). It is stored and changes nothing today.
@@ -218,8 +240,8 @@ class:
 
 ### Every person's records (`$person`)
 
-Beside its dimensions, an assignment may hold the reserved key `$person`, which is meant to reach
-**every person's records**, read and written:
+Beside its dimensions, an assignment may hold the reserved key `$person`, which reaches **every
+person's records**:
 
 ```yaml
 $person: { read: ["*"], write: ["*"] }   # its only value
@@ -229,8 +251,10 @@ class:
 ```
 
 - It is for record types whose rows belong to people (a patient's records), named by
-  [person entries](#person-entries). **It changes nothing today**: a type whose person entries are in
-  `enforce` reaches nothing for every call bound to a toolset, a call holding `$person` included.
+  [person entries](#person-entries). **What it reaches today:** a call for team members whose every
+  person holds it reads every record of those types, and their files; so does a turn for no one whose
+  agent holds it. Where only some of the people hold it, each other person must be named in a record for
+  the call to reach it. No call bound to a toolset writes those records yet.
 - It is always explicit, never automatic, not even for admins, and it is not a dimension: it counts
   against no dimension limit, and leaves every dimension as the assignment states it. An agent whose
   values hold only `$person` has values, with no dimension, so it reaches nothing on the record types
@@ -327,7 +351,7 @@ back as a whole.
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
 - `batch`, which reaches any record of the base by id;
-- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well;
+- file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow;
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set;
 - a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
@@ -374,13 +398,15 @@ answer as they do today, save a download URL on a base with a person-ruled type
 ## Report mode
 
 A record type whose `x-access` is in `report` mode is filtered and refused nothing. Each call bound to
-a toolset is still judged as if every dimension entry were `enforce` ([person entries](#person-entries)
-are not counted yet), and one that would be refused, or whose
-answer holds records that would be hidden, is counted. SQL is the exception: a `sql_query` or SQL
+a toolset is still judged as if every dimension entry were `enforce`, and one that would be refused, or
+whose answer holds records that would be hidden, is counted. [Person entries](#person-entries) in `report`
+are judged on a call for team members only: the records a `get`, `list` or relationship `list` would hide
+(an archived record a `get` reads included), and a `list` that needs the search store, as refused, save where
+the call's people reach none of the type's records, where every record that list returns is counted as hidden. SQL is the exception: a `sql_query` or SQL
 Action call carrying a set is not counted, since nothing it would leave out is seen, except where a
 type's entry on a [list field](#list-fields) would refuse it, which is counted as refused; one carrying
 no set is counted as refused. Each count records the base, the record type,
-the dimension, the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
+the dimension (`$person` for a person entry), the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
 a base API token), the calling agent or token, the toolset, whether it was refused or hidden (and
 where), and how many records. Only ids are kept, never a person's name or email or any record's
 content, and nothing is counted on a base with no `x-access`.
