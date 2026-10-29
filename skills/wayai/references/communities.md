@@ -208,7 +208,7 @@ video_url: https://youtu.be/…  # YouTube only; omit for none
 links:                         # at most 10
   - title: Setup guide
     url: https://example.com/setup
-requires_paid_plan: false      # members see the mark; nothing enforces it
+requires_paid_plan: false      # members see the mark, except in the iOS app; nothing enforces it
 ---
 The lesson's text, in Markdown: at most 20,000 characters.
 ```
@@ -470,7 +470,7 @@ CLI. Each link: [navigation.md → Community](navigation.md#community).
   shows once it holds a published lesson.
 - **A lesson** shows its YouTube video (the mobile app opens it in YouTube or the browser), its text, its links,
   **Discuss in <room>** when it has a room, and "This lesson needs a paid plan." when
-  `requires_paid_plan` is set — a mark only, nothing is withheld.
+  `requires_paid_plan` is set — a mark only, nothing is withheld, and the iOS app does not show it.
 - **Mark complete** is the only way a lesson counts as done — watching the video does not — and it
   cannot be undone. A course shows "<n> of <total> lessons complete" and **Next lesson**. The
   progress outlasts a removal or a ban and comes back when the person joins again.
