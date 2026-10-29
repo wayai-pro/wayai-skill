@@ -181,6 +181,7 @@ settings:
   temperature: 0.7
   max_tokens: 4096
   reasoning_effort: medium      # minimal|low|medium|high|xhigh|max|none (OpenRouter maps to the nearest level each model supports)
+  image_input: false            # decisions models (jev-*) only — see TypeSafe below
 ```
 
 **OpenAI GPT-Live** (a `Realtime` connection — `pilot_voice` agents only): `speaker_voice`, `language`, `max_call_minutes`, `inactivity_timeout_seconds`, `delegation_timeout_seconds`, `record_calls`, `progress_cues`, and the wording of the voice's fixed lines (`greeting_text`, `first_progress_cue_text`, `second_progress_cue_text`, `please_repeat_text`, `turn_failed_text`, `timed_out_text`) — see [Voice Agent](#voice-agent-pilot_voice-only).
@@ -197,8 +198,11 @@ settings:
 **TypeSafe** (service: TypeSafe — closed-set `monitor`, `conversation_evaluator` and `message_evaluator` agents only):
 ```yaml
 settings:
-  model: jev-latest             # jev-latest|jev-1.14.0|jev-1.13.0 — a decisions model; no other setting applies
+  model: jev-latest             # jev-latest|jev-1.14.0|jev-1.13.0 — a decisions model
+  image_input: false            # true sends the newest images (up to 4) customers and team members attached
 ```
+
+`image_input` reaches the model on an idle monitor's decision and a conversation evaluator's, not on a monitor that fires on a message (`user_message`, `assistant_reply`, `manual`, `call_utterance`). Each image is resized or converted to what the model accepts; one it cannot take is left out, and the model is told how many were. The provider bills images as input tokens.
 
 ### Reasoning / thinking by provider
 
@@ -222,7 +226,7 @@ Each provider exposes one or more reasoning controls, named to match its schema.
 
 ### File handling (all LLM connectors)
 
-A conversation's **earlier** files are announced to every agent as a text annotation naming each file by path — `[Attached files: conversation/report.pdf (Type: application/pdf, Size: 2048 bytes)]` — and never re-sent as content, in any mode. Re-attaching them cost a download and a block of context per file on every turn, for content the agent can ask for by path in one call. The current message's own attachments are unaffected: they are always sent in full.
+A conversation's **earlier** files are announced to every agent as a text annotation naming each file by path — `[Attached files: conversation/report.pdf (Type: application/pdf, Size: 2048 bytes)]` — and never re-sent as content, in any mode, with one exception: a decisions model (OpenRouter Jev or TypeSafe) with `image_input` on is sent the newest images (up to 4) customers and team members attached, on each idle monitor's or conversation evaluator's decision (see `image_input` above). Re-attaching them cost a download and a block of context per file on every turn, for content the agent can ask for by path in one call. The current message's own attachments are unaffected: they are always sent in full.
 
 | Setting | What it still does |
 |---|---|
