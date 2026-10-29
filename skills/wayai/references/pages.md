@@ -69,6 +69,7 @@ tools:                          # tool names must be unique across the manifest
 | `team_writes` | No (`false`) | A team page's: lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)). Push refuses it on a customer page |
 | `customer_writes` | No (unset) | A customer page's: lets each customer run its tools that change data, on their own records only ([Customer Pages](#customer-pages)). Push refuses `true` on a team page |
 | `show_in_conversation` | No (`false`); `true` on a customer page | Offers the page from the conversation header to people who may open it. On a team page it orders what a conversation offers first and never hides a page: on web every team page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)). The header is a customer's only way into a page, so push refuses a customer page without it |
+| `allow_messages` | No (unset, which is `false`) | Either audience's: lets the page put text in the person's own message box in the conversation it was opened from, for them to send or not. It never sends ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)) |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
 | `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link may open the page with |
 | `tools` | No (`[]`) | Up to 50 toolset tools the page calls, each `{ connection, tool, notify }` |
@@ -165,10 +166,11 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 | `ui/initialize` | request | The first message. Its answer carries the host context: the page's params among it |
 | `ui/notifications/initialized` | notification | Sent once the page has its answer to `ui/initialize` |
 | `tools/call` | request | `{ name, arguments }`: calls one of the manifest's tools by its tool name. The answer is the tool's result: `content`, and `isError` when the tool refused |
+| `ui/message` | request | `{ role: "user", content: [{ type: "text", text }] }`: puts the text in the person's own message box, never sends it, on a page whose manifest sets `allow_messages: true` opened from a conversation ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)). Answered empty |
 | `ping` | request | Answered empty |
 | `notifications/message` | notification | A log line |
 
-**What the host refuses**, each with a JSON-RPC error: `ui/open-link`, `ui/update-model-context`, `ui/message`, `ui/download-file` and `resources/read`.
+**What the host refuses**, each with a JSON-RPC error: `ui/open-link`, `ui/update-model-context`, `ui/download-file` and `resources/read`, and `ui/message` where it is not available ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)).
 
 **What the host does not support:** display-mode requests, and the tool-input and tool-result notifications. No tool call opens the page: people open it from the hub, so a page never waits for a tool's input or result to start.
 
@@ -252,6 +254,24 @@ A minimal page, with no SDK:
 ```
 
 Build each list from text nodes (`textContent`), never by pasting record values into `innerHTML`: a page shows data its viewers and agents wrote.
+
+### Putting Text in the Person's Message Box
+
+A page whose manifest sets `allow_messages: true` may put text in the message box of the person using it with `ui/message`, the MCP Apps request (the SDK's `sendMessage`), on web and in the mobile app. **It never sends.** The person sees the text in their own message box and sends it themselves, edited or not, or never: as themselves, in their own role, to whoever their messages in that conversation already reach. So a page cannot speak for anyone, start the agent, or post to a customer's WhatsApp. Use it for a reply the person would otherwise type: a coach's page drafting "Your 100m time: 1:02.3" for the athlete's conversation.
+
+- **Where it goes:** the message box of the conversation the page was opened from. The page covers that box, so the page closes and the box takes the focus, the text in it.
+- **What is kept:** an empty box takes the text; a box already holding a draft keeps it, the text after it and a blank line. A draft is never replaced.
+- **What it takes:** `role: "user"` and one or more text blocks, joined by a blank line, at most 4,000 characters in all. No other field, no image or file, no recipient or channel, and nothing that sends.
+- **How to tell it is available:** the `ui/initialize` answer's `hostCapabilities.message` is present (`{ "text": {} }`) only where a `ui/message` would be taken when the page starts. Offer the action only then, and still handle a refusal: the message box can stop taking text while the page is open (the conversation ends, its window closes).
+
+Refused with a JSON-RPC error, with nothing put anywhere:
+
+| Error | `data.code` | When |
+|-------|-------------|------|
+| `-32000` | `MESSAGES_NOT_ALLOWED` | The page's manifest does not set `allow_messages: true`, as the platform reads it when the page opens; what the page says has no part in it |
+| `-32000` | `NO_COMPOSER` | The page was opened outside a conversation (from the hub's Pages section on web); the person cannot write in that conversation's message box just then, where the box is greyed out (for example an ended support conversation, one they have not claimed or another person claimed, a blocked contact, a closed WhatsApp or Instagram window); or its text is already in the message box: one `ui/message` per opening, since the page then closes |
+| `-32602` | `MESSAGE_TOO_LONG` | The text is over 4,000 characters; it is refused whole, never cut |
+| `-32602` | (none) | Anything but `role: "user"` and text blocks, a field other than `role` and `content`, or text that is only whitespace |
 
 ## Live Refresh
 
