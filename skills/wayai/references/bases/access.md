@@ -161,11 +161,11 @@ neither an eval run declaring a contact nor a task delegated from any other call
 - **Every other call reaches none of its records:** a customer-facing agent's call (a team member's own
   conversation with one included), a turn in a customer's conversation, a hub user's or everyone else's, a
   [customer-scoped](toolsets.md#customer-scope) toolset's call, and a customer-only set.
-- **Only the reads the base serves itself:** `get`, `list`, a relationship `list` and a reference
-  (`x-fk`) to a record follow these rules; a reference to a record the call does not read answers as one
-  to a record that does not exist. A `list` that needs the search store (a `search` filter, a filter on
-  `archived`, or more records than the base lists itself) is refused with `ACCESS_REFUSED`, and a `get`
-  of an archived record answers as not found.
+- **Every read follows them:** `get`, `list`, a relationship `list` and a reference (`x-fk`) to a record;
+  a reference to a record the call does not read answers as one to a record that does not exist. So does
+  a `list` the search store serves (a `search` filter, a filter on `archived`, or more records than the
+  base lists itself) and a `get` of an archived record, which answers as not found when the call does not
+  read it.
 - **No write of one of its records is served:** each is refused with `ACCESS_REFUSED`, or answers as not
   found when the call does not read the record.
 - **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
@@ -400,9 +400,8 @@ answer as they do today, save a download URL on a base with a person-ruled type
 A record type whose `x-access` is in `report` mode is filtered and refused nothing. Each call bound to
 a toolset is still judged as if every dimension entry were `enforce`, and one that would be refused, or
 whose answer holds records that would be hidden, is counted. [Person entries](#person-entries) in `report`
-are judged on a call for team members only: the records a `get`, `list` or relationship `list` would hide
-(an archived record a `get` reads included), and a `list` that needs the search store, as refused, save where
-the call's people reach none of the type's records, where every record that list returns is counted as hidden. SQL is the exception: a `sql_query` or SQL
+are judged on a call for team members only: the records a `get`, `list` or relationship `list` would hide,
+an archived record a `get` reads and a `list` the search store serves included. SQL is the exception: a `sql_query` or SQL
 Action call carrying a set is not counted, since nothing it would leave out is seen, except where a
 type's entry on a [list field](#list-fields) would refuse it, which is counted as refused; one carrying
 no set is counted as refused. Each count records the base, the record type,
