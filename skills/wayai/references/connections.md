@@ -606,7 +606,7 @@ Connects the hub to one [toolset](bases/toolsets.md) of a base through a [toolse
 **Hosted agents** ([Claude Agent (Managed)](#claude-agent-managed)) get a toolset's tools the same way: assigned like any agent's, and each call run by the platform as a model-connection agent's is, naming the conversation's customer to a customer-scoped toolset. The token never reaches the hosted agent's vendor.
 
 **Setup:**
-1. Mint a toolset-bound token for a base in **this hub's environment**: a preview base's for a preview hub, the production base's for a production hub (`wayai bases tokens create-for-toolset <slug> --base <base-id>`)
+1. Mint a toolset-bound token for a base in **this hub's environment**: a preview base's for a preview hub, the production base's for a production hub (`wayai bases tokens create-for-toolset <slug> --base <base-id>`). Bind it to no person: the connection's calls are for the conversation's people, and a token [bound to persons](bases/toolsets.md#tokens-bound-to-persons) is refused
 2. Settings → Organizations → Hub → Connections → in the **Tool** group, click **Base Toolset**
 3. Fill the form:
    - **Connection Name** (required)

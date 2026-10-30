@@ -329,7 +329,7 @@ curl -X POST "https://data.wayai.pro/v1/tokens" \
                                "customer": {"external_id": "cus_123", "external_source": "crm"}}}'
 ```
 
-A token naming a customer must be bound to a customer-scoped toolset. It expires within 24 hours: 24 hours from the mint when `expires_at` is omitted. A later `expires_at` is refused.
+A token naming a customer must be bound to a customer-scoped toolset. It expires within 24 hours: 24 hours from the mint when `expires_at` is omitted. A later `expires_at` is refused. A token names a customer or [persons](#tokens-bound-to-persons), never both.
 
 A WayAI hub's agents name their customer on their own: a [Base Toolset](../connections.md#base-toolset) connection's call to a customer-scoped toolset names the contact the conversation's WhatsApp phone, Instagram id or app account names, on a scheduled follow-up in that conversation too, and is refused on any other channel. An eval on a preview hub names the contact its scenario or journey declares ([`customer_contact_id`](../evals.md#name-the-customer-customer_contact_id--customer-scoped-toolsets)).
 
@@ -717,7 +717,37 @@ wayai bases tokens create-for-toolset invoicing-agent --base my-base \
   [--name "<name>"] [--ttl 30d | --expires-at <iso>] [--description "..."]
 ```
 
-`--name` defaults to `<slug> consumer`. In table output the command also prints the MCP URL. `wayai toolsets upsert --mint-token` mints one as an interactive convenience, but it is narrower: the token's name is fixed at `<slug> consumer` and it accepts no `--ttl`, `--expires-at` or `--description`. Its combined toolset-and-token output is also **not** an automated credential-capture path — use `bases tokens create-for-toolset --token-only` for that.
+`--name` defaults to `<slug> consumer`. `--person` binds the token to persons (below). In table output the command also prints the MCP URL. `wayai toolsets upsert --mint-token` mints one as an interactive convenience, but it is narrower: the token's name is fixed at `<slug> consumer` and it accepts no `--ttl`, `--expires-at` or `--description`. Its combined toolset-and-token output is also **not** an automated credential-capture path — use `bases tokens create-for-toolset --token-only` for that.
+
+### Tokens bound to persons
+
+For an app or portal that serves its own signed-in people, mint a toolset-bound token per session, bound to
+the people that session serves: `toolset_binding.person` lists their ids as the base's
+[person fields](access.md#person-entries) hold them, matched literally. Every call it makes is
+[customer-facing](access.md#customer-facing-calls), for one person holding exactly those ids: it reaches the
+records those ids reach, of record types whose person entries are in `enforce`, and every record of a
+`{ shared: true }` type, nothing else ([Tokens bound to persons](access.md#tokens-bound-to-persons)).
+
+```bash
+wayai bases tokens create-for-toolset patient-portal --base clinic --person prs_7f3k,pat-1042 --token-only
+
+curl -X POST "https://data.wayai.pro/v1/tokens" \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  --data '{"name": "portal session",
+           "toolset_binding": {"base_id": "clinic", "toolset_id": "patient-portal",
+                               "person": ["prs_7f3k", "pat-1042"]}}'
+```
+
+- **Ids:** 1 to 16, each 1 to 64 characters of `A-Z a-z 0-9 _ -`. `*` is refused: no token reaches every
+  person's records. A token holds no dimension value either.
+- **Lifetime:** within 24 hours: 24 hours from the mint when `expires_at` is omitted (`--ttl`, `--expires-at`);
+  a later `expires_at` is refused.
+- **Who mints it:** whoever may mint a token bound to the toolset (`write:bases`, and the permissions its
+  tools need on the base).
+- **Refused:** beside `toolset_binding.customer`; for a [customer-scoped](#customer-scope) toolset, which
+  refuses every call naming no customer; and on a hub's [Base Toolset](../connections.md#base-toolset)
+  connection, whose calls are for the conversation's people.
+- `wayai bases tokens list` shows each token's `toolset_binding.person`.
 
 ### Capturing the one-time secret
 

@@ -221,8 +221,9 @@ neither an eval run declaring a contact nor a task delegated from any other call
   person: a call reads every file of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`).
   Of any other file type, a call holding every person's records (above) is served every file read but
   `get_url`; any other call reads with `get` only a file an owning link holds from a record the call reads
-  (any other answers as not found), and is refused `list` and `get_url`. A token bound to a toolset, which
-  carries no people, is refused file reads, of a shared file type too.
+  (any other answers as not found), and is refused `list` and `get_url`. A token bound to a toolset and to
+  no person carries no people, and is refused file reads, of a shared file type too; one
+  [bound to persons](#tokens-bound-to-persons) reads files as a customer-facing call does.
 - **In `report`, person entries filter and refuse nothing** for a call for team members; report mode counts
   what enforcing them would hide from, or refuse, one ([Report mode](#report-mode)). A customer-facing call
   finds no record of a type whose person entries are all in `report` ([Customer-facing calls](#customer-facing-calls)).
@@ -285,14 +286,16 @@ A file type marked `shared: true` ([files.md](files.md#file-types)) holds files 
 members reads directly on a base whose person entries are in `enforce`, and every
 [customer-facing call](#customer-facing-calls) on any base: forms, price lists, clinic policies. Mark it in the preview and promote it; a file type with no mark is not shared. The mark lives
 on the file type only: a folder whose files must be open becomes a file type of its own, since there is
-no folder-level mark. A token bound to a toolset, which carries no people, still reads none of them on a
-base whose person entries are in `enforce`. On a base whose person entries are in `enforce`, taking the mark off stops the download URLs already given for its files; on any other, a URL already given works until it expires (5 minutes).
+no folder-level mark. A token bound to a toolset and to no person, which carries no people, still reads
+none of them on a base whose person entries are in `enforce`; one [bound to persons](#tokens-bound-to-persons)
+reads them. On a base whose person entries are in `enforce`, taking the mark off stops the download URLs already given for its files; on any other, a URL already given works until it expires (5 minutes).
 
 ## Customer-facing calls
 
 A hub toolset call is **customer-facing** unless it is a [call for team members](#person-entries): its agent
 is customer-facing, a person of its turn is a hub user, everyone else or the conversation's customer, it is a
-delegated task or an eval run declaring a contact, or WayAI names no people on it. On every base, whatever
+delegated task or an eval run declaring a contact, or WayAI names no people on it. A call made with a
+[token bound to persons](#tokens-bound-to-persons) is customer-facing too. On every base, whatever
 its record types enforce, such a call:
 
 - **Reaches two kinds of record type only:** one whose person entries are in `enforce`, by its people
@@ -315,7 +318,29 @@ its record types enforce, such a call:
   only when customer scope and these rules both let it, so a customer-scoped record type that declares no
   person entry and no `{ shared: true }` holds nothing for it.
 
-A token bound to a toolset carries no people, and is not held to these rules.
+A token bound to a toolset and to no person carries no people, and is not held to these rules.
+
+### Tokens bound to persons
+
+An app or portal serving its own signed-in people calls a toolset with a token bound to the people one
+session serves: `toolset_binding.person` lists their ids, as the base's person fields hold them (WayAI
+person ids, contact ids, or the ids your app keeps for its people), matched literally. Mint one per
+session ([toolsets.md](toolsets.md#tokens-bound-to-persons)); it expires within 24 hours. Every call it
+makes is a [customer-facing call](#customer-facing-calls) for one person holding exactly those ids:
+
+- **Reads** a record of a type whose person entries are in `enforce` when one of its ids is in one of the
+  type's person fields, and every record of a `{ shared: true }` type; any other record answers as not
+  there. It never holds `$person`.
+- **Writes** as [Person writes](#person-writes) states for that one person: it adds only its own ids, and
+  the record it leaves must name one of them. The owner field is not filled for it, so a `create` names
+  the person it is for.
+- **Holds no dimension value**: a record type with a dimension entry in `enforce` holds nothing for it,
+  one declaring `{ shared: true }` too.
+- **Reads files** of a [shared file type](#shared-file-types), and with `get` a file an owning link holds
+  from a record it reads.
+
+A hub's [Base Toolset](../connections.md#base-toolset) connection refuses such a token (`403` on its
+calls): its calls are for the conversation's people, never the token's.
 
 ## Dimensions and values
 
@@ -459,7 +484,8 @@ and they write on a verified channel again. `wayai send-message` writes on the a
 
 This applies once a record type enforces, on its whole base, to every call **bound to a toolset**:
 a hub agent's call through a [Base Toolset](../connections.md#base-toolset) connection (which carries
-the set) and a call made with a toolset-bound `rec_` token (which carries none). A base where every
+the set) and a call made with a toolset-bound `rec_` token (which carries none, or, when it is
+[bound to persons](#tokens-bound-to-persons), the empty set: no value of any dimension). A base where every
 declaration is in `report` mode refuses and filters nothing, save what it refuses and hides from a
 [customer-facing call](#customer-facing-calls), which is held on every base.
 
@@ -490,7 +516,7 @@ fields too ([Person writes](#person-writes)).
 - `batch`, which reaches any record of the base by id;
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person entries, held as [Person writes](#person-writes) states);
-- a call that carries no set (a toolset-bound `rec_` token, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
+- a call that carries no set (a toolset-bound `rec_` token bound to no person, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
 - on a base with a type enforcing a [list field](#list-fields): `sql_query`, and each SQL Action that reads such a type.
 
