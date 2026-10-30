@@ -316,7 +316,8 @@ its record types enforce, such a call:
   through such a link, or of a shared file type.
 - **A [customer-scoped](toolsets.md#customer-scope) toolset's call is customer-facing**: it reaches a record
   only when customer scope and these rules both let it, so a customer-scoped record type that declares no
-  person entry and no `{ shared: true }` holds nothing for it.
+  person entry and no `{ shared: true }` holds nothing for it. A hub agent's call names no customer, so it never
+  reaches a customer-scoped toolset but in an eval ([Base Toolset](../connections.md#base-toolset)).
 
 A token bound to a toolset and to no person carries no people, and is not held to these rules.
 
@@ -444,15 +445,17 @@ A person's values depend on what they are on the hub, checked in this order; the
 2. **Hub admin**: their hub admin values.
 3. **Hub team member**: the union of their values across the teams they are in.
 4. **Hub user** whose access was granted: their hub user values.
-5. **Everyone else**, such as a channel contact: the hub's **public values**, which hold only on a
-   customer's own records. On a [customer-scoped](toolsets.md#customer-scope) toolset's call, they
-   reach the call's customer's records of `owned` and `root` record types; every other record type
-   that enforces a dimension reaches nothing. A call that names no customer reaches no record a dimension
-   narrows. Either way the call is [customer-facing](#customer-facing-calls).
+5. **Everyone else**, such as a channel contact: the hub's **public values**, and the call is
+   [customer-facing](#customer-facing-calls). On a hub agent's call, which names no customer, they hold
+   on the record types such a call reaches: a person-ruled type, by its people, and a `{ shared: true }`
+   type. On a call naming its customer (a [customer page](../pages.md#customer-pages)'s, or an eval's on
+   a [customer-scoped](toolsets.md#customer-scope) toolset), they reach the customer's records of
+   `owned` and `root` record types, and every other record type that enforces a dimension reaches nothing.
 
 So a teacher who is also a contact of a customer-facing hub gets their team values there, never its
-public values. A parent who must see their own child's records gets them through public values (for
-example `class: ["*"]`) on a customer-scoped toolset, which narrows them to that parent's records.
+public values. A parent who must see their own child's records gets them through a person entry naming
+the parent on the child's records; public values (for example `class: ["*"]`) only stop narrowing them
+by a dimension.
 
 **Only a verified identity makes a person.** A conversation's person counts as themselves only while
 they write on a channel that verifies its sender: the app (their signed-in account), WhatsApp,
@@ -472,7 +475,7 @@ and they write on a verified channel again. `wayai send-message` writes on the a
 | A hub automation with no person | Hub ∩ agent |
 | An eval run | Hub ∩ the set of the person who started it ∩ agent. A run started with an API token takes the set of the person who created the token; a run with no recorded starter reaches nothing |
 | A background agent's call inside another turn (a monitor, an evaluator) | The host turn's set ∩ the host turn's agent's values ∩ its own |
-| A task started with `delegate_to_hub`, or a consult with another hub | The delegating turn's set, stored when the task starts ∩ the current set of each person who started a delegating turn, on their hub ∩ the task hub's ∩ the task agent's. Revoking such a person's values reaches the running task. One who is no longer the kind they were, or is gone, reaches nothing. A delegation from an everyone-else turn reaches nothing on enforcing types, since a task names no customer |
+| A task started with `delegate_to_hub`, or a consult with another hub | The delegating turn's set, stored when the task starts ∩ the current set of each person who started a delegating turn, on their hub ∩ the task hub's ∩ the task agent's. Revoking such a person's values reaches the running task. One who is no longer the kind they were, or is gone, reaches nothing. A delegation from an everyone-else turn keeps the hub's public values, and its task's calls are customer-facing |
 
 - A person, team row, agent or thread that cannot be found reaches nothing, and so does a set that
   could not be worked out: a call never reaches more because a lookup failed.
@@ -538,8 +541,10 @@ type whose [person entries](#person-entries) are in `enforce`, or one enforcing 
   relationships) are left out, even for a set holding `*`, and so are the operations rows of a deleted
   relationship. Rows naming no record answer as usual.
 - **Joins and subqueries** are held the same way: every table a query reads is filtered.
-- **A customer-only set** (the hub's public values, sent for everyone else) reads no record of an
-  enforcing type through SQL.
+- **A customer-only set** (the hub's public values, sent for everyone else) rides a
+  [customer-facing call](#customer-facing-calls), which is refused `sql_query` and served a SQL Action
+  only over `{ shared: true }` types: a hub agent's call, which names no customer, reads the rows its
+  values reach there; a call naming its customer reads no record of an enforcing type through SQL.
 - **Large bases:** each query over `relationships`, `audit_log` or `operations_log` first works out
   which records the set reaches, so on a base of several million records it can exceed the query
   limits, and it is refused rather than answered in part.

@@ -292,7 +292,7 @@ They are ordinary fields: `records get` and `records query` return them, and a f
 
 Notes are the short procedures and recurring issues an agent kind follows, such as "a red LOS light means the fiber signal is cut: check the green connector before anything else". A back-office or curator agent writes them as drafts, a person approves them, and each agent reads only the approved notes meant for its kind. A note's `audience` names the toolsets that read it: for each kind, the id of the toolset that holds its notes tools (step 3).
 
-**A note never holds anything about one customer:** no name, document number, phone, address, order or invoice. That is what lets a customer-facing agent read notes on every channel, including the ones that name no customer, without a [customer scope](toolsets.md#customer-scope). Facts about a customer stay in records a customer-scoped toolset reads.
+**A note never holds anything about one customer:** no name, document number, phone, address, order or invoice. That is what lets a customer-facing agent read notes on every channel, including those where its customer has no person id. Facts about a customer stay in records whose [person entries](access.md#person-entries) name them.
 
 **1. The record type**, `record-types/notes.yaml`, declared `shared`, open to customer-facing calls (`x-access: [{ shared: true }]`: without it a customer-facing agent's call finds no note, [access.md](access.md#customer-facing-calls)) and reviewed:
 
@@ -367,7 +367,7 @@ A search answers titles, not bodies, so a page of 50 costs the agent little; it 
 - **The writer**, `notes-curator`, the one toolset `x-review.writers` names: `search_all_notes`, `get_note`, `draft_note` and `revise_note`. It writes and reads as [Reviewed record types](toolsets.md#reviewed-record-types) says; to correct an approved note, it writes a new draft whose `supersedes` names it.
 - **A reader per kind**, holding `search_notes` and `get_note`. Every call answers only the approved notes whose `audience` holds that toolset's id or `*`.
   - A kind whose toolset is not [customer-scoped](toolsets.md#customer-scope), such as one that reads only documents, adds the two tools to that toolset.
-  - A kind whose toolset is customer-scoped gets a second toolset for its notes, with no customer scope, and its `audience` id is that second toolset's. Every call to a customer-scoped toolset names a customer, so on a channel that names none, notes on it would be refused.
+  - A kind whose toolset is customer-scoped (a customer page's) gets a second toolset for its notes, with no customer scope, and its `audience` id is that second toolset's. Every call to a customer-scoped toolset must name a customer, which a hub agent's call never does, so notes on it would be refused.
 
 On a hub, connect each toolset with a [Base Toolset](../connections.md#base-toolset) connection, whose token is bound to that toolset on the base of the hub's environment; in `hub.yaml`, the connection names the Bearer Token org credential that holds it. Give the writer's tools to an agent the team works with, such as the hub's copilot, and the reader's to the agents of its kind: a customer-facing agent may hold them, and never the writer's ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*). After adding the notes tools to a toolset the hub already connects, sync the connection's tools and assign them to the agents ([Giving agents its tools](../connections.md#base-toolset)).
 

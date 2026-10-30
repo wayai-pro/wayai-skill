@@ -220,7 +220,7 @@ Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per 
 
 ### Name the customer (`customer_contact_id`) — customer-scoped toolsets
 
-**When the agent under test calls a [customer-scoped toolset](bases/toolsets.md#customer-scope), declare `customer_contact_id:`** — the contact id of the customer the scenario's runs serve. Each of the toolset's calls in the run then names that customer, as a live channel names the contact behind the customer's phone or account, so the agent reads and writes only that customer's records and the shared ones. Without it, an eval names no customer, and every call to a customer-scoped toolset is refused with a tool error.
+**When the agent under test calls a [customer-scoped toolset](bases/toolsets.md#customer-scope), declare `customer_contact_id:`** — the contact id of the customer the scenario's runs serve. Each of the toolset's calls in the run then names that customer, so the agent reads and writes only that customer's records and the shared ones. Without it, an eval names no customer, and every call to a customer-scoped toolset is refused with a tool error. A live conversation names no customer at all, so the same agent's calls to that toolset are refused outside an eval: an agent that talks to customers is better given a toolset with no customer scope, whose record types declare [person entries](bases/access.md#person-entries) ([Base Toolset](connections.md#base-toolset), *Customer-scoped toolsets*).
 
 ```yaml
 # evals/orders/where-is-my-order.yaml

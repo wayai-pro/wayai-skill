@@ -126,7 +126,7 @@ A SQL Action bills one operation per call. A token not bound to the toolset call
 
 A [customer-scoped](#customer-scope) toolset may hold one only when every record type it declares is `shared`, and a [reviewed record type](#reviewed-record-types)'s reader may not hold one that declares that type: the query reads every row of each type it declares. A [customer-facing call](access.md#customer-facing-calls) is served one only when every record type it declares holds `x-access: [{ shared: true }]`, and refused it otherwise with `ACCESS_REFUSED`.
 
-On a WayAI hub, a customer-facing agent can hold a SQL Action only on a customer-scoped toolset, as with any other record tool ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*). Without a customer scope, a toolset holding one is refused to customer-facing agents, whatever types it declares: the query reads every row of each.
+On a WayAI hub, a customer-facing agent may hold a SQL Action on any toolset the hub lets it hold ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*): each of its calls is customer-facing, so the Action is served only when every record type it declares holds `{ shared: true }`. A customer page holds one only on a customer-scoped toolset.
 
 ## Toolsets
 
@@ -257,7 +257,7 @@ Give a customer-facing agent `list` and `get` only: a hub refuses a pilot, pilot
 
 ## Customer scope
 
-A **customer-scoped** toolset serves one customer per call. It is for an agent that talks to customers, where each call must stay inside the records of the customer it serves. Two declarations make it up.
+A **customer-scoped** toolset serves one customer per call: each call must stay inside the records of the customer it names. It serves an external agent that mints a token per customer session ([Serving a customer](#serving-a-customer)) and a WayAI [customer page](../pages.md#customer-pages). A WayAI hub's agents name no customer, so they never reach one: give an agent that talks to customers a toolset with no customer scope, and declare [person entries](access.md#person-entries) or `x-access: [{ shared: true }]` on the record types it reaches ([Customer-facing calls](access.md#customer-facing-calls)). Two declarations make it up.
 
 **Each record type it reaches says what it is**, with `x-customer-scope` at the root of its schema ([records.md](records.md#customer-scope-x-customer-scope)):
 
@@ -331,7 +331,7 @@ curl -X POST "https://data.wayai.pro/v1/tokens" \
 
 A token naming a customer must be bound to a customer-scoped toolset. It expires within 24 hours: 24 hours from the mint when `expires_at` is omitted. A later `expires_at` is refused. A token names a customer or [persons](#tokens-bound-to-persons), never both.
 
-A WayAI hub's agents name their customer on their own: a [Base Toolset](../connections.md#base-toolset) connection's call to a customer-scoped toolset names the contact the conversation's WhatsApp phone, Instagram id or app account names, on a scheduled follow-up in that conversation too, and is refused on any other channel. An eval on a preview hub names the contact its scenario or journey declares ([`customer_contact_id`](../evals.md#name-the-customer-customer_contact_id--customer-scoped-toolsets)).
+A WayAI hub's agents name no customer: a [Base Toolset](../connections.md#base-toolset) connection's call names the people its turn is for instead ([Person entries](access.md#person-entries)), so an agent's call to a customer-scoped toolset is refused before it reaches the base. Declare person entries or `{ shared: true }` on the record types an agent serves customers from, and keep customer scope off its toolset. Only an eval on a preview hub names a customer, the contact its scenario or journey declares ([`customer_contact_id`](../evals.md#name-the-customer-customer_contact_id--customer-scoped-toolsets)); a [customer page](../pages.md#customer-pages) names its viewer's contact.
 
 A WayAI contact's customer record is the root record whose `external_id` is the contact id and whose `external_source` is `wayai_contact`. That source is reserved. Only a person signed in to WayAI keys a record under it, or a seed fixture on a preview base, so an eval can seed a customer. Any other write that would key a record under it — a new record, or one re-keyed onto it — is refused, a tool call included. A single write answers `RESERVED_EXTERNAL_SOURCE` (403). A batch or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `RESERVED_EXTERNAL_SOURCE` as its `details.original_error.code`. Updating a record that already holds such a key, without changing the key, is not refused.
 
@@ -349,7 +349,7 @@ wayai contacts unlink-customer <contact_id> --base <base_id>
 
 - **Who.** A person signed in to WayAI who manages the organization's contact book and may write its data: an organization admin. An API token is refused, whatever its permissions, including one holding `contacts:write`. `wayai login --token` and `WAYAI_TOKEN` are tokens, so these commands need `wayai login` without `--token`.
 - **Link** keys the record under the contact: `external_id` is the contact id and `external_source` is `wayai_contact`. The record must hold no external key, or the contact id under another source (an unlinked record: only the source changes). A record keyed under another `external_id`, such as a CRM's id, is refused with `customer_record_keyed_elsewhere`: re-keying it would orphan its owned records, whose `owner` holds the old key. Link a record holding no key instead, or create the customer record under the contact (`wayai records upsert <type> --base <base_id> --data <json|@file> --external-id <contact_id> --external-source wayai_contact`). A contact is linked to at most one record of a base; linking another is refused with `contact_customer_taken` until the first is unlinked. A base that declares no customer record type, or more than one, is refused with `customer_root_unavailable`.
-- **Unlink** moves the record's `external_source` to `wayai_contact_unlinked` and keeps its `external_id`, the contact id. Conversations with the contact then name a customer no record holds, so their calls are refused. The record and its owned records stay as they are: an owned record's `owner` matches `external_id` under any source. Linking the same record again moves the source back.
+- **Unlink** moves the record's `external_source` to `wayai_contact_unlinked` and keeps its `external_id`, the contact id. A customer page the contact opens then names a customer no record holds, so its calls are refused. The record and its owned records stay as they are: an owned record's `owner` matches `external_id` under any source. Linking the same record again moves the source back.
 - **Linking an unlinked contact to a different record** leaves two customer records holding the contact id: the unlinked one and the new one. The new one serves the contact, but its owned record types are unreachable, since an `owner` value two customer records hold belongs to neither. Re-key or delete the unlinked record to clear it. Unlinking the new one is refused with `customer_unlinked_key_taken` while the old one holds the unlinked key.
 - A record changed between the read and the write is refused with `customer_record_changed`: run the command again.
 
@@ -412,7 +412,7 @@ A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held 
 
 **What the resolve reports.** `wayai toolsets get --resolved` carries, under `record_types`, the schema (its `x-review` included) of each record type the toolset's Actions, composite record steps and SQL Actions reach, and of every reviewed record type it reaches any other way: at either end of a relationship tool's or a composite relationship step's relationship type (every reviewed type, when that type names none on an end), in a `batch` entry that names a record type, and every reviewed type for `sql_query`. So whoever holds the toolset can tell from `x-review.writers` which reviewed types it writes.
 
-On a WayAI hub, a customer-facing agent never holds the tools of a writer of a type they reach, and may hold a reader with no customer scope when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
+On a WayAI hub, a customer-facing agent never holds the tools of a writer of a type they reach, and a customer page holds a reader with no customer scope only when every record type its tools reach is reviewed and `shared` ([Base Toolset](../connections.md#base-toolset)).
 
 For a worked example, with a writer toolset, a reader per agent kind and what a person approves, see [Recipe: notes for agent kinds](records.md#recipe-notes-for-agent-kinds).
 
