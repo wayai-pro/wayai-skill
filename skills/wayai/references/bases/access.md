@@ -263,9 +263,22 @@ reference to a record that does not exist. Linking or unlinking a record changes
 allowed when the call reads the record. A composite holds every step to these rules and rolls back as a
 whole. `batch` and file writes stay refused on the base.
 
-**The owner field is not filled for you yet.** A `create` that leaves out the field marked `owner`
-leaves it empty, so name the person the record belongs to. Filling it with the conversation's customer
-comes later.
+**The owner field is filled with the conversation's customer.** On a hub agent's
+[customer-facing call](#customer-facing-calls) in a conversation with a customer, a `create` that leaves out
+the field marked `owner` gets the customer's person id (as one value, or a list holding it on a list field),
+then is held to the rules above like an id the call named: beside a team member who does not hold
+`$person`, such a `create` is refused. So a new customer's first record needs no lookup: the agent creates it
+and leaves `owner` out.
+
+- **Only a new record is filled.** An update, and a `create` keyed onto a record that already exists (a full
+  replace), fill nothing, so a returning customer's records are never re-owned. A `create` that names the
+  owner field keeps what it names.
+- **Whose id:** the customer's own person id, also when person links join them to contacts or earlier
+  persons. A task delegated from a customer's conversation fills it with that customer's id; an eval run
+  declaring a contact on a preview hub, with the contact id.
+- **Nothing is filled** for a customer WayAI cannot prove (by email or the API, say), who writes none of the
+  type's records anyway, on a [call for team members](#person-entries), on a customer page's call, or with a
+  [token bound to persons](#tokens-bound-to-persons): name the person the record belongs to.
 
 **Triggers.** A record write is refused when an `internal_write` trigger it sets off writes a record
 type that enforces an access rule ([What an enforcing base refuses](#what-an-enforcing-base-refuses)),
