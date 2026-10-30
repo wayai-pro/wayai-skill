@@ -173,6 +173,17 @@ Schedule a custom manual followup at an exact future time. The receiver is deter
 
 The message is delivered as written: [placeholders](instructions.md) such as `{{now()}}` or `{{file_content(…)}}` in it are not filled, whether the agent wrote it or a [composed chain](custom-tools.md#composed_tools-side-effects-on-success) or a monitor rule supplied it.
 
+### open_page
+
+Send the person the conversation is with a **page card**: a message that opens one of the hub's [pages](../pages.md#page-cards), with params. A pilot or pilot specialist only; not served to a hosted agent. Called with no `page`, it lists the pages this person can open where they read the card (each one's slug, title, description and `params` schema) and sends nothing; called with a `page`, it checks again and sends the card. On a voice call it runs once the caller confirms it, as every tool that sends does.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page` | string | No | The page's slug, from the listing. Omit it to list the pages |
+| `params` | object | No | Values the page opens with. Only those the page's `params` schema declares and accepts are kept |
+
+**Response.** Listing: `{ audience, pages }`, `audience` being `team` or `customers`, or `null` with an empty `pages` and a `message` saying why there are none. Sending: `{ message_id, page, params, dropped_params, delivery }`: the params kept, those dropped, and how the card left on the conversation's channel. Which pages a person is offered, and what each surface shows, is in [pages.md → Page Cards](../pages.md#page-cards).
+
 ### run_monitor
 
 Run another monitor on this hub, and let it act on its own rules. Selected by a monitor's rule — see [rules and fallback](roles-and-settings.md#rules-and-fallback).
@@ -551,7 +562,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 
 | Module | Tools |
 |--------|-------|
-| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `insert_note` (monitor only), `run_monitor` (monitor only) |
+| Conversation | `transfer_to_agent`, `transfer_to_team`, `consult_agent`, `delegate_to_hub`, `start_consult_thread`, `close_conversation`, `update_kanban_status`, `schedule_followup`, `open_page` (pilot track only), `insert_note` (monitor only), `run_monitor` (monitor only) |
 | State | `get_state`, `update_state`, `set_state_path`, `reset_state` |
 | Skill & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` |
 | Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |

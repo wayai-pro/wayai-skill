@@ -6,13 +6,14 @@ Pages are hub config: you write them in the hub folder, push them to a preview w
 
 Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look.
 
-> **Where people open them.** On web, a Hub User given access on the Users tab opens a customer page from the header of their own conversation with the hub, the one `https://app.wayai.pro/chat/<hubId>` opens, before its first message too; in the mobile app, from the overflow menu (**⋮**) of that same conversation, which lists the hub's customer pages with `show_in_conversation: true` (and no **All pages**), opening one in the same full-screen sheet as a team page. On web, a team member opens a team page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section.
+> **Where people open them.** On web, a Hub User given access on the Users tab opens a customer page from the header of their own conversation with the hub, the one `https://app.wayai.pro/chat/<hubId>` opens, before its first message too; in the mobile app, from the overflow menu (**⋮**) of that same conversation, which lists the hub's customer pages with `show_in_conversation: true` (and no **All pages**), opening one in the same full-screen sheet as a team page. On web, a team member opens a team page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section. In either app, a page also opens from a page card an agent sent in the conversation ([Page Cards](#page-cards)).
 
 ## Table of Contents
 - [Folder Layout](#folder-layout)
 - [The Manifest](#the-manifest)
 - [Who Sees a Team Page](#who-sees-a-team-page)
 - [Customer Pages](#customer-pages)
+- [Page Cards](#page-cards)
 - [Push, Pull, Diff and Publish](#push-pull-diff-and-publish)
 - [Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)
 - [Live Refresh](#live-refresh)
@@ -49,7 +50,7 @@ audience: team
 team_writes: true               # team users without a grant may write through this page
 show_in_conversation: true
 order: 1
-params:                         # what a link may open the page with: a JSON Schema object
+params:                         # what a link or a page card may open the page with: a JSON Schema object
   type: object
   properties:
     athlete: { type: string }
@@ -71,7 +72,7 @@ tools:                          # tool names must be unique across the manifest
 | `show_in_conversation` | No (`false`); `true` on a customer page | Offers the page from the conversation header to people who may open it. On a team page it orders what a conversation offers first and never hides a page: on web every team page offered is in the Pages section, and in the mobile app every page offered is in the conversation's overflow menu ([Where people open them](#pages)). The header is a customer's only way into a page, so push refuses a customer page without it |
 | `allow_messages` | No (unset, which is `false`) | Either audience's: lets the page put text in the person's own message box in the conversation it was opened from, for them to send or not. It never sends ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)) |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
-| `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link may open the page with |
+| `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link or a [page card](#page-cards) may open the page with |
 | `tools` | No (`[]`) | Up to 50 toolset tools the page calls, each `{ connection, tool, notify }` |
 
 **Each tool** names a hub connection by its name in `hub.yaml` (`connection:`) and a tool by its name in that connection's synced tool list (`tool:`). The page calls a tool by its name alone, so no two entries may share a tool name, even across connections. Push refuses an entry when:
@@ -144,6 +145,32 @@ Push and publish refuse any other toolset on a customer page, saying what it rea
 
 **Limits.** Each person may make 30 calls a minute through one customer page, and a hub's customer pages together make at most 200 requests a minute to its bases, on top of the limits every page shares ([Limits](#limits)). A call past any of them gets `RATE_LIMIT_EXCEEDED` with `retry_after_seconds`.
 
+## Page Cards
+
+An agent can send the person it is talking to a **page card**: a message in the conversation that opens one of the hub's pages, with params, such as the coaches' `results` page opened on one athlete (`{ athlete: "giovanna-izzo" }`). It sends one with the native tool `open_page` ([agents/native-tools.md](agents/native-tools.md#open_page)), which a pilot or pilot specialist may hold:
+
+```yaml
+# agents/pilot.yaml
+tools:
+  native:
+    - open_page
+```
+
+**Which pages the agent is offered.** Only those the conversation's person can open where they read the card. Called with no `page`, the tool lists them, with each one's title, description and `params` schema, and sends nothing; called with a `page`, it checks again before it sends, so a page deleted, or a person who lost access, since the listing gets no card.
+
+- **In the WayAI app** (a conversation on the app): the hub's customer pages with `show_in_conversation: true`, when the person may open them ([Customer Pages](#customer-pages)): a Hub User whose account the contact book links to one customer the hub sees, and has not blocked. Their account must hold its Hub User entry itself: an invitation they have not accepted yet, which opens the pages to them from the app, is not enough for a card. Never a team page: a person's own conversation lists only the hub's customer pages, a team member's included.
+- **On any other channel** (WhatsApp, Instagram, Telegram, email, the API): the hub's team pages, when the person's WayAI account holds a team user or hub admin entry on the hub; the card reaches them as a link. A customer there has no WayAI sign-in, so no card is offered to them. Neither is one to a person whose access to the hub comes only from an organization grant.
+- **Nobody else:** a conversation with no person, an eval run, and a Copilot or background agent's turn, whose output is for the team.
+
+**Params.** The card keeps only the params the page's `params` schema declares and accepts when it is sent, and the tool's answer lists those it dropped (`dropped_params`). Opening a card checks them again against the page's schema at that moment, so a card older than the page's latest manifest opens with what that manifest accepts. A card whose page was deleted since, or that the person viewing it may not open, shows **Page not available**.
+
+**What each surface shows.** On web and in the mobile app, the card: the page's title and description, and **Open**, which opens the page over the conversation as its header does, for the person in their own conversation and for the team in the support conversation. Everywhere else, and in older app versions, the card is its fallback text:
+
+- **a team page:** its title and a link to it in the hub's Pages section on web, with the card's params; a link too long for a message goes without them, and the page opens with none;
+- **a customer page:** its title and "Open this in the latest version of the WayAI app."
+
+The fallback goes out as any message of the agent's does on the conversation's channel: on WhatsApp and Instagram only within 24 hours of the person's last message; an email conversation stores the card without sending it. Later in the conversation the agent reads its card back as that fallback text, so also tell the person in your reply what the page is for.
+
 ## Push, Pull, Diff and Publish
 
 - **The `pages/` folder is the desired set, when it exists.** A hub folder with a `pages/` folder sends every page in it. If `pages/` is empty, push deletes every page.
@@ -185,7 +212,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 
 A page may still confirm a destructive action in its own UI, naming what will change ("Delete Ana's result?"); the viewer then confirms twice.
 
-**Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents.
+**Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents. The host already drops from a page card's params what the page's current schema does not accept ([Page Cards](#page-cards)).
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
