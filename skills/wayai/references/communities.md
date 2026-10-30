@@ -322,6 +322,7 @@ the community, an owner's or admin's header carries **Community settings**, whic
 | General | `rules` | The name, the rules (shown on the join page), slow mode |
 | Join link | `link` | The link, its rotation and turning it off, the source tags |
 | Access | `access` | `admission` and the access list |
+| Members | `members` | The current members, by the name members see, each with their role and when they joined; no emails, no actions |
 | Moderators | `moderators` | The moderators, each with **Dismiss** ([Appointing moderators](#appointing-moderators)) |
 | Reports | `reports` | The reports inbox ([Reports](#reports)) |
 | Bans | `bans` | The banned people, each with **Lift ban** |
@@ -362,7 +363,8 @@ whether or not they joined it (a hub's admins and team are not) — its **modera
 ### Appointing moderators
 
 - **Make moderator** is in the menu of a member's message in a room: an owner or admin picks the
-  person from what they wrote, since no list of members exists. Only a current member can be made one.
+  person from what they wrote; the Members section lists who is in the community but offers no
+  actions. Only a current member can be made one.
 - **Dismiss** in the Moderators section makes them a plain member again. There is no limit on the
   number of moderators.
 - A moderator who leaves or is removed comes back as a plain member if they join again.

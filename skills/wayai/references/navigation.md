@@ -107,7 +107,7 @@ Drill-down. Each level has a sibling-switcher dropdown and a "+ New" affordance.
 | `/settings/organizations/[orgId]/tags` | Org tags — organize hubs/credentials and gate credential resolution (see [connections.md](connections.md#organization-tags)) |
 | `/settings/organizations/[orgId]/contacts` | The organization's contact book: contacts, org lists, CSV import and account links (see [automations.md](automations.md#the-contact-book)) |
 | `/settings/organizations/[orgId]/communities` | The organization's communities (the tab shows once it owns one) |
-| `/settings/organizations/[orgId]/communities/[communityId]/[section]` | A community's settings: `rooms` (the default), `rules` (General), `link`, `access`, `moderators`, `reports`, `bans`, `log`, `stats`, `courses` (see [communities.md → The web console](communities.md#the-web-console)) |
+| `/settings/organizations/[orgId]/communities/[communityId]/[section]` | A community's settings: `rooms` (the default), `rules` (General), `link`, `access`, `members`, `moderators`, `reports`, `bans`, `log`, `stats`, `courses` (see [communities.md → The web console](communities.md#the-web-console)) |
 | `/settings/organizations/[orgId]/administrators` | Org admin members |
 | `/settings/organizations/[orgId]/access` | The organization's access dimensions and values, and the values of its members and production hubs (see [bases/access.md](bases/access.md)) |
 
