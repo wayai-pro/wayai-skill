@@ -154,8 +154,55 @@ members get ids the same way. An organization admin sees each person's id:
   member who accepted their invite (the hub's Users tab), with a copy button;
 - in [`wayai access explain`](#wayai-access-explain), for the person explained.
 
-Nobody else is shown a person id. Write a record's person fields from these ids. Agents are not told the
-ids of the people a turn is for.
+The app shows no one else a person id. Write a record's person fields from these ids. A hub agent is told
+the ids of the team members its call is for (below), never a customer's.
+
+**What a hub agent is told: the people its call is for.** On a [call for team members](#person-entries), every
+answer of a hub agent's toolset tool — a refusal included — names the person id of each person the call is
+for, under the key `wayai_persons`, beside the answer's own keys:
+
+```json
+{ "data": { "id": "appt-1" }, "wayai_persons": [{ "party": "originator", "person_id": "prs_…" }] }
+{ "wayai_persons": [{ "party": "originator", "person_id": "prs_…" }], "error": "…" }
+```
+
+- `party` says which of the turn's people each one is. The same team member is named by a different
+  `party` in each kind of turn:
+
+  | Turn for a team member | Their `party` |
+  |---|---|
+  | Their own conversation with the agent (the app, or a channel that verifies them) | `requester` |
+  | A scheduled follow-up in their own conversation | `requester` |
+  | Their message in a team conversation with no customer | `originator` |
+  | An eval run they started (no person declared) | `originator` |
+  | Their message in a consult thread they opened, in a conversation with no customer | `originator` |
+  | A turn in a consult thread they opened that no message of theirs started (a consultant answering, a schedule), in a conversation with no customer | `initiator` |
+  | A task delegated from a call for them | `delegator` |
+  | Their message in a delegated task's conversation | `originator`, beside the task's `delegator` entries |
+
+  So one turn may name the same person twice, by two parties (a team member writing in a task delegated from
+  a call for them), and a task delegated from a call for several people names each as `delegator`.
+- So a doctor's agent can fill `doctor_id` from a toolset answer in the same turn, but only by taking the id
+  whatever its `party` — never one `party` name, which matches in some kinds of turn only (an eval run names
+  its starter `originator`, the doctor's own conversation names them `requester`). Say so in its
+  instructions: "set `doctor_id` to the `person_id` in `wayai_persons` when every entry names the same one,
+  whatever its `party`; if there is none, or entries name different ids, don't write it — ask the team;
+  never ask the person for an id, never invent one".
+- Each person's own id — never their person links' —, also for a person holding
+  [`$person`](#every-persons-records-person). A person with no id (an unredeemed team invite) is not named,
+  and an answer naming no one carries no `wayai_persons`.
+- **Never on a [customer-facing call](#customer-facing-calls)**: a customer-facing agent's, any call with a
+  customer in the turn (a team member consulting in a customer's conversation included), an eval run
+  declaring a contact, a task delegated from such a call. Its answers name no one, so neither a customer's
+  id nor a team member's can be repeated to a customer.
+- Only a toolset tool's answer: neither a hub page's nor the `data/` file mount's. A call refused before
+  WayAI works out whom it is for — its tool no longer in the connection's catalog, a toolset it can no longer
+  reach — names no one.
+- Never another id. When a person id cannot be derived at all, the call is refused with a retryable error.
+  When whom the call is for cannot be worked out just now (a read that failed, a consult's initiator no
+  longer on the hub), the call is still made, reaching nothing a person entry rules
+  ([How a turn's set is formed](#how-a-turns-set-is-formed)), and its answer names no one: an agent told to
+  fill a person field from `wayai_persons` should leave the record unwritten when the key is absent.
 
 #### Person links and the deny list
 
