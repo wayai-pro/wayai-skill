@@ -145,6 +145,18 @@ json_schema:
   them keep their own modes.
 - `inherit` entries are refused.
 
+**Person ids.** A person field holds **person ids**: `prs_` followed by 52 letters and digits, one per
+WayAI account and organization. The same person has a different id in each organization, so two
+organizations' bases cannot tell they are the same person, and an id never changes. Customers and team
+members get ids the same way. An organization admin sees each person's id:
+
+- in the app, beside each organization member (Settings → Organization), each hub admin and each team
+  member who accepted their invite (the hub's Users tab), with a copy button;
+- in [`wayai access explain`](#wayai-access-explain), for the person explained.
+
+Nobody else is shown a person id. Write a record's person fields from these ids. Agents are not told the
+ids of the people a turn is for.
+
 **What a person entry does today.** Every hub toolset call carries the people its turn is for
 ([Whose sets bound a turn](#whose-sets-bound-a-turn)). A person entry in `enforce` is matched against
 them only on a **call for team members**: one whose agent is not customer-facing (roles `pilot`,
@@ -479,7 +491,7 @@ wayai access explain --agent <agent_id> [--hub <uuid|folder>] [--user <user_id>]
 
 Prints the set every hub toolset call of one agent sends for one person: the person's kind, each layer
 in the order it is intersected, the effective read and write lists per dimension, and, for each value
-left out, the layers that removed it. The agent id is the `id:` that `wayai pull` writes in
+left out, the layers that removed it; then the persons each call is for (below). The agent id is the `id:` that `wayai pull` writes in
 `agents/<slug>.yaml`; the hub is `--hub`, else the workspace's. It reads only, and needs read access to
 the hub.
 
@@ -487,7 +499,16 @@ the hub.
 - **With `--user`** for anyone but yourself: needs an organization admin. Someone else's invites to a team that they have not accepted yet are not counted.
 - It shows a person's own turn in their own conversation on a verified channel. A turn in someone else's conversation, a delegated task and a background agent's call are narrowed further and are not shown.
 - It says when the set is customer-only (everyone else), when the person's own set reaches nothing (so every turn in their conversations does too, a team member's included), and when a preview hub was never published.
-- A layer that cannot be read answers a retryable error, never a smaller set.
+- **The persons each call is for**, which [person entries](#person-entries) are matched against, in each
+  kind of turn it covers. For a person: their message in their own conversation, where they are the
+  conversation's customer and never hold `$person`, and their message with no customer in the turn (a
+  team send, or a consult they start), where `$person` applies. With no person: a turn for no one (a hub
+  automation's own), where only the agent's `$person` applies. For each turn: whether the call is for team
+  members or customer-facing (customer-facing calls reach no person-ruled record today), each person's
+  [person id](#person-entries) or `$person`, and whether the call has **full reach** — every person it is
+  for holds `$person`, or, on a turn for no one, the agent does.
+- Person ids are shown only to an organization admin; anyone else sees how many ids each person has.
+- A layer that cannot be read, or a person id that cannot be worked out, answers a retryable error, never a smaller set.
 
 ## Limits
 

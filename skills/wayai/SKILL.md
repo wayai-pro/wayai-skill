@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.206.0
+version: 6.207.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -65,7 +65,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Access dimensions — an organization's dimensions and values (which records each person, hub and agent may reach; `x-access` on a record type) | CLI (`wayai dimensions`) or UI (organization settings → Access) — see [`references/bases/access.md`](references/bases/access.md) |
 | Access values — org members, hubs, hub public values, hub admins, team members, hub users | UI only (organization settings → Access; Hub → Users → **Access values**) |
 | Access values — an agent | CLI (`access_values` in `agents/<slug>.yaml`, `wayai push`, preview hub) or UI |
-| See the access set a hub agent's calls send for a person, and which layer removed each value | CLI (`wayai access explain --agent <agent_id> [--user <user_id>]`) |
+| See the access set a hub agent's calls send for a person, which layer removed each value, and the persons (person ids, `$person`) each call is for | CLI (`wayai access explain --agent <agent_id> [--user <user_id>]`) |
 | Bases — schemas, records, relationships, files, toolsets (the Data surface) | CLI (`wayai bases`, `wayai records`, `wayai record-types`, …; config-as-code via `wayai pull`/`push bases/<base>`) — open [`references/bases/README.md`](references/bases/README.md) first |
 | Skills sync to providers | CLI (`wayai sync-skills`) |
 | Conversation testing | CLI (`wayai send-message`, `wayai conversations`, `wayai delete-history`) |
@@ -620,7 +620,7 @@ wayai eval call         # Place scored voice calls for a journey whose responder
 # Journeys are hub-as-code: edit journeys/<slug>.yaml and `wayai push` (pull after first create to sync step ids)
 wayai list              # List organizations and hubs
 wayai dimensions        # An organization's access dimensions and values (changes: organization admins): list, create <dim> --label, relabel, add-value <dim> <value> --label, relabel-value, retire-value, restore-value (never delete); --org, --json. See references/bases/access.md
-wayai access explain    # The access set a hub agent's toolset calls send for a person, and which layer removed each value: --agent <agent_id> [--hub <uuid|folder>] [--user <user_id> — anyone but yourself needs an organization admin] [--json]
+wayai access explain    # The access set a hub agent's toolset calls send for a person, which layer removed each value, and the persons each call is for (person ids to organization admins only): --agent <agent_id> [--hub <uuid|folder>] [--user <user_id> — anyone but yourself needs an organization admin] [--json]
 wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>, access list|add|remove <community> [<email>…] (an invite-only community's access list; remove takes out the members the email admitted); --org, --json, -y. See references/communities.md
 wayai contacts          # A contact's customer record in a base (organization admins; browser `wayai login` only): link-customer <contact_id> --base <base_id> --record <record_id>, unlink-customer <contact_id> --base <base_id>; --org, --json. See references/bases/toolsets.md#linking-a-contact-to-its-customer-record
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
