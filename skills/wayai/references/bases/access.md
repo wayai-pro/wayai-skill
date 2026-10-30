@@ -211,10 +211,24 @@ person is also another person id — their earlier identity — or a contact of 
 records can be theirs again. The **deny list** holds person ids and contacts the organization denied, such
 as a recycled phone number's previous owner.
 
-**They change no call yet.** Calls don't read person links or the deny list: a link reaches no record,
-and a denial removes none, until calls carry each person's links. Until then a
-[customer-facing call](#customer-facing-calls) for a person back on a new number reaches only the records
-naming their new person id. Set links up ahead of that.
+**Every call reads them.** A hub toolset call names each person it is for by their **person set**: their
+own person id, then every id they are linked to, less every id on the deny list. So a person back on a new
+number, linked to their earlier identity, reaches the records naming either id, on a
+[customer-facing call](#customer-facing-calls) as on a call for team members.
+
+- **A contact counts only where the hub sees it.** A link to a contact holds on a hub that sees the
+  contact (its scope tags and environment, as the hub's contact lists see it); on any other hub the person
+  is not matched by that contact id. A link to another person id holds on every hub.
+- **A denied id matches no one:** it leaves every person set that held it, and a person whose own id is
+  denied reaches none of a type's records, `$person` or not. The one exception is an
+  [eval run](../evals.md) on a preview hub: the contact its scenario declares is used as declared, its
+  links and the deny list unread.
+- **A person set holds at most 16 ids**, the person's own and their 15 links, counted after the two rules
+  above. A person whose set would hold more (someone linked 16 times before the cap was 15) and who does not
+  hold `$person` reaches none of a type's records on that hub until one link is removed.
+- A link or a denial reaches the next call; a turn already running sees it within a minute.
+- A customer WayAI cannot prove (no id, [above](#person-entries)) has no person set: links never stand in
+  for one.
 
 - A person is named by their person id. `wayai contacts lookup-person <person_id>` names whom an id
   belongs to: a hub of the organization where a conversation carries it, and that hub's name and email
@@ -222,7 +236,7 @@ naming their new person id. Set links up ahead of that.
   can't be written or listed.
 - `wayai contacts link-person <person_id> --to <person_id|contact_id>` links a person; it also copies
   the target's own links, at the time of the link (a later change to them isn't copied). A person holds
-  at most 16 links: a link that would pass that is refused whole. `unlink-person` removes one link; the
+  at most 15 links: a link that would pass that is refused whole. `unlink-person` removes one link; the
   links it copied stay. `person-links <person_id>` lists them.
 - `wayai contacts deny-person <person_id|contact_id>` denies an id for the organization,
   `undeny-person` lifts it, and `denied-persons` lists the deny list.
@@ -312,7 +326,8 @@ whole. `batch` and file writes stay refused on the base.
 
 **The owner field is filled with the conversation's customer.** On a hub agent's
 [customer-facing call](#customer-facing-calls) in a conversation with a customer, a `create` that leaves out
-the field marked `owner` gets the customer's person id (as one value, or a list holding it on a list field),
+the field marked `owner` gets the customer's id (below: their person id, or their one linked contact; as one
+value, or a list holding it on a list field),
 then is held to the rules above like an id the call named: beside a team member who does not hold
 `$person`, such a `create` is refused. So a new customer's first record needs no lookup: the agent creates it
 and leaves `owner` out.
@@ -320,9 +335,10 @@ and leaves `owner` out.
 - **Only a new record is filled.** An update, and a `create` keyed onto a record that already exists (a full
   replace), fill nothing, so a returning customer's records are never re-owned. A `create` that names the
   owner field keeps what it names.
-- **Whose id:** the customer's own person id, also when person links join them to contacts or earlier
-  persons. A task delegated from a customer's conversation fills it with that customer's id; an eval run
-  declaring a contact on a preview hub, with the contact id.
+- **Whose id:** the contact the customer is [linked](#person-links-and-the-deny-list) to, when they are
+  linked to exactly one contact the hub sees; otherwise their own person id (links to earlier person ids
+  never change it). A task delegated from a customer's conversation fills it the same way, for that
+  customer; an eval run declaring a contact on a preview hub, with the contact id.
 - **Nothing is filled** for a customer WayAI cannot prove (by email or the API, say), who writes none of the
   type's records anyway, on a [call for team members](#person-entries), on a customer page's call, or with a
   [token bound to persons](#tokens-bound-to-persons): name the person the record belongs to.
@@ -678,7 +694,7 @@ the hub.
   team send, or a consult they start), where `$person` applies. With no person: a turn for no one (a hub
   automation's own), where only the agent's `$person` applies. For each turn: whether the call is for team
   members or [customer-facing](#customer-facing-calls) (held to the audience gate), each person's
-  [person id](#person-entries) or `$person`, and whether the call has **full reach** — every person it is
+  [person set](#person-links-and-the-deny-list) (their person id and the ids they are linked to) or `$person`, and whether the call has **full reach** — every person it is
   for holds `$person`, or, on a turn for no one, the agent does.
 - Person ids are shown only to an organization admin; anyone else sees how many ids each person has.
 - A layer that cannot be read, or a person id that cannot be worked out, answers a retryable error, never a smaller set.
