@@ -19,10 +19,10 @@ records whose value is in its set.
 >   without is reached only by a set holding `*`. [`wayai access explain`](#wayai-access-explain) shows
 >   what a set reaches.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
->   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches
->   ([SQL under an access set](#sql-under-an-access-set)); a type whose [person entries](#person-entries)
->   are in `enforce` refuses them instead, and serves file reads only as its person entries allow, and a
->   type enforcing an entry on a [list field](#list-fields) refuses SQL too. If that base's toolsets need `batch` or file writes, keep the
+>   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches, and
+>   of a type whose [person entries](#person-entries) are in `enforce` only the records of the people the
+>   call is for ([SQL under an access set](#sql-under-an-access-set)); such a type serves file reads only as
+>   its person entries allow, and a type enforcing an entry on a [list field](#list-fields) refuses SQL. If that base's toolsets need `batch` or file writes, keep the
 >   types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
 >   `wayai records` and `wayai bases` commands, and base API tokens not bound to a toolset, reach the base
@@ -107,11 +107,11 @@ production already holds. `x-access` promotes like any other schema key.
 **What a push reports.** `wayai push bases/<base>` warns, without refusing anything, for each toolset
 that will stop serving some of its tools once a type enforces: `batch` and its file write tools
 ([`access-enforcement`](toolsets.md#tool-design-warnings-at-push)); and, once a type declares a person
-entry, `sql_query` and its file read tools too (file reads then served only as
+entry, its file read tools too (file reads then served only as
 [person entries](#person-entries) allow, the file types it names as marked
 [shared](#shared-file-types) still read by calls for team members); and, once a type declares a dimension entry on a
 [list field](#list-fields), `sql_query`. Otherwise `sql_query` and SQL Actions are not named:
-they stay served, held to each call's set. See
+they stay served, held to each call's set and to the people it is for. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
 **Before a type enforces,** give every record a value: a record without one stays hidden from every
@@ -216,9 +216,13 @@ neither an eval run declaring a contact nor a task delegated from any other call
 - **A call writes its records for the people it is for** ([Person writes](#person-writes)). A call its
   people reach none of writes none of them: each write is refused with `ACCESS_REFUSED`, or answers as not
   found when the call does not read the record.
-- **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
-  and refuses `sql_query` and each SQL Action that reads the type, with `ACCESS_REFUSED`. Files carry no
-  person: a call reads every file of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`).
+- **SQL follows them too:** `sql_query` and a SQL Action answer a record of the type, and a relationship,
+  change-history or operations row naming one, only when the record passes every person the call is for, as
+  a `get` reads it ([SQL under an access set](#sql-under-an-access-set)). A customer-facing call is refused
+  `sql_query`, and a SQL Action over any type not marked `{ shared: true }`
+  ([Customer-facing calls](#customer-facing-calls)).
+- **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses).
+  Files carry no person: a call reads every file of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`).
   Of any other file type, a call holding every person's records (above) is served every file read but
   `get_url`; any other call reads with `get` only a file an owning link holds from a record the call reads
   (any other answers as not found), and is refused `list` and `get_url`. A token bound to a toolset and to
@@ -520,7 +524,6 @@ fields too ([Person writes](#person-writes)).
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person entries, held as [Person writes](#person-writes) states);
 - a call that carries no set (a toolset-bound `rec_` token bound to no person, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
-- on a base with a type whose [person entries](#person-entries) are in `enforce`: `sql_query`, and each SQL Action that reads such a type;
 - on a base with a type enforcing a [list field](#list-fields): `sql_query`, and each SQL Action that reads such a type.
 
 Reading config (`describe_graph`, the toolset's tool list) is always served.
@@ -528,15 +531,25 @@ Reading config (`describe_graph`, the toolset's tool list) is always served.
 ### SQL under an access set
 
 A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
-set reaches. This holds on every base, whether or not one of its types enforces, except a base with a
-type whose [person entries](#person-entries) are in `enforce`, or one enforcing a
-[list field](#list-fields), which refuses them:
+set reaches, and of a type whose [person entries](#person-entries) are in `enforce`, the records of the
+people the call is for. This holds on every base, whether or not one of its types enforces, except a base
+with a type enforcing a [list field](#list-fields), which refuses them:
 
 - **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
   as the stored text. SQL never reaches a record a `get` would not; a value such as a date written
   another way can be left out where a `get` matches it. Records of other types answer as usual.
+- **Person entries:** a record of a type whose person entries are in `enforce` only when every person
+  the call is for passes it, as a `get` reads it: one of its person fields holds an id of that person's, or
+  that person holds every person's records. A call holding every person's records reads all of them, still
+  held to the type's dimension entries; a call for no one (a person WayAI cannot prove, a turn for no one
+  whose agent does not hold `$person`) reads none, and a token bound to a toolset and to no person, which
+  carries no set, is refused SQL reading the type ([above](#what-an-enforcing-base-refuses)). A person
+  field holding a value of another kind than its declared string ids (a number or a boolean in a list, for
+  one) can match nothing in SQL where a `get` matches it. A customer-facing call is refused `sql_query`,
+  and a SQL Action over any type not marked `{ shared: true }`
+  ([Customer-facing calls](#customer-facing-calls)).
 - **`relationships`, `audit_log` and `operations_log`:** a row only when every record it names is one
-  the set reads, by the record's current value, so a record moved out of the set takes its whole
+  the call reads as above, by the record's current value, so a record moved out of the set takes its whole
   history with it. Rows naming a deleted record (its history, its `record_delete` row, its
   relationships) are left out, even for a set holding `*`, and so are the operations rows of a deleted
   relationship. Rows naming no record answer as usual.
