@@ -69,7 +69,7 @@ Skills are attached to agents in `agents/<slug>.yaml` under `skills:` (parallel 
 name: Sales Agent
 skills:
   - name: Order Management
-    skill_id: "skill-uuid"          # set by pull
+    skill_id: "skill-uuid"          # set by pull; one the hub does not hold gives way to `name`
     priority: 0
     use_native_integration: false   # see Execution Modes below
 ```

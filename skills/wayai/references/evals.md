@@ -49,7 +49,7 @@ Subfolders are flat — only **one level deep** is supported. Each subfolder map
 id: "eval-uuid-123"                  # set by pull — do not edit
 name: Order Cancellation             # original name (only when it differs from filename slug)
 agent: Pilot                         # resolved to responder_agent_id
-agent_id: "agent-uuid-456"           # stable ref (set by pull)
+agent_id: "agent-uuid-456"           # stable ref (set by pull); one the hub does not hold gives way to `agent`
 runs: 3                              # default 1 — omitted when 1
 enabled: false                       # default true — omitted when true
 
@@ -320,7 +320,7 @@ A **journey** is a stored happy-path transcript that materializes into single-tu
 id: <journey-uuid>              # set by pull; primary match key (omit when authoring a new journey)
 name: Cancel Order             # journey name (omit if it equals the filename slug)
 agent: Pilot                   # responder agent, resolved by display name
-agent_id: <agent-uuid>         # stable agent FK (set by pull; survives a rename)
+agent_id: <agent-uuid>         # stable agent FK (set by pull; survives a rename; one the hub does not hold gives way to `agent`)
 enabled: false                 # omit when true
 evaluator_instructions: "..."  # optional; default grading instructions for all steps
 transcript:                    # ordered turns; the happy path
