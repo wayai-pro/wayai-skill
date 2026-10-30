@@ -311,7 +311,8 @@ reads them. On a base whose person entries are in `enforce`, taking the mark off
 
 A hub toolset call is **customer-facing** unless it is a [call for team members](#person-entries): its agent
 is customer-facing, a person of its turn is a hub user, everyone else or the conversation's customer, it is a
-delegated task or an eval run declaring a contact, or WayAI names no people on it. A call made with a
+delegated task or an eval run declaring a contact, it is a [customer page](../pages.md#customer-pages)'s call
+(for the person using it), or WayAI names no people on it. A call made with a
 [token bound to persons](#tokens-bound-to-persons) is customer-facing too. On every base, whatever
 its record types enforce, such a call:
 
@@ -333,8 +334,9 @@ its record types enforce, such a call:
   through such a link, or of a shared file type.
 - **A [customer-scoped](toolsets.md#customer-scope) toolset's call is customer-facing**: it reaches a record
   only when customer scope and these rules both let it, so a customer-scoped record type that declares no
-  person entry and no `{ shared: true }` holds nothing for it. A hub agent's call names no customer, so it never
-  reaches a customer-scoped toolset but in an eval ([Base Toolset](../connections.md#base-toolset)).
+  person entry and no `{ shared: true }` holds nothing for it. Neither a hub agent's call nor a customer page's
+  names a customer, so neither reaches a customer-scoped toolset; only an eval does
+  ([Base Toolset](../connections.md#base-toolset)).
 
 A token bound to a toolset and to no person carries no people, and is not held to these rules.
 
@@ -463,11 +465,11 @@ A person's values depend on what they are on the hub, checked in this order; the
 3. **Hub team member**: the union of their values across the teams they are in.
 4. **Hub user** whose access was granted: their hub user values.
 5. **Everyone else**, such as a channel contact: the hub's **public values**, and the call is
-   [customer-facing](#customer-facing-calls). On a hub agent's call, which names no customer, they hold
-   on the record types such a call reaches: a person-ruled type, by its people, and a `{ shared: true }`
-   type. On a call naming its customer (a [customer page](../pages.md#customer-pages)'s, or an eval's on
-   a [customer-scoped](toolsets.md#customer-scope) toolset), they reach the customer's records of
-   `owned` and `root` record types, and every other record type that enforces a dimension reaches nothing.
+   [customer-facing](#customer-facing-calls). On a hub agent's or a [customer page](../pages.md#customer-pages)'s
+   call, which names no customer, they hold on the record types such a call reaches: a person-ruled type, by
+   its people, and a `{ shared: true }` type. On a call naming its customer (an eval's on a
+   [customer-scoped](toolsets.md#customer-scope) toolset), they reach the customer's records of `owned` and
+   `root` record types, and every other record type that enforces a dimension reaches nothing.
 
 So a teacher who is also a contact of a customer-facing hub gets their team values there, never its
 public values. A parent who must see their own child's records gets them through a person entry naming
