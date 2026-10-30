@@ -157,6 +157,37 @@ members get ids the same way. An organization admin sees each person's id:
 Nobody else is shown a person id. Write a record's person fields from these ids. Agents are not told the
 ids of the people a turn is for.
 
+#### Person links and the deny list
+
+A person who comes back on a new WhatsApp number, say, is a new person id. A **person link** says a
+person is also another person id — their earlier identity — or a contact of the organization, so their
+records can be theirs again. The **deny list** holds person ids and contacts the organization denied, such
+as a recycled phone number's previous owner.
+
+**They change no call yet.** Calls don't read person links or the deny list: a link reaches no record,
+and a denial removes none, until calls carry each person's links. Until then a
+[customer-facing call](#customer-facing-calls) for a person back on a new number reaches only the records
+naming their new person id. Set links up ahead of that.
+
+- A person is named by their person id. `wayai contacts lookup-person <person_id>` names whom an id
+  belongs to: a hub of the organization where a conversation carries it, and that hub's name and email
+  for the person. An id no conversation of the organization carries is unknown: that person's links
+  can't be written or listed.
+- `wayai contacts link-person <person_id> --to <person_id|contact_id>` links a person; it also copies
+  the target's own links, at the time of the link (a later change to them isn't copied). A person holds
+  at most 16 links: a link that would pass that is refused whole. `unlink-person` removes one link; the
+  links it copied stay. `person-links <person_id>` lists them.
+- `wayai contacts deny-person <person_id|contact_id>` denies an id for the organization,
+  `undeny-person` lifts it, and `denied-persons` lists the deny list.
+- **Who:** only a person signed in to WayAI (`wayai login`, through the browser) — never an API token,
+  whatever it holds. Linking and unlinking needs `org:write` over the whole organization; the
+  lookup, a person's links and the deny list need an organization admin. A person's links and the deny
+  list name each writer by their person id. `link-person` shows the links it copied (and, with `--json`,
+  the person's links after it) only to an organization admin; anyone else is told whether it linked.
+- The organization's lookups are limited to 30 a minute, its admins together: each lookup, and each
+  listing, link or unlink of a person's links, takes one. An organization with more than 200 hubs can't
+  look up a person id.
+
 **What a person entry does today.** Every hub toolset call carries the people its turn is for
 ([Whose sets bound a turn](#whose-sets-bound-a-turn)), and a person entry in `enforce` is matched against
 them on every such call: a **call for team members** — one whose agent is not customer-facing (roles `pilot`,
