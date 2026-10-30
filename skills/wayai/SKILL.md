@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.213.0
+version: 6.214.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -53,7 +53,7 @@ WayAI is where AI agents and people work together — serving your customers and
 |--------|-----|
 | Hub settings, agents, agent instructions, tools, kanban, states, skills, evals, journeys, automations, custom tools | CLI (`wayai push`); an automation is paused from the app |
 | Contacts and org lists (the organization's contact book, which automations target) | UI (organization settings → Contacts) or API (`/api/contact-book`) — never `hub.yaml`. See [Automations](#automations) |
-| A contact's customer record in a base (what a customer-scoped toolset serves when an eval names the contact; an agent's and a customer page's calls name no contact) | CLI (`wayai contacts link-customer` / `unlink-customer`, browser sign-in only) or API (`/api/contact-book/contacts/:id/customer`) — see [Linking a contact to its customer record](references/bases/toolsets.md#linking-a-contact-to-its-customer-record) |
+| A contact's customer record in a base (what a customer-scoped toolset serves when an eval names the contact; an agent's and a customer page's calls name no contact) | A person keys it: `wayai records upsert` under the reserved `wayai_contact` source — see [Serving a customer](references/bases/toolsets.md#serving-a-customer) |
 | Hub lists (a hub's own filters over the contact book, which its automations target) | CLI (`hub.yaml` `contact_lists:`, `wayai push`) or UI (hub → Automations → Lists) |
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Pages (a hub's small working tools over its bases, for its team or its customers) — `pages/<slug>/page.yaml` + `index.html` | CLI (`wayai page new`, `wayai push` / `wayai pull`, `wayai publish`) — see [Pages](#pages) |
@@ -623,7 +623,7 @@ wayai list              # List organizations and hubs
 wayai dimensions        # An organization's access dimensions and values (changes: organization admins): list, create <dim> --label, relabel, add-value <dim> <value> --label, relabel-value, retire-value, restore-value (never delete); --org, --json. See references/bases/access.md
 wayai access explain    # The access set a hub agent's toolset calls send for a person, which layer removed each value, and the persons each call is for (person ids to organization admins only): --agent <agent_id> [--hub <uuid|folder>] [--user <user_id> — anyone but yourself needs an organization admin] [--json]
 wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>, access list|add|remove <community> [<email>…] (an invite-only community's access list; remove takes out the members the email admitted); --org, --json, -y. See references/communities.md
-wayai contacts          # Browser `wayai login` only. A contact's customer record in a base (organization admins): link-customer <contact_id> --base <base_id> --record <record_id>, unlink-customer <contact_id> --base <base_id> (references/bases/toolsets.md#linking-a-contact-to-its-customer-record). Person links and the deny list (no call reads them yet): link-person <person_id> --to <person_id|contact_id> / unlink-person (org:write), person-links <person_id>, lookup-person <person_id>, deny-person / undeny-person <person_id|contact_id>, denied-persons [--cursor] [--limit] (organization admins) (references/bases/access.md#person-links-and-the-deny-list); --org, --json
+wayai contacts          # Browser `wayai login` only. Person links and the deny list (no call reads them yet): link-person <person_id> --to <person_id|contact_id> / unlink-person (org:write), person-links <person_id>, lookup-person <person_id>, deny-person / undeny-person <person_id|contact_id>, denied-persons [--cursor] [--limit] (organization admins) (references/bases/access.md#person-links-and-the-deny-list); --org, --json
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error). With --hub, auto-attaches the hub's active alerts so triage sees a credential/connection cause up front — check `wayai alerts` yourself first, it's often not a platform bug
