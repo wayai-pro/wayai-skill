@@ -1,6 +1,9 @@
 id: company-faq
 name: Company FAQ
 description: Public-facing FAQ and policy docs (billing, refunds, account)
+# Shared: the Support Pilot is customer-facing, and a customer-facing call reads a file of an unshared type only
+# through an owning link from a record it reads (the FAQ belongs to no record, and to no one customer).
+shared: true
 max_size: 1048576
 allowed_content_types:
   - text/markdown

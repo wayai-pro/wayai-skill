@@ -18,7 +18,8 @@ A file type is a bucket that configures storage policy — max size, allowed con
 optional metadata schema, and whether it is **shared** (`shared: true`): on a base whose
 [person entries](access.md#person-entries) are in `enforce`, every call for team members reads a shared
 file type's files directly, while any other file there is read only through a record
-([Shared file types](access.md#shared-file-types)). A folder that must be open is a file type of its own:
+([Shared file types](access.md#shared-file-types)); and on every base a
+[customer-facing call](access.md#customer-facing-calls) reads files that way. A folder that must be open is a file type of its own:
 there is no folder-level mark. It is **config**: write it in a preview base, then promote.
 
 - **Promote** adds new file types to production and updates changed ones. A changed policy or
@@ -158,6 +159,9 @@ hash, so their rules differ from the mount's — see [File tools](toolsets.md#fi
 connected to the toolset, and holding both `list_files` and `read_file`, reads these documents at
 `data/<file-type>/<path>` with those two tools, and writes them there with `write_file` and `edit_file`
 through the toolset's `put`, when it holds those too ([native-tools.md](../agents/native-tools.md#skill--file-tools)).
+A customer-facing agent reads every file of a file type marked `shared: true` so, and of any other only a file an
+owning link holds from a record it reads; never mark a file type holding one customer's files shared
+([Customer-facing calls](access.md#customer-facing-calls)).
 A toolset's relationship `list` tool answers a file linked to a record as a node with its `path` and
 `get_tool`, the toolset's `get` tool whose folder holds it, when the file lies in the folder of one of
 its `list` or `get` file tools; a link to any other file is left out
@@ -269,7 +273,9 @@ wayai knowledge refresh-preview --org <org_id> --base <knowledge base> [-y]
 `wayai knowledge cut-over`, which switched a hub's agents from their knowledge resources to the
 knowledge base, is retired with them. An agent reads the knowledge base through a toolset of `list`
 and `get` file tools ([toolsets.md](toolsets.md#file-tools)) on a
-[Base Toolset](../connections.md#base-toolset) connection, holding `list_files` and `read_file`.
+[Base Toolset](../connections.md#base-toolset) connection, holding `list_files` and `read_file`; a customer-facing
+agent, every file of a file type marked `shared: true` and of any other only one an owning link holds from a record it
+reads ([Customer-facing calls](access.md#customer-facing-calls)).
 
 ## Attachments
 

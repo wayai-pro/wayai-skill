@@ -214,6 +214,7 @@ A record type can say what it is to a [customer-scoped toolset](toolsets.md#cust
 - `shared` — holds no customer data.
 - `root` and `owned` need a native record type (`sources: []`); a source-backed type can only be `shared`.
 - A record type that declares none is unreachable from a customer-scoped toolset.
+- A WayAI hub's call to a customer-scoped toolset is [customer-facing](access.md#customer-facing-calls): it reaches a record type only when the type also declares person entries in `enforce` or `x-access: [{ shared: true }]`, so declare one on each type it should reach (`{ shared: true }` on a `shared` catalog).
 
 Checked at config write and at promotion: the declaration's shape on the record type itself, and across the base, one root and every owner pointing at it.
 
@@ -233,7 +234,7 @@ A record type can hold records that only some people, hubs and agents may reach,
   "x-access": [ { "field": "class", "dimension": "class", "mode": "enforce" } ] }
 ```
 
-`mode` is `enforce` (filters the type for calls bound to a toolset; switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, filters nothing), for a type that already has live users. Assign values before declaring `enforce`: a hub or person with none reaches nothing on the type. A native record type only. `x-access` also takes person entries (`{ "field": "guardian_ids", "person": true, "owner": true, "mode": "report" }`), naming the field that holds each record's people: in `enforce`, a hub toolset call for team members reads only the records naming each person it is for and writes them only as those people allow ([Person writes](access.md#person-writes)), and other calls bound to a toolset reach none ([Person entries](access.md#person-entries)). The declaration, the organization's dimensions, who is assigned which values and what an enforcing type refuses are in [access.md](access.md).
+`mode` is `enforce` (filters the type for calls bound to a toolset; switch back to `report` to undo) or `report` (counts what enforce would hide or refuse, filters nothing), for a type that already has live users. Assign values before declaring `enforce`: a hub or person with none reaches nothing on the type. A native record type only. `x-access` also takes person entries (`{ "field": "guardian_ids", "person": true, "owner": true, "mode": "report" }`), naming the field that holds each record's people: in `enforce`, a hub toolset call reads only the records naming each person it is for and writes them only as those people allow ([Person writes](access.md#person-writes)), a customer-facing call included, and a token bound to a toolset reaches none ([Person entries](access.md#person-entries)). A customer-facing call reaches only such types and those declaring `x-access: [{ shared: true }]` ([Customer-facing calls](access.md#customer-facing-calls)). The declaration, the organization's dimensions, who is assigned which values and what an enforcing type refuses are in [access.md](access.md).
 
 ### Reviewed records (`x-review`)
 
@@ -293,7 +294,7 @@ Notes are the short procedures and recurring issues an agent kind follows, such 
 
 **A note never holds anything about one customer:** no name, document number, phone, address, order or invoice. That is what lets a customer-facing agent read notes on every channel, including the ones that name no customer, without a [customer scope](toolsets.md#customer-scope). Facts about a customer stay in records a customer-scoped toolset reads.
 
-**1. The record type**, `record-types/notes.yaml`, declared `shared` and reviewed:
+**1. The record type**, `record-types/notes.yaml`, declared `shared`, open to customer-facing calls (`x-access: [{ shared: true }]`: without it a customer-facing agent's call finds no note, [access.md](access.md#customer-facing-calls)) and reviewed:
 
 ```yaml
 id: notes
@@ -326,6 +327,8 @@ json_schema:
     drafted_by: { type: string }
   required: [title, body, status, audience]
   x-customer-scope: { role: shared }
+  x-access:
+    - { shared: true }
   x-review:
     field: status
     audience: audience

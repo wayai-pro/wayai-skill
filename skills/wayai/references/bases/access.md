@@ -158,39 +158,43 @@ Nobody else is shown a person id. Write a record's person fields from these ids.
 ids of the people a turn is for.
 
 **What a person entry does today.** Every hub toolset call carries the people its turn is for
-([Whose sets bound a turn](#whose-sets-bound-a-turn)). A person entry in `enforce` is matched against
-them only on a **call for team members**: one whose agent is not customer-facing (roles `pilot`,
+([Whose sets bound a turn](#whose-sets-bound-a-turn)), and a person entry in `enforce` is matched against
+them on every such call: a **call for team members** — one whose agent is not customer-facing (roles `pilot`,
 `pilot_specialist`, `pilot_advisor`, or the host turn's agent of a background agent's call), whose every person
 is an organization member, a hub admin or a hub team member ([A person's kind](#a-persons-kind)), and which is
-neither an eval run declaring a contact nor a task delegated from any other call. In `enforce`:
+neither an eval run declaring a contact nor a task delegated from any other call — and a
+[customer-facing call](#customer-facing-calls) alike. In `enforce`:
 
-- **A call for team members reads a record when every person it is for is named in one of the type's
-  person fields** (one id of a list field is enough), or holds [`$person`](#every-persons-records-person).
-  With two people on a turn (a team member consulting another, say), a record naming only one of them is
-  not reached. Dimension entries still hold beside them.
+- **A call reads a record when every person it is for is named in one of the type's person fields** (one id
+  of a list field is enough), or holds [`$person`](#every-persons-records-person). With two people on a turn
+  (a team member consulting in a customer's conversation, say), a record naming only one of them is not
+  reached: the customer reaches their own records, and nobody reaches a third person's. Dimension entries
+  still hold beside them.
 - **Every person's records:** when every person the call is for holds `$person` (or, on a turn for no
   one, such as a hub automation's, when the agent does), the call reads every record of the type. A turn
-  for no one whose agent does not hold it reaches none of them.
-- **Every other call reaches none of its records:** a customer-facing agent's call (a team member's own
-  conversation with one included), a turn in a customer's conversation, a hub user's or everyone else's, a
-  [customer-scoped](toolsets.md#customer-scope) toolset's call, and a customer-only set.
+  for no one whose agent does not hold it reaches none of them. A conversation's customer never holds
+  `$person`, so a call in a customer's conversation never reads every person's records.
+- **A person WayAI cannot prove reaches nothing:** a customer who wrote by email or the API, or whose
+  conversation has no message of theirs on a verified channel, is a person with no id, and a call for them
+  reaches none of the type's records.
 - **Every read follows them:** `get`, `list`, a relationship `list` and a reference (`x-fk`) to a record;
   a reference to a record the call does not read answers as one to a record that does not exist. So does
   a `list` the search store serves (a `search` filter, a filter on `archived`, or more records than the
   base lists itself) and a `get` of an archived record, which answers as not found when the call does not
   read it.
-- **A call for team members writes its records for the people it is for** ([Person writes](#person-writes)).
-  Every other call writes none of them: each write is refused with `ACCESS_REFUSED`, or answers as not
+- **A call writes its records for the people it is for** ([Person writes](#person-writes)). A call its
+  people reach none of writes none of them: each write is refused with `ACCESS_REFUSED`, or answers as not
   found when the call does not read the record.
 - **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses),
   and refuses `sql_query` and each SQL Action that reads the type, with `ACCESS_REFUSED`. Files carry no
-  person: a call for team members reads every file of a [shared file type](#shared-file-types) (`list`,
-  `get` and `get_url`). Of any other file type, a call holding every person's records (above) is served
-  every file read but `get_url`; any other call for team members reads with `get` only a file an owning
-  link holds from a record the call reads (any other answers as not found), and is refused `list` and
-  `get_url`. Every other call is refused file reads, of a shared file type too.
-- **In `report`, person entries filter and refuse nothing**; report mode counts what enforcing them would
-  hide from, or refuse, a call for team members ([Report mode](#report-mode)).
+  person: a call reads every file of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`).
+  Of any other file type, a call holding every person's records (above) is served every file read but
+  `get_url`; any other call reads with `get` only a file an owning link holds from a record the call reads
+  (any other answers as not found), and is refused `list` and `get_url`. A token bound to a toolset, which
+  carries no people, is refused file reads, of a shared file type too.
+- **In `report`, person entries filter and refuse nothing** for a call for team members; report mode counts
+  what enforcing them would hide from, or refuse, one ([Report mode](#report-mode)). A customer-facing call
+  finds no record of a type whose person entries are all in `report` ([Customer-facing calls](#customer-facing-calls)).
 - Calls not bound to a toolset are not filtered ([Limits](#limits)), with one exception: on such a base
   no call is given a download URL (`get_url`) but of a shared file type, since the URL would not open.
   Read the file with `get`.
@@ -200,8 +204,8 @@ people and those meant to reach every person's records hold `$person`.
 
 #### Person writes
 
-With person entries in `enforce`, a call for team members (above) writes a record of the type only as the
-people it is for allow. A person field's ids are judged one by one, against what the field held before:
+With person entries in `enforce`, a call (above) writes a record of the type only as the people it is for
+allow — a customer-facing call's customer included, who adds only their own ids. A person field's ids are judged one by one, against what the field held before:
 
 - **Adding** an id a field did not hold: every person the call is for must hold that id — it is one of
   their own ids — or hold `$person`. With a team member holding `$person` beside another person, the
@@ -225,12 +229,12 @@ whole. `batch` and file writes stay refused on the base.
 
 **The owner field is not filled for you yet.** A `create` that leaves out the field marked `owner`
 leaves it empty, so name the person the record belongs to. Filling it with the conversation's customer
-comes with calls for customers.
+comes later.
 
 **Triggers.** A record write is refused when an `internal_write` trigger it sets off writes a record
 type that enforces an access rule ([What an enforcing base refuses](#what-an-enforcing-base-refuses)),
 with one exception: a trigger that writes a type whose only rule is its person entries, set off by a call
-for team members, runs when
+its people reach, runs when
 
 - it locates its target through a top-level field declaring an `x-fk` into that type, keyed as it
   matches (`match.source_field: data.<field>`), so it patches only a record the call reads;
@@ -241,16 +245,46 @@ for team members, runs when
 Otherwise the write that would set it off is refused with `ACCESS_REFUSED`, naming the trigger.
 
 **`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
-only (never beside a person entry). It is stored and changes nothing today.
+only (never beside a person entry). It opens the type to [customer-facing calls](#customer-facing-calls),
+held to its dimension entries; it changes nothing for any other call.
 
 ### Shared file types
 
 A file type marked `shared: true` ([files.md](files.md#file-types)) holds files every call for team
-members reads directly on a base whose person entries are in `enforce`: forms, price lists, clinic
-policies. Mark it in the preview and promote it; a file type with no mark is not shared. The mark lives
+members reads directly on a base whose person entries are in `enforce`, and every
+[customer-facing call](#customer-facing-calls) on any base: forms, price lists, clinic policies. Mark it in the preview and promote it; a file type with no mark is not shared. The mark lives
 on the file type only: a folder whose files must be open becomes a file type of its own, since there is
-no folder-level mark. A call for a customer, or any other call the person rules refuse files to, still
-reads none of them. Taking the mark off stops the download URLs already given for its files.
+no folder-level mark. A token bound to a toolset, which carries no people, still reads none of them on a
+base whose person entries are in `enforce`. On a base whose person entries are in `enforce`, taking the mark off stops the download URLs already given for its files; on any other, a URL already given works until it expires (5 minutes).
+
+## Customer-facing calls
+
+A hub toolset call is **customer-facing** unless it is a [call for team members](#person-entries): its agent
+is customer-facing, a person of its turn is a hub user, everyone else or the conversation's customer, it is a
+delegated task or an eval run declaring a contact, or WayAI names no people on it. On every base, whatever
+its record types enforce, such a call:
+
+- **Reaches two kinds of record type only:** one whose person entries are in `enforce`, by its people
+  ([Person entries](#person-entries)), and one declaring `{ shared: true }`, every record, held to its
+  dimension entries. Every other record type — one declaring no `x-access`, dimension entries only, or
+  person entries all in `report` — holds nothing for it: a `get` answers not found, a `list` and a search
+  answer empty, a relationship `list` leaves its records out (and answers not found from one), a write
+  answers as when the type or the record is not there, and a reference (`x-fk`) to one as a reference to a
+  record that does not exist. No refusal says such a type or record is there.
+- **Is refused** `sql_query`, `batch`, file writes (`put`, `delete`, `put_url`), writes of a
+  [reviewed](toolsets.md#reviewed-record-types) record type, a SQL Action unless every record type it
+  declares holds `{ shared: true }`, and a write that sets off an `internal_write` trigger into a record type
+  whose every record it may not write — any but one holding `{ shared: true }` whose `enforce` dimension entries its
+  set reaches unrestricted, or a person-ruled one under [the person trigger rule](#person-writes) — each with
+  `ACCESS_REFUSED`.
+- **Reads files** of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`); of any other,
+  only with `get`, a file an owning link holds from a record it reads. A relationship `list` keeps a file only
+  through such a link, or of a shared file type.
+- **A [customer-scoped](toolsets.md#customer-scope) toolset's call is customer-facing**: it reaches a record
+  only when customer scope and these rules both let it, so a customer-scoped record type that declares no
+  person entry and no `{ shared: true }` holds nothing for it.
+
+A token bound to a toolset carries no people, and is not held to these rules.
 
 ## Dimensions and values
 
@@ -357,7 +391,8 @@ A person's values depend on what they are on the hub, checked in this order; the
 5. **Everyone else**, such as a channel contact: the hub's **public values**, which hold only on a
    customer's own records. On a [customer-scoped](toolsets.md#customer-scope) toolset's call, they
    reach the call's customer's records of `owned` and `root` record types; every other record type
-   that enforces a dimension reaches nothing. A call that names no customer reaches nothing.
+   that enforces a dimension reaches nothing. A call that names no customer reaches no record a dimension
+   narrows. Either way the call is [customer-facing](#customer-facing-calls).
 
 So a teacher who is also a contact of a customer-facing hub gets their team values there, never its
 public values. A parent who must see their own child's records gets them through public values (for
@@ -394,7 +429,8 @@ and they write on a verified channel again. `wayai send-message` writes on the a
 This applies once a record type enforces, on its whole base, to every call **bound to a toolset**:
 a hub agent's call through a [Base Toolset](../connections.md#base-toolset) connection (which carries
 the set) and a call made with a toolset-bound `rec_` token (which carries none). A base where every
-declaration is in `report` mode refuses and filters nothing.
+declaration is in `report` mode refuses and filters nothing, save what it refuses and hides from a
+[customer-facing call](#customer-facing-calls), which is held on every base.
 
 **Reads** of an enforcing type reach only the records the set reads:
 
@@ -504,7 +540,7 @@ the hub.
   conversation's customer and never hold `$person`, and their message with no customer in the turn (a
   team send, or a consult they start), where `$person` applies. With no person: a turn for no one (a hub
   automation's own), where only the agent's `$person` applies. For each turn: whether the call is for team
-  members or customer-facing (customer-facing calls reach no person-ruled record today), each person's
+  members or [customer-facing](#customer-facing-calls) (held to the audience gate), each person's
   [person id](#person-entries) or `$person`, and whether the call has **full reach** — every person it is
   for holds `$person`, or, on a turn for no one, the agent does.
 - Person ids are shown only to an organization admin; anyone else sees how many ids each person has.
