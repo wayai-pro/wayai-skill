@@ -154,9 +154,11 @@ members get ids the same way. An organization admin sees each person's id:
 
 - in the app, beside each organization member (Settings → Organization), each hub admin and each team
   member who accepted their invite (the hub's Users tab), with a copy button;
+- in the app, in a conversation's user context, its customer's id when WayAI can prove who the customer
+  is ([Person links and the deny list](#person-links-and-the-deny-list)), with a copy button;
 - in [`wayai access explain`](#wayai-access-explain), for the person explained.
 
-The app shows no one else a person id. Write a record's person fields from these ids. A hub agent is told
+The app shows a person id to no one but an organization admin. Write a record's person fields from these ids. A hub agent is told
 the ids of the team members its call is for (below), never a customer's.
 
 **What a hub agent is told: the people its call is for.** On a [call for team members](#person-entries), every
@@ -232,6 +234,13 @@ number, linked to their earlier identity, reaches the records naming either id, 
 - A customer WayAI cannot prove (no id, [above](#person-entries)) has no person set: links never stand in
   for one.
 
+- **From the conversation view.** In the WayAI app, an organization admin opening a conversation's user
+  context sees its customer's person id and links, when the customer is a person WayAI can prove
+  ([above](#person-entries)), and can link them there: when someone back on a new number has lost their
+  earlier one, check who they are outside the conversation (a call, a document), paste the earlier person id
+  (from that person's earlier conversation) or their contact id, check whom it names, confirm the check,
+  and link. Links show and are removed there too. An agent never proposes whom to link: it can only hand the
+  conversation to your team.
 - A person is named by their person id. `wayai contacts lookup-person <person_id>` names whom an id
   belongs to: a hub of the organization where a conversation carries it, and that hub's name and email
   for the person. An id no conversation of the organization carries is unknown: that person's links
