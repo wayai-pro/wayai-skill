@@ -345,14 +345,14 @@ and leaves `owner` out.
 
 **Triggers.** A record write is refused when an `internal_write` trigger it sets off writes a record
 type that enforces an access rule ([What an enforcing base refuses](#what-an-enforcing-base-refuses)),
-with one exception: a trigger that writes a type whose only rule is its person entries, set off by a call
-its people reach, runs when
+with one exception: a trigger that writes a type whose only rule is its person or
+[inherit](#inherit-entries) entries, set off by a call its people reach, runs when
 
 - it locates its target through a top-level field declaring an `x-fk` into that type, keyed as it
   matches (`match.source_field: data.<field>`), so it patches only a record the call reads;
 - every trigger on the target type sets `skip_cascade_writes: true`;
-- and its `patch` sets no person field of the target, unless every person the call is for holds
-  `$person`.
+- and its `patch` sets no person field and no inherit entry's field of the target, unless every person the
+  call is for holds `$person`.
 
 Otherwise the write that would set it off is refused with `ACCESS_REFUSED`, naming the trigger.
 
@@ -406,10 +406,32 @@ own active records, so a type with inherit entries in `enforce` is read only fro
 - `sql_query` is refused on its base, and so is each SQL Action that reads such a type
   ([SQL under an access set](#sql-under-an-access-set)).
 
-**Writes are not served yet.** No call bound to a toolset creates, updates, deletes, links or unlinks a
-record of such a type, whoever it is for (`ACCESS_REFUSED`); an update or delete of a record the call does not
-read answers as not found, as on any enforcing type. A reference (`x-fk`) to one is written when the call reads
-the record it names, and an `internal_write` trigger into one is refused, as into any enforcing type.
+**Writes.** An inherit entry's field is the record's link to its people, so a call writes it as it writes a
+person field ([Person writes](#person-writes)), judged on the record it references as it is when the write runs:
+
+- **Setting** it (on a `create`, or changing it on an `update` — moving an appointment to another patient):
+  every person the call is for who does not hold `$person` must reach the record it names, through that
+  record's own person fields or its own inherit entries (the same chain a read follows). So a customer links
+  a record only to their own, and beside a team member holding `$person` the customer must still reach it.
+- **Keeping** it as it is: always allowed.
+- **Moving it off** a record, and a `delete` of a record holding one: some person the call is for must reach
+  the record it referenced, unless every one holds `$person`.
+- **Clearing** it (`null`, `""`, or left out of a full replace): only a call every person of which holds
+  `$person`.
+- **The record it leaves** must pass every person the call is for, through a person field of its own or
+  the record an inherit entry references, unless every one holds `$person`.
+
+A type with inherit entries only has no `owner`, so nothing is filled on a `create`: name the record it
+belongs to (a customer's agent names the customer's own patient record). Refusals are `ACCESS_REFUSED` (403),
+naming the field — save setting it to a record the call does not read (by that record's own type), which is
+answered as a reference to a record that does not exist, exactly as one naming no record is. As for any reference, every `x-fk` the record a write leaves holds must name a record the
+call reads, a kept one included: an update of a record a person reaches by a person field of its own, whose
+inherit field references a record they do not reach, is answered as a reference to a record that does not
+exist. Linking or unlinking such a record (a relationship) changes no inherit field, and is allowed when the
+call reads it. An update or delete of a record the call does not read answers as not found, and a `create`
+keyed onto one as a held key (`CONFLICT`), as on any enforcing type. An `internal_write` trigger into such a
+type runs under [the person trigger rule](#person-writes); its `patch` sets no inherit field unless every
+person the call is for holds `$person`.
 
 In `report`, inherit entries filter and refuse nothing; report mode counts what enforcing them would hide
 from a call for team members, and the lists, searches and SQL above it would refuse ([Report mode](#report-mode)).
@@ -465,9 +487,10 @@ makes is a [customer-facing call](#customer-facing-calls) for one person holding
 - **Reads** a record of a type whose person entries are in `enforce` when one of its ids is in one of the
   type's person fields, or of a type whose [inherit entries](#inherit-entries) are when the record it references
   passes for it, and every record of a `{ shared: true }` type; any other record answers as not there. It never holds `$person`.
-- **Writes** as [Person writes](#person-writes) states for that one person: it adds only its own ids, and
-  the record it leaves must name one of them. The owner field is not filled for it, so a `create` names
-  the person it is for.
+- **Writes** as [Person writes](#person-writes) states for that one person: it adds only its own ids, links
+  an [inherit entry](#inherit-entries)'s field only to a record it reaches, and the record it leaves must name
+  one of its ids or reference a record it reaches. The owner field is not filled for it, so a `create` names
+  the person, or the record, it is for.
 - **Holds no dimension value**: a record type with a dimension entry in `enforce` holds nothing for it,
   one declaring `{ shared: true }` too.
 - **Reads files** of a [shared file type](#shared-file-types), and with `get` a file an owning link holds
@@ -644,13 +667,14 @@ found, a create keyed onto one as a held key (`CONFLICT`, 409), and a reference 
 to a record that does not exist. A record
 the set reads but does not write is refused. A composite runs every step under these rules and rolls
 back as a whole. A type whose [person entries](#person-entries) are in `enforce` holds a write's person
-fields too ([Person writes](#person-writes)).
+fields too ([Person writes](#person-writes)), and one whose [inherit entries](#inherit-entries) are, its inherit
+entries' fields.
 
 **Refused with `ACCESS_REFUSED` (403)** on such a base, whatever the call's set:
 
 - `batch`, which reaches any record of the base by id;
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
-- a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person entries, held as [Person writes](#person-writes) states);
+- a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person or [inherit](#inherit-entries) entries, held as [Person writes](#person-writes) states);
 - a call that carries no set (a toolset-bound `rec_` token bound to no person, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type enforcing a [list field](#list-fields), or [inherit entries](#inherit-entries): `sql_query`, and each SQL Action that reads such a type.
 
