@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.224.0
+version: 6.225.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -340,7 +340,7 @@ Test scenarios that run the **real** agent with its **real** tools and score the
 - **Per-run `variables`** + `runs: N` — reliability is a distribution, not a 1/1 sample; each run resolves `{{var(name)}}` against its own disjoint row
 - **Seed `fixture:`** — for any eval that *writes*: names a [base](references/bases/README.md) fixture the platform LEASES for the session — resetting it on acquire, clearing it on release — so runs start from a known baseline instead of the last run's residue. One preview base admits **one eval session at a time**: a second launch is refused with `fixture_target_in_use` (409) rather than allowed to corrupt the first, and `run-eval` waits it out by default — as it does `fixture_seed_unavailable` (409), the base briefly refusing the lease under its own write backpressure
 - **Seed `initial_state:`** — pre-populate user-scope WayAI [state](references/states.md) (a recurring-customer record, a saved profile) before `input` runs, so behavior that depends on memory of prior conversations is testable; isolated + torn down per session like `fixture:`
-- **Declare the persons `person:`** — the person ids or contact ids a scenario's runs, or a journey's steps, are for, as the conversation's customer, so the agent's calls in the eval reach the records whose person fields hold one of them; honoured on preview hubs only; `customer_contact_id:` is its deprecated one-id alias ([`references/evals.md`](references/evals.md#declare-the-persons-person))
+- **Declare the persons `person:`** — the person ids or contact ids a scenario's runs, or a journey's steps, are for, as the conversation's customer, so the agent's calls in the eval reach the records whose person fields hold one of them; honoured on preview hubs only; its old alias `customer_contact_id:` is refused ([`references/evals.md`](references/evals.md#declare-the-persons-person))
 - **Capture** — `wayai eval capture <conversation_id>` freezes a production conversation's last exchange into a scenario YAML
 - **Call evals** (voice calls) — `wayai run-eval --call-mode` and `wayai eval call`: [`references/evals.md`](references/evals.md#call-evals-voice-calls)
 
