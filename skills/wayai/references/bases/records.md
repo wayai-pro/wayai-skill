@@ -200,6 +200,7 @@ missing reference is rejected with an actionable error instead of landing as sil
 
 - A record type write, a batch or a `wayai push` carrying `x-customer-scope` is refused, and so is a promotion whose resulting production config holds one, listed among its access problems. Remove the key from the schema.
 - A record type a base still stores with it is read as if it declared none: the key grants nothing and narrows nothing. A preview clone and a rollback copy it as stored.
+- A customer's root record, keyed by a contact id under the `external_source` `wayai_contact`, is an ordinary record now, and `wayai_contact` an ordinary source: any writer keys a record under it as under any other source, and the key names no person. A record is a contact's when a person field names the contact id: a person [linked](access.md#person-links-and-the-deny-list) to that contact reaches it, on a hub that sees the contact.
 
 ### Access dimensions (`x-access`)
 

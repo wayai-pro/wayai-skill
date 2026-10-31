@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.218.0
+version: 6.219.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -53,7 +53,6 @@ WayAI is where AI agents and people work together — serving your customers and
 |--------|-----|
 | Hub settings, agents, agent instructions, tools, kanban, states, skills, evals, journeys, automations, custom tools | CLI (`wayai push`); an automation is paused from the app |
 | Contacts and org lists (the organization's contact book, which automations target) | UI (organization settings → Contacts) or API (`/api/contact-book`) — never `hub.yaml`. See [Automations](#automations) |
-| A record keyed by a contact under the reserved `wayai_contact` source (what a customer-scoped toolset served, before bases lost customer scope; no call names a contact) | A person keys it: `wayai records upsert` under the reserved `wayai_contact` source — see [Serving a customer](references/bases/toolsets.md#serving-a-customer) |
 | Hub lists (a hub's own filters over the contact book, which its automations target) | CLI (`hub.yaml` `contact_lists:`, `wayai push`) or UI (hub → Automations → Lists) |
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Pages (a hub's small working tools over its bases, for its team or its customers) — `pages/<slug>/page.yaml` + `index.html` | CLI (`wayai page new`, `wayai push` / `wayai pull`, `wayai publish`) — see [Pages](#pages) |
