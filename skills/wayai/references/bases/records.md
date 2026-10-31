@@ -35,7 +35,7 @@ wayai records get <record_type> <id> --base <base> [--external-source <src>]
 wayai records query <record_type> --base <base> \
   [--filter <json|@file>] [--sort <json>] [--fields <list>] [--limit <n>] [--offset <n>] [--external-source <src>]
 wayai records delete <record_type> <id> --base <base> [-y]
-wayai records history <id> --base <base> [--limit <n>] [--offset <n>] [--diff]
+wayai records history <id> --base <base> [--record-type <type>] [--limit <n>] [--offset <n>] [--diff]
 ```
 
 `--external-id` is what makes a write idempotent: re-upserting the same external id updates the
@@ -54,6 +54,9 @@ relationship written before the server wrote them keeps what that write sent.
 `history` returns every version as a snapshot with the actor, operation and timestamp. **Admin-only**
 — available to platform admins or a token granted `read:audit`; ordinary agent tokens are rejected.
 The same subcommand exists on `relationships`, `record-types` and `relationship-types`.
+A record is named by its record type and id together, so two records of different types may share
+an id: `--record-type` (the `record_type` query parameter) reads one of them, and a history spanning
+several record types is refused until it is given.
 
 Each version also carries `toolset_id`: the toolset whose tool made the change, and empty for every
 other writer (a person, an API token, an import, a trigger), and for changes recorded before toolsets
