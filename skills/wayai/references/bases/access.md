@@ -420,8 +420,9 @@ makes is a [customer-facing call](#customer-facing-calls) for one person holding
 - **Reads files** of a [shared file type](#shared-file-types), and with `get` a file an owning link holds
   from a record it reads.
 
-A hub's [Base Toolset](../connections.md#base-toolset) connection refuses such a token (`403` on its
-calls): its calls are for the conversation's people, never the token's.
+A hub's [Base Toolset](../connections.md#base-toolset) connection refuses such a token: saving it is
+refused, and a connection that stored one before is refused every call (`403`,
+`TOOLSET_TOKEN_BOUND_TO_PERSONS`), its calls being for the conversation's people, never the token's.
 
 ## Dimensions and values
 

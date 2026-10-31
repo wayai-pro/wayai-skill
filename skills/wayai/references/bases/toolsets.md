@@ -623,7 +623,8 @@ curl -X POST "https://data.wayai.pro/v1/tokens" \
   tools need on the base).
 - **Refused:** beside `toolset_binding.customer`, which is refused on its own ([Customer scope](#customer-scope));
   and on a hub's [Base Toolset](../connections.md#base-toolset)
-  connection, whose calls are for the conversation's people.
+  connection, whose calls are for the conversation's people: saving one there is refused, and a connection
+  that stored one before is refused every call with `TOOLSET_TOKEN_BOUND_TO_PERSONS` (403).
 - `wayai bases tokens list` shows each token's `toolset_binding.person`.
 
 ### Capturing the one-time secret
