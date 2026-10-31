@@ -141,9 +141,8 @@ json_schema:
   twice, and never by a dimension entry too.
 - `person: true` — marks a person entry.
 - `owner: true` — on exactly one of the type's person entries.
-- `mode` — `enforce` or `report`, the same on every person entry of the type. Dimension entries beside
-  them keep their own modes.
-- `inherit` entries are refused.
+- `mode` — `enforce` or `report`, the same on every person entry of the type, and on its
+  [inherit entries](#inherit-entries). Dimension entries beside them keep their own modes.
 
 **Person ids.** A person field holds **person ids**: `prs_` followed by 52 letters and digits, one per
 WayAI account and organization. The same person has a different id in each organization, so two
@@ -358,8 +357,62 @@ its people reach, runs when
 Otherwise the write that would set it off is refused with `ACCESS_REFUSED`, naming the trigger.
 
 **`{ shared: true }`** is an entry of its own, with no other key, at most once, beside dimension entries
-only (never beside a person entry). It opens the type to [customer-facing calls](#customer-facing-calls),
+only (never beside a person or inherit entry). It opens the type to [customer-facing calls](#customer-facing-calls),
 held to its dimension entries; it changes nothing for any other call.
+
+### Inherit entries
+
+A record that belongs with another record — an appointment with its patient, a note with its appointment —
+can follow that record's people instead of naming its own, through an **inherit entry**:
+
+```yaml
+# record-types/appointment.yaml
+json_schema:
+  type: object
+  properties:
+    patient_id: { type: string, x-fk: { record_type: patients, key: id } }
+    starts_at: { type: string, format: date-time }
+  x-access:
+    - { field: patient_id, inherit: true, mode: enforce }   # reached when its patient is
+```
+
+- `field` — a top-level property declared `{ "type": "string" }` with an `x-fk` keyed on the referenced
+  record's system id (`key: id`). An `external_id` or a data field is refused as the key, since more than
+  one record may hold it. Never a field another entry names.
+- The referenced type must itself declare a [person entry](#person-entries) or an inherit entry, in either
+  mode. A chain — a note inheriting from its appointment, which inherits from its patient — holds at most
+  **three hops**, and never comes back to a type it passed. Each is checked across the base's record types at
+  config write and at promote: a write that would leave any type's chain broken (a target dropping its person
+  entries, say) is refused, naming that type.
+- `inherit: true` and `mode`, the same as the type's person entries. A type may hold inherit entries beside
+  person entries — then it still marks one `owner` — or inherit entries alone, with no owner.
+
+**Reads.** A person the call is for passes a record when one of the type's person fields holds one of
+their ids, **or** the record an inherit entry references passes for them, judged on the referenced record
+as it is now (its person fields, and its own inherit entries). Every person the call is for must pass, as
+for person entries ([Person entries](#person-entries)), and dimension entries hold beside them. So the
+patient's guardian and doctor reach the patient's appointments and their notes; nobody reaches another
+patient's. A reference that names no live record — a deleted patient — passes for no one. A type with inherit
+entries in `enforce` is person-ruled everywhere person entries are: a [customer-facing call](#customer-facing-calls)
+reaches it, and its base's file rule and refusals apply.
+
+**What it is not served.** The records an inherit entry reads are matched one hop at a time on the base's
+own active records, so a type with inherit entries in `enforce` is read only from them:
+
+- a search, a list of archived records, and a `list` of a type holding more than 10,000 active records
+  are refused with `ACCESS_REFUSED` (a list that runs past the time a list may take is refused as
+  retryable, 503); a `get` of a record the base no longer holds active answers as not found, never read from
+  its archived records, as a `get` of a record the call does not reach does;
+- `sql_query` is refused on its base, and so is each SQL Action that reads such a type
+  ([SQL under an access set](#sql-under-an-access-set)).
+
+**Writes are not served yet.** No call bound to a toolset creates, updates, deletes, links or unlinks a
+record of such a type, whoever it is for (`ACCESS_REFUSED`); an update or delete of a record the call does not
+read answers as not found, as on any enforcing type. A reference (`x-fk`) to one is written when the call reads
+the record it names, and an `internal_write` trigger into one is refused, as into any enforcing type.
+
+In `report`, inherit entries filter and refuse nothing; report mode counts what enforcing them would hide
+from a call for team members, and the lists, searches and SQL above it would refuse ([Report mode](#report-mode)).
 
 ### Shared file types
 
@@ -380,10 +433,10 @@ delegated task or an eval run declaring persons, it is a [customer page](../page
 [token bound to persons](#tokens-bound-to-persons) is customer-facing too. On every base, whatever
 its record types enforce, such a call:
 
-- **Reaches two kinds of record type only:** one whose person entries are in `enforce`, by its people
-  ([Person entries](#person-entries)), and one declaring `{ shared: true }`, every record, held to its
-  dimension entries. Every other record type — one declaring no `x-access`, dimension entries only, or
-  person entries all in `report` — holds nothing for it: a `get` answers not found, a `list` and a search
+- **Reaches two kinds of record type only:** one whose person or [inherit](#inherit-entries) entries are in
+  `enforce`, by its people ([Person entries](#person-entries)), and one declaring `{ shared: true }`, every record,
+  held to its dimension entries. Every other record type — one declaring no `x-access`, dimension entries only, or
+  person and inherit entries all in `report` — holds nothing for it: a `get` answers not found, a `list` and a search
   answer empty, a relationship `list` leaves its records out (and answers not found from one), a write
   answers as when the type or the record is not there, and a reference (`x-fk`) to one as a reference to a
   record that does not exist. No refusal says such a type or record is there.
@@ -410,8 +463,8 @@ session ([toolsets.md](toolsets.md#tokens-bound-to-persons)); it expires within 
 makes is a [customer-facing call](#customer-facing-calls) for one person holding exactly those ids:
 
 - **Reads** a record of a type whose person entries are in `enforce` when one of its ids is in one of the
-  type's person fields, and every record of a `{ shared: true }` type; any other record answers as not
-  there. It never holds `$person`.
+  type's person fields, or of a type whose [inherit entries](#inherit-entries) are when the record it references
+  passes for it, and every record of a `{ shared: true }` type; any other record answers as not there. It never holds `$person`.
 - **Writes** as [Person writes](#person-writes) states for that one person: it adds only its own ids, and
   the record it leaves must name one of them. The owner field is not filled for it, so a `create` names
   the person it is for.
@@ -599,7 +652,7 @@ fields too ([Person writes](#person-writes)).
 - file writes (`put`, `delete`, `put_url`): files carry no value, so they stay readable (`list`, `get`, `get_url`) and are written by none of these calls. Deleting a record that holds an owning link to a file is refused too. On a base with a type whose [person entries](#person-entries) are in `enforce`, file reads are refused as well, save as its person entries allow and of a [shared file type](#shared-file-types);
 - a record write that sets off an `internal_write` trigger writing an enforcing type, since the trigger's write is not held to the call's set (but for a trigger into a type whose only rule is its person entries, held as [Person writes](#person-writes) states);
 - a call that carries no set (a toolset-bound `rec_` token bound to no person, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
-- on a base with a type enforcing a [list field](#list-fields): `sql_query`, and each SQL Action that reads such a type.
+- on a base with a type enforcing a [list field](#list-fields), or [inherit entries](#inherit-entries): `sql_query`, and each SQL Action that reads such a type.
 
 Reading config (`describe_graph`, the toolset's tool list) is always served.
 
@@ -608,7 +661,7 @@ Reading config (`describe_graph`, the toolset's tool list) is always served.
 A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
 set reaches, and of a type whose [person entries](#person-entries) are in `enforce`, the records of the
 people the call is for. This holds on every base, whether or not one of its types enforces, except a base
-with a type enforcing a [list field](#list-fields), which refuses them:
+with a type enforcing a [list field](#list-fields) or [inherit entries](#inherit-entries), which refuses them:
 
 - **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
   as the stored text. SQL never reaches a record a `get` would not; a value such as a date written
@@ -659,8 +712,12 @@ whose answer holds records that would be hidden, is counted. [Person entries](#p
 are judged on a call for team members only: the records a `get`, `list` or relationship `list` would hide,
 an archived record a `get` reads and a `list` the search store serves included. SQL is the exception: a `sql_query` or SQL
 Action call carrying a set is not counted, since nothing it would leave out is seen, except where a
-type's entry on a [list field](#list-fields) would refuse it, which is counted as refused; one carrying
-no set is counted as refused. Each count records the base, the record type,
+type's entry on a [list field](#list-fields), or its [inherit entries](#inherit-entries), would refuse it,
+which is counted as refused; one carrying no set is counted as refused. [Inherit entries](#inherit-entries)
+in `report` are judged like person entries, through the records they reference; a search, a list of archived
+records or a large `list` of such a type is counted as refused, since enforcing them would refuse it, and a `get` of a
+record the base no longer holds active is counted as hidden when its archived records hold it (nothing when no record
+does), since enforcing them answers it as not found. Each count records the base, the record type,
 the dimension (`$person` for a person entry), the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
 a base API token), the calling agent or token, the toolset, whether it was refused or hidden (and
 where), and how many records. Only ids are kept, never a person's name or email or any record's
