@@ -741,7 +741,7 @@ in `report` are judged like person entries, through the records they reference; 
 records or a large `list` of such a type is counted as refused, since enforcing them would refuse it, and a `get` of a
 record the base no longer holds active is counted as hidden when its archived records hold it (nothing when no record
 does), since enforcing them answers it as not found. Each count records the base, the record type,
-the dimension (`$person` for a person entry), the kind of caller (a hub agent's call carrying a set, a customer-only set or none, or
+the dimension (`$person` for a person entry), the kind of caller (a hub agent's call carrying a set or none, or
 a base API token), the calling agent or token, the toolset, whether it was refused or hidden (and
 where), and how many records. Only ids are kept, never a person's name or email or any record's
 content, and nothing is counted on a base with no `x-access`.
