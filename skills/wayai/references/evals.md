@@ -74,7 +74,7 @@ evaluator_instructions: |
   The agent MUST call cancel_order with the correct order_id.
 ```
 
-**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions`, `variables`, `fixture`/`target_base`, `initial_state`, and `customer_contact_id` are optional.
+**Required fields:** `agent` (or `agent_id`), `input`, `expected`. `evaluator_instructions`, `variables`, `fixture`/`target_base`, `initial_state`, and `person` are optional.
 
 **`input.role` is `user` or `system` only** — push rejects anything else. `input` is the turn *trigger*: it is what the responder answers. An `assistant` role would ask the agent to answer its own utterance, and a `tool` result arrives stripped of the `tool_call` it was answering — neither gives the agent anything to respond to. **Always declare `role`** — a role-less `input` is still accepted, but the turn kind it fires as is then the producer's default rather than something your file states. `history` is deliberately unconstrained — a `tool` result there answers a preceding assistant `tool_calls`, which is what history is for.
 
@@ -218,15 +218,17 @@ Rules:
 
 Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per run, so each run can seed a distinct patient.
 
-### Name the customer (`customer_contact_id`)
+### Declare the persons (`person`)
 
-**When the agent under test serves a customer from a base, declare `customer_contact_id:`** — the id the scenario's runs serve as the conversation's customer. Each of the agent's [Base Toolset](connections.md#base-toolset) calls in the run then names it as the customer's [person id](bases/access.md#person-entries), used as declared: the agent reaches the records whose person fields hold it, and the `{ shared: true }` ones, and a `create` that leaves the `owner` field out fills it with that id. Without it, the run declares no customer: its calls are for the parties its turn names ([Whose sets bound a turn](bases/access.md#whose-sets-bound-a-turn)).
+**When the agent under test serves a customer from a base, declare `person:`** — the ids the scenario's runs are for, as the conversation's customer. Each of the agent's [Base Toolset](connections.md#base-toolset) calls in the run is then for one customer holding exactly those [person ids](bases/access.md#person-entries), used as declared, and is a [customer-facing call](bases/access.md#customer-facing-calls): the agent reaches the records whose person fields hold one of them, and the `{ shared: true }` ones, and a `create` that leaves the `owner` field out fills it with the first id. Without it, the run declares no person: its calls are for the parties its turn names ([Whose sets bound a turn](bases/access.md#whose-sets-bound-a-turn)).
 
 ```yaml
 # evals/orders/where-is-my-order.yaml
 fixture: orders-baseline            # seeds the customer's records on the preview base
 target_base: orders-preview
-customer_contact_id: 7f3c2a10-8d4e-4b6a-9c1f-2e5d8a7b6c40
+person:
+  - 7f3c2a10-8d4e-4b6a-9c1f-2e5d8a7b6c40   # a contact id
+  - prs_…                                  # a person id, such as the customer's earlier identity
 input:
   role: user
   content: "where is my order?"
@@ -236,10 +238,11 @@ expected:
 ```
 
 Rules:
-- **Preview hubs only.** A production hub's eval names no customer, whatever its scenario declares. On production, a declared id would let an eval author act as any real customer.
-- **A contact id (a UUID).** Anything else is refused at `wayai push` and on save. The id is used as declared, so it need not be a contact in the contact book: seed the customer's records with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base, their person fields holding that id.
-- **Frozen per run.** A session's runs keep the customer their scenario named when the session started.
-- **On a journey too.** A journey's `customer_contact_id:` names the customer every step serves, by the same rules ([Journeys](#journeys-hub-as-code)).
+- **Preview hubs only.** A production hub's eval is for no declared person, whatever its scenario declares: its calls are for a customer no one is, so they reach no record a person entry rules. On production, a declared id would let an eval author act as any real customer.
+- **1 to 16 ids, each a person id (`prs_…`) or a contact id (a lowercase UUID), each once.** Anything else is refused at `wayai push` and on save, and so is `"*"`: a declared person never reaches every person's records, and an eval declaring one is customer-facing, so the `$person` of the person who started it doesn't apply either. The ids are used as declared — no [person links](bases/access.md#person-links-and-the-deny-list), no deny list — so they need not be anyone's: seed the customer's records with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base, their person fields holding those ids.
+- **Frozen per run.** A session's runs keep the persons their scenario declared when the session started.
+- **On a journey too.** A journey's `person:` is for every step, by the same rules ([Journeys](#journeys-hub-as-code)).
+- **`customer_contact_id:` is its deprecated alias**: one id (a contact id, read in lower case, or a person id), read as `person: [<id>]`. Files and saved scenarios that use it keep working; declaring both is refused. `wayai pull` writes `person:`. Use `person:` in new files.
 
 **The recommended pattern for tool-dependent evals** — anywhere the agent's correctness hinges on values its tools read or write — is **[journey](#journeys-hub-as-code) + `fixture:` + per-run [`variables`](#per-run-variables-var--parallelize-mutating-evals)** together, and its whole point is **repeatable and parallel session runs**. The **journey** captures the multi-turn tool flow (one graded eval per turn); the **`fixture:`** makes each session **repeatable** (reset-before / clear-after → a known baseline every run, not last run's residue); disjoint **`variables`** make the runs **parallel** (each run mutates its own leased row) — collision-free as long as each run's write footprint fits its row (parallel depth ≤ the number of disjoint fixture rows). Seed a pool, give each run one `variables.case` row, run at `runs: N`; reset-before/clear-after handles the baseline automatically. For a stateless text/tone eval that touches no tools, none of the three is needed — the pattern earns its place precisely when tool values are in play.
 
@@ -347,16 +350,16 @@ variables:                     # optional per-run variables (gh #3007) — propa
   case:
     - { name: "Ana", order_id: "123" }
     - { name: "Bruno", order_id: "124" }
-customer_contact_id: <contact-uuid>  # optional; the customer every step serves (preview hubs only)
+person: [<contact-uuid>]           # optional; the persons every step is for (preview hubs only)
 ```
 
 Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_calls` (on assistant turns), `tool_call_id` (on tool-result turns), `attachments` (a list of hub-relative file paths, on `user` turns only — see [Attachments](#attachments-imagesfiles-on-a-user-turn)), and `step_id` (on concluding assistant turns). `step_config` is keyed by `step_id`; each override takes `runs` and/or `evaluator_instructions`.
 
 **Per-run variables on a journey.** A journey-level `variables:` map (same shape and `{{var()}}` semantics as [scenario variables](#per-run-variables-var--parallelize-mutating-evals)) **propagates to every derived step eval**, so run *i* of the whole journey — every step — resolves against the same `variables.NAME[i-1]` row. That makes a multi-turn **mutating** journey runnable at `runs: N` in parallel with each run on its own disjoint fixture. Give each step the same `runs` (or a `step_config` that never exceeds the array length) so the per-step indices stay aligned; a step whose `runs` exceeds a variable array is rejected with `insufficient_variables` at run-launch, same as a scenario.
 
-**The customer on a journey.** A journey-level `customer_contact_id:` propagates to every derived step eval as `variables:` does, so every step's calls name that customer, by the [scenario rules](#name-the-customer-customer_contact_id): preview hubs only, a contact id, frozen per run. A journey that declares none names no customer.
+**The persons on a journey.** A journey-level `person:` propagates to every derived step eval as `variables:` does, so every step's calls are for those persons, by the [scenario rules](#declare-the-persons-person): preview hubs only, person or contact ids, frozen per run. A journey that declares none declares no person.
 
-**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, customer_contact_id, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
+**Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, person, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
 
 > **Pull after creating a journey.** The backend mints stable `step_id`s when a journey is first created (whether via `journey capture` or a `push` of a hand-authored transcript with no `step_id`s). Those ids land in the DB but not on your disk. **Run `wayai pull` after creating or first-pushing a journey** to sync the ids (and the assigned `id`) back — same discipline as entity `id`s. Re-pushing a transcript that's missing the server's `step_id`s re-mints them, which severs the derived evals' history.
 

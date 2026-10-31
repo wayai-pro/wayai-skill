@@ -193,7 +193,7 @@ for, under the key `wayai_persons`, beside the answer's own keys:
   and an answer naming no one carries no `wayai_persons`.
 - **Never on a [customer-facing call](#customer-facing-calls)**: a customer-facing agent's, any call with a
   customer in the turn (a team member consulting in a customer's conversation included), an eval run
-  declaring a contact, a task delegated from such a call. Its answers name no one, so neither a customer's
+  declaring persons, a task delegated from such a call. Its answers name no one, so neither a customer's
   id nor a team member's can be repeated to a customer.
 - Only a toolset tool's answer: neither a hub page's nor the `data/` file mount's. A call refused before
   WayAI works out whom it is for — its tool no longer in the connection's catalog, a toolset it can no longer
@@ -221,8 +221,8 @@ number, linked to their earlier identity, reaches the records naming either id, 
   is not matched by that contact id. A link to another person id holds on every hub.
 - **A denied id matches no one:** it leaves every person set that held it, and a person whose own id is
   denied reaches none of a type's records, `$person` or not. The one exception is an
-  [eval run](../evals.md) on a preview hub: the contact its scenario declares is used as declared, its
-  links and the deny list unread.
+  [eval run](../evals.md#declare-the-persons-person) on a preview hub: the persons its scenario declares
+  are used as declared, their links and the deny list unread.
 - **A person set holds at most 16 ids**, the person's own and their 15 links, counted after the two rules
   above. A person whose set would hold more (someone linked 16 times before the cap was 15) and who does not
   hold `$person` reaches none of a type's records on that hub until one link is removed.
@@ -254,7 +254,7 @@ number, linked to their earlier identity, reaches the records naming either id, 
 them on every such call: a **call for team members** — one whose agent is not customer-facing (roles `pilot`,
 `pilot_specialist`, `pilot_advisor`, or the host turn's agent of a background agent's call), whose every person
 is an organization member, a hub admin or a hub team member ([A person's kind](#a-persons-kind)), and which is
-neither an eval run declaring a contact nor a task delegated from any other call — and a
+neither an eval run declaring persons nor a task delegated from any other call — and a
 [customer-facing call](#customer-facing-calls) alike. In `enforce`:
 
 - **A call reads a record when every person it is for is named in one of the type's person fields** (one id
@@ -339,7 +339,7 @@ and leaves `owner` out.
 - **Whose id:** the contact the customer is [linked](#person-links-and-the-deny-list) to, when they are
   linked to exactly one contact the hub sees; otherwise their own person id (links to earlier person ids
   never change it). A task delegated from a customer's conversation fills it the same way, for that
-  customer; an eval run declaring a contact on a preview hub, with the contact id.
+  customer; an eval run declaring persons on a preview hub, with the first id it declares.
 - **Nothing is filled** for a customer WayAI cannot prove (by email or the API, say), who writes none of the
   type's records anyway, on a [call for team members](#person-entries), on a team page's call, or with a
   [token bound to persons](#tokens-bound-to-persons): name the person the record belongs to.
@@ -375,7 +375,7 @@ reads them. On a base whose person entries are in `enforce`, taking the mark off
 
 A hub toolset call is **customer-facing** unless it is a [call for team members](#person-entries): its agent
 is customer-facing, a person of its turn is a hub user, everyone else or the conversation's customer, it is a
-delegated task or an eval run declaring a contact, it is a [customer page](../pages.md#customer-pages)'s call
+delegated task or an eval run declaring persons, it is a [customer page](../pages.md#customer-pages)'s call
 (for the person using it), or WayAI names no people on it. A call made with a
 [token bound to persons](#tokens-bound-to-persons) is customer-facing too. On every base, whatever
 its record types enforce, such a call:
