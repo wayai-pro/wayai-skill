@@ -21,7 +21,9 @@ records whose value is in its set.
 > - **One enforcing type changes its whole base.** Every call bound to a toolset there is refused
 >   `batch` and file writes. `sql_query` and SQL Actions answer only the rows the call's set reaches, and
 >   of a type whose [person entries](#person-entries) are in `enforce` only the records of the people the
->   call is for ([SQL under an access set](#sql-under-an-access-set)); such a type serves file reads only as
+>   call is for ([SQL under an access set](#sql-under-an-access-set)), save a
+>   [privileged SQL Action](toolsets.md#privileged-sql-actions), which reads every row and answers only the scalars
+>   it declares; such a type serves file reads only as
 >   its person entries allow, and a type enforcing an entry on a [list field](#list-fields) refuses SQL. If that base's toolsets need `batch` or file writes, keep the
 >   types you enforce in a separate base.
 > - **Enforce holds only calls bound to a toolset.** Organization members in the console or the
@@ -93,7 +95,8 @@ x-access:
   list is written only by a set holding `*`.
 - **SQL**: once such an entry is in `enforce`, every call bound to a toolset is refused `sql_query` on
   that base, and each SQL Action that reads the type, with `ACCESS_REFUSED`: SQL is not held to the
-  values of a list field. Records reached through `list`, `get`, search and relationships are not
+  values of a list field. A [privileged SQL Action](toolsets.md#privileged-sql-actions) is not refused: it reads every record of the type and answers
+  only the scalars it declares. Records reached through `list`, `get`, search and relationships are not
   affected. Keep the entry in `report` (where SQL stays served) until the base's toolsets can do
   without SQL, or hold the values in a text field instead.
 
@@ -111,7 +114,7 @@ entry, its file read tools too (file reads then served only as
 [person entries](#person-entries) allow, the file types it names as marked
 [shared](#shared-file-types) still read by calls for team members); and, once a type declares a dimension entry on a
 [list field](#list-fields), `sql_query`. Otherwise `sql_query` and SQL Actions are not named:
-they stay served, held to each call's set and to the people it is for. See
+they stay served, held to each call's set and to the people it is for — a [privileged SQL Action](toolsets.md#privileged-sql-actions) to neither. See
 [What an enforcing base refuses](#what-an-enforcing-base-refuses).
 
 **Before a type enforces,** give every record a value: a record without one stays hidden from every
@@ -280,7 +283,8 @@ neither an eval run declaring persons nor a task delegated from any other call �
   change-history or operations row naming one, only when the record passes every person the call is for, as
   a `get` reads it ([SQL under an access set](#sql-under-an-access-set)). A customer-facing call is refused
   `sql_query`, and a SQL Action over any type not marked `{ shared: true }`
-  ([Customer-facing calls](#customer-facing-calls)).
+  ([Customer-facing calls](#customer-facing-calls)) unless it is
+  [privileged](toolsets.md#privileged-sql-actions), which no person narrows.
 - **Its base** counts the type as enforcing for [every base-wide refusal](#what-an-enforcing-base-refuses).
   Files carry no person: a call reads every file of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`).
   Of any other file type, a call holding every person's records (above) is served every file read but
@@ -404,7 +408,10 @@ own active records, so a type with inherit entries in `enforce` is read only fro
   retryable, 503); a `get` of a record the base no longer holds active answers as not found, never read from
   its archived records, as a `get` of a record the call does not reach does;
 - `sql_query` is refused on its base, and so is each SQL Action that reads such a type
-  ([SQL under an access set](#sql-under-an-access-set)).
+  ([SQL under an access set](#sql-under-an-access-set)) but a [privileged SQL Action](toolsets.md#privileged-sql-actions), which reads every
+  record of it and answers only the scalars it declares: the way to answer a question about such records
+  (is this time free?) without marking the type `{ shared: true }`, which would open every record of it to a
+  customer-facing call.
 
 **Writes.** An inherit entry's field is the record's link to its people, so a call writes it as it writes a
 person field ([Person writes](#person-writes)), judged on the record it references as it is when the write runs:
@@ -464,7 +471,7 @@ its record types enforce, such a call:
   record that does not exist. No refusal says such a type or record is there.
 - **Is refused** `sql_query`, `batch`, file writes (`put`, `delete`, `put_url`), writes of a
   [reviewed](toolsets.md#reviewed-record-types) record type, a SQL Action unless every record type it
-  declares holds `{ shared: true }`, and a write that sets off an `internal_write` trigger into a record type
+  declares holds `{ shared: true }` or it is [privileged](toolsets.md#privileged-sql-actions), and a write that sets off an `internal_write` trigger into a record type
   whose every record it may not write — any but one holding `{ shared: true }` whose `enforce` dimension entries its
   set reaches unrestricted, or a person-ruled one under [the person trigger rule](#person-writes) — each with
   `ACCESS_REFUSED`.
@@ -678,13 +685,17 @@ entries' fields.
 - a call that carries no set (a toolset-bound `rec_` token bound to no person, for one) to a record, relationship or composite tool, or a SQL Action, that reaches an enforcing type, and to `sql_query`;
 - on a base with a type enforcing a [list field](#list-fields), or [inherit entries](#inherit-entries): `sql_query`, and each SQL Action that reads such a type.
 
+None of these refuses a [privileged SQL Action](toolsets.md#privileged-sql-actions), which no set narrows.
+
 Reading config (`describe_graph`, the toolset's tool list) is always served.
 
 ### SQL under an access set
 
 A call carrying a set is served `sql_query` and SQL Actions, and each query answers only the rows the
 set reaches, and of a type whose [person entries](#person-entries) are in `enforce`, the records of the
-people the call is for. This holds on every base, whether or not one of its types enforces, except a base
+people the call is for. A [privileged SQL Action](toolsets.md#privileged-sql-actions) is the exception: it
+reads every row of its record types, whatever the call's set and people, and answers only one row of the
+scalar columns it declares; nothing below applies to it. This holds on every base, whether or not one of its types enforces, except a base
 with a type enforcing a [list field](#list-fields) or [inherit entries](#inherit-entries), which refuses them:
 
 - **`records`:** a record of an enforcing type only when the set reads its value or holds `*`, compared
@@ -716,7 +727,8 @@ with a type enforcing a [list field](#list-fields) or [inherit entries](#inherit
 **Refused for a moment after a change.** When a type's `enforce` entries change (switched to or from
 `enforce`, or an enforced field or dimension changed), the base takes a few seconds to update the
 values its SQL reads. Until then every call bound to a toolset is refused `sql_query` on that base
-and each SQL Action that reads the type, with `ACCESS_REFUSED`. That includes a base where nothing
+and each SQL Action that reads the type (but a [privileged SQL Action](toolsets.md#privileged-sql-actions), which reads no access values), with
+`ACCESS_REFUSED`. That includes a base where nothing
 enforces any more, so a withdrawn rule never leaves rows quietly out of an answer. A refusal that
 persists means the update failed: SQL over the type stays refused until a retry succeeds, so report
 one that lasts. A stored `x-access` that is malformed and may enforce refuses them too, until it is
