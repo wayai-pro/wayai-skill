@@ -325,7 +325,8 @@ allowed when the call reads the record. A composite holds every step to these ru
 whole. `batch` and file writes stay refused on the base.
 
 **The owner field is filled with the conversation's customer.** On a hub agent's
-[customer-facing call](#customer-facing-calls) in a conversation with a customer, a `create` that leaves out
+[customer-facing call](#customer-facing-calls) in a conversation with a customer, and on a
+[customer page](../pages.md#customer-pages)'s call, whose customer is the person using it, a `create` that leaves out
 the field marked `owner` gets the customer's id (below: their person id, or their one linked contact; as one
 value, or a list holding it on a list field),
 then is held to the rules above like an id the call named: beside a team member who does not hold
@@ -340,7 +341,7 @@ and leaves `owner` out.
   never change it). A task delegated from a customer's conversation fills it the same way, for that
   customer; an eval run declaring a contact on a preview hub, with the contact id.
 - **Nothing is filled** for a customer WayAI cannot prove (by email or the API, say), who writes none of the
-  type's records anyway, on a [call for team members](#person-entries), on a customer page's call, or with a
+  type's records anyway, on a [call for team members](#person-entries), on a team page's call, or with a
   [token bound to persons](#tokens-bound-to-persons): name the person the record belongs to.
 
 **Triggers.** A record write is refused when an `internal_write` trigger it sets off writes a record
