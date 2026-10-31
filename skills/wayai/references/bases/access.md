@@ -684,8 +684,7 @@ with a type enforcing a [list field](#list-fields) or [inherit entries](#inherit
 - **Joins and subqueries** are held the same way: every table a query reads is filtered.
 - **A customer-only set** (the hub's public values, sent for everyone else) rides a
   [customer-facing call](#customer-facing-calls), which is refused `sql_query` and served a SQL Action
-  only over `{ shared: true }` types: a hub agent's call, which names no customer, reads the rows its
-  values reach there; a call naming its customer reads no record of an enforcing type through SQL.
+  only over `{ shared: true }` types: a hub agent's call reads the rows its values reach there.
 - **Large bases:** each query over `relationships`, `audit_log` or `operations_log` first works out
   which records the set reaches, so on a base of several million records it can exceed the query
   limits, and it is refused rather than answered in part.
