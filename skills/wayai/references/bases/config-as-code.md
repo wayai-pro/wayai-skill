@@ -38,9 +38,8 @@ file per entity, so changes review cleanly in a pull request.
 > needs at least one file tool: remove that toolset's file and `push --prune` instead. The file
 > types they name must already exist on the base, or the push is refused.
 >
-> `customer_scope` works the same way: a push that omits it keeps the toolset's
-> [customer scope](toolsets.md#customer-scope) as the base has it. Write `customer_scope: false` to
-> turn it off.
+> `customer_scope: true` is refused: [customer scope](toolsets.md#customer-scope) is removed. Delete the
+> key from a toolset file that still states it.
 
 ```
 wayai-ws/

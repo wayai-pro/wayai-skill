@@ -396,11 +396,8 @@ its record types enforce, such a call:
 - **Reads files** of a [shared file type](#shared-file-types) (`list`, `get` and `get_url`); of any other,
   only with `get`, a file an owning link holds from a record it reads. A relationship `list` keeps a file only
   through such a link, or of a shared file type.
-- **A [customer-scoped](toolsets.md#customer-scope) toolset's call is customer-facing**: it reaches a record
-  only when customer scope and these rules both let it, so a customer-scoped record type that declares no
-  person entry and no `{ shared: true }` holds nothing for it. Neither a hub agent's call nor a customer page's
-  names a customer, so neither reaches a customer-scoped toolset; only an eval does
-  ([Base Toolset](../connections.md#base-toolset)).
+- **A call naming a customer is refused**: customer scope is removed ([toolsets.md](toolsets.md#customer-scope)),
+  so no toolset serves one. A record type's stored `x-customer-scope` grants such a call nothing either.
 
 A token bound to a toolset and to no person carries no people, and is not held to these rules.
 
@@ -531,9 +528,7 @@ A person's values depend on what they are on the hub, checked in this order; the
 5. **Everyone else**, such as a channel contact: the hub's **public values**, and the call is
    [customer-facing](#customer-facing-calls). On a hub agent's or a [customer page](../pages.md#customer-pages)'s
    call, which names no customer, they hold on the record types such a call reaches: a person-ruled type, by
-   its people, and a `{ shared: true }` type. On a call naming its customer (an eval's on a
-   [customer-scoped](toolsets.md#customer-scope) toolset), they reach the customer's records of `owned` and
-   `root` record types, and every other record type that enforces a dimension reaches nothing.
+   its people, and a `{ shared: true }` type.
 
 So a teacher who is also a contact of a customer-facing hub gets their team values there, never its
 public values. A parent who must see their own child's records gets them through a person entry naming
@@ -592,7 +587,7 @@ declaration is in `report` mode refuses and filters nothing, save what it refuse
 
 A write never reveals a record the set does not read: an update or delete of one answers as not
 found, a create keyed onto one as a held key (`CONFLICT`, 409), and a reference to one as a reference
-to a record that does not exist, as [customer scope](toolsets.md#serving-a-customer) answers. A record
+to a record that does not exist. A record
 the set reads but does not write is refused. A composite runs every step under these rules and rolls
 back as a whole. A type whose [person entries](#person-entries) are in `enforce` holds a write's person
 fields too ([Person writes](#person-writes)).

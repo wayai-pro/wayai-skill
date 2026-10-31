@@ -194,35 +194,12 @@ missing reference is rejected with an actionable error instead of landing as sil
   reference rejects the whole batch). That ordering helps `external_id`/data keys only.
 - Use foreign keys for **reference data** (patients, plans, products), not high-volume event logs.
 
-### Customer scope (`x-customer-scope`)
+### Customer scope (`x-customer-scope`) — removed
 
-A record type can say what it is to a [customer-scoped toolset](toolsets.md#customer-scope) — one that serves a single customer per call — with `x-customer-scope` at the root of its schema:
+`x-customer-scope` (`root`, `owned`, `shared`) said what a record type was to a customer-scoped toolset. Customer scope is removed, replaced by person rules: declare who reaches a record type in its `x-access` — [person entries](access.md#person-entries) for records that belong to people (`owner: true` on the field a new record's owner goes in), and `{ shared: true }` for a catalog every [customer-facing call](access.md#customer-facing-calls) may read.
 
-```jsonc
-// customers — the customer record type
-{ "type": "object", "properties": { "name": { "type": "string" } }, "x-customer-scope": { "role": "root" } }
-// orders — each order belongs to the customer its customer_id names
-{ "type": "object",
-  "properties": { "customer_id": { "type": "string", "x-fk": { "record_type": "customers" } }, "total": { "type": "number" } },
-  "x-customer-scope": { "role": "owned", "owner": "customer_id" } }
-// products — no customer data
-{ "type": "object", "properties": { "title": { "type": "string" } }, "x-customer-scope": { "role": "shared" } }
-```
-
-- `root` — the customer record type. A base has at most one.
-- `owned` — `owner` names a top-level property declaring `x-fk` into the root record type.
-- `shared` — holds no customer data.
-- `root` and `owned` need a native record type (`sources: []`); a source-backed type can only be `shared`.
-- A record type that declares none is unreachable from a customer-scoped toolset.
-- A WayAI hub's call to a customer-scoped toolset is [customer-facing](access.md#customer-facing-calls): it reaches a record type only when the type also declares person entries in `enforce` or `x-access: [{ shared: true }]`, so declare one on each type it should reach (`{ shared: true }` on a `shared` catalog).
-
-Checked at config write and at promotion: the declaration's shape on the record type itself, and across the base, one root and every owner pointing at it.
-
-- A single write or a batch that would leave two roots, or an owner pointing elsewhere, is refused.
-- A preview clone copies its source as it is, problems included, so it is refused only for a problem the source did not already have. A re-clone that brings the origin's root back beside the root the preview moved elsewhere is one example.
-- A `wayai push` is judged on the config its files describe: what it would remove counts as gone. One push can therefore move the root to another record type, or remove a root together with the types it owns, when it runs with `--prune`. Without `--prune` the removed types stay on the base.
-- A single delete is not checked, since `--prune` deletes one record type at a time.
-- A base left with two roots or an owner without one refuses the customer-scoped calls that depend on it, and a promotion refuses it.
+- A record type write, a batch or a `wayai push` carrying `x-customer-scope` is refused, and so is a promotion whose resulting production config holds one, listed among its access problems. Remove the key from the schema.
+- A record type a base still stores with it is read as if it declared none: the key grants nothing and narrows nothing. A preview clone and a rollback copy it as stored.
 
 ### Access dimensions (`x-access`)
 
@@ -326,7 +303,6 @@ json_schema:
     approved_at: { type: string, format: date-time }
     drafted_by: { type: string }
   required: [title, body, status, audience]
-  x-customer-scope: { role: shared }
   x-access:
     - { shared: true }
   x-review:
@@ -365,9 +341,7 @@ A search answers titles, not bodies, so a page of 50 costs the agent little; it 
 **3. The toolsets.**
 
 - **The writer**, `notes-curator`, the one toolset `x-review.writers` names: `search_all_notes`, `get_note`, `draft_note` and `revise_note`. It writes and reads as [Reviewed record types](toolsets.md#reviewed-record-types) says; to correct an approved note, it writes a new draft whose `supersedes` names it.
-- **A reader per kind**, holding `search_notes` and `get_note`. Every call answers only the approved notes whose `audience` holds that toolset's id or `*`.
-  - A kind whose toolset is not [customer-scoped](toolsets.md#customer-scope), such as one that reads only documents, adds the two tools to that toolset.
-  - A kind whose toolset is customer-scoped gets a second toolset for its notes, with no customer scope, and its `audience` id is that second toolset's. Every call to a customer-scoped toolset must name a customer, which neither a hub agent's call nor a customer page's does, so notes on it would be refused.
+- **A reader per kind**, holding `search_notes` and `get_note`, added to the toolset that kind already holds. Every call answers only the approved notes whose `audience` holds that toolset's id or `*`.
 
 On a hub, connect each toolset with a [Base Toolset](../connections.md#base-toolset) connection, whose token is bound to that toolset on the base of the hub's environment; in `hub.yaml`, the connection names the Bearer Token org credential that holds it. Give the writer's tools to an agent the team works with, such as the hub's copilot, and the reader's to the agents of its kind: a customer-facing agent may hold them, and never the writer's ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*). After adding the notes tools to a toolset the hub already connects, sync the connection's tools and assign them to the agents ([Giving agents its tools](../connections.md#base-toolset)).
 

@@ -124,7 +124,7 @@ Reference it from a toolset like any Action (`--action free_slots`, or `free_slo
 
 A SQL Action bills one operation per call. A token not bound to the toolset calls it with `read:records`, and [minting](#permissions-and-scope) a bound token covers the Action's record types. On a base of the `local` analytics tier, the tier eval clones default to, every call is refused with 409 `ANALYTICS_LOCAL`, and cloning such a base warns `ANALYTICS_LOCAL_SQL_ACTION`: evaluate an agent that holds one on a base created on the `standard` tier ([`querying.md`](querying.md#the-sql-surface)).
 
-A [customer-scoped](#customer-scope) toolset may hold one only when every record type it declares is `shared`, and a [reviewed record type](#reviewed-record-types)'s reader may not hold one that declares that type: the query reads every row of each type it declares. A [customer-facing call](access.md#customer-facing-calls) is served one only when every record type it declares holds `x-access: [{ shared: true }]`, and refused it otherwise with `ACCESS_REFUSED`.
+A [reviewed record type](#reviewed-record-types)'s reader may not hold one that declares that type: the query reads every row of each type it declares. A [customer-facing call](access.md#customer-facing-calls) is served one only when every record type it declares holds `x-access: [{ shared: true }]`, and refused it otherwise with `ACCESS_REFUSED`.
 
 On a WayAI hub, a customer-facing agent may hold a SQL Action on any toolset the hub lets it hold ([Base Toolset](../connections.md#base-toolset), *Customer-facing agents*): each of its calls is customer-facing, so the Action is served only when every record type it declares holds `{ shared: true }`, and so is a [customer page](../pages.md#customer-pages)'s.
 
@@ -202,7 +202,7 @@ A relationship `list` tool walks one hop from a record: given `record_type`, `re
 
 Every toolset with a relationship `list` tool also gets `describe_graph`, a generated tool that answers the map of what the toolset reaches, read from its current config on every call:
 
-- **`record_types`**: each record type the toolset has a record tool, a composite Action step, a [SQL Action](#sql-actions) or a `batch` entry for (a `batch` key with no relationship tool for it, when the base defines a record type by that id): its `key` (`record:<id>`), `name`, `description` (cut to 200 characters), `tools` (each operation, or `composite`, `sql_action` or `batch`, to this toolset's tool name; a list when several share one), and `references`, its `x-fk` fields whose record type a hop can answer. On a [customer-scoped](#customer-scope) toolset each carries its `customer_scope` (`root`, `owned` or `shared`), and a [reviewed record type](#reviewed-record-types) the toolset only reads carries `"review": "approved_only"` (or `"refused"` when its review cannot be applied to this toolset, which then reads none of its records).
+- **`record_types`**: each record type the toolset has a record tool, a composite Action step, a [SQL Action](#sql-actions) or a `batch` entry for (a `batch` key with no relationship tool for it, when the base defines a record type by that id): its `key` (`record:<id>`), `name`, `description` (cut to 200 characters), `tools` (each operation, or `composite`, `sql_action` or `batch`, to this toolset's tool name; a list when several share one), and `references`, its `x-fk` fields whose record type a hop can answer. A [reviewed record type](#reviewed-record-types) the toolset only reads carries `"review": "approved_only"` (or `"refused"` when its review cannot be applied to this toolset, which then reads none of its records).
 - **`relationship_types`**: each relationship type with a relationship tool, a composite step or a `batch` entry (a `batch` key counts as a relationship type when the toolset has a relationship tool for it; see [What a `batch` key names](#toolsets)), with `source` and `target`: the ends a hop of its `list` tool can answer, by key. A record type is an end when the toolset has a `get` or `list` tool for it, a file type (`file:<id>`) when one of its folders has a `list` or `get` tool, and `["*"]` marks a side the relationship type leaves open. A `create` tool may link other ends.
 - **`file_types`**: each file type with file tools, and its folders (`path_prefix`, `""` for the whole type), each with its tools. A folder whose tools are only `get_url`, `put` or `put_url` is listed, but a hop answers none of its files, so it makes its file type no end.
 - **`truncated`**: the map holds up to 64 KiB of whole entries; when it leaves some out, it says `true`.
@@ -257,118 +257,16 @@ Give a customer-facing agent `list` and `get` only: a hub refuses a pilot, pilot
 
 ## Customer scope
 
-A **customer-scoped** toolset serves one customer per call: each call must stay inside the records of the customer it names. It serves an external agent that mints a token per customer session ([Serving a customer](#serving-a-customer)). A WayAI hub's agents and [customer pages](../pages.md#customer-pages) name no customer, so they never reach one: give an agent or a page that serves customers a toolset with no customer scope, and declare [person entries](access.md#person-entries) or `x-access: [{ shared: true }]` on the record types it reaches ([Customer-facing calls](access.md#customer-facing-calls)). Two declarations make it up.
+Customer scope — a toolset serving one customer per call (`customer_scope: true`), its record types declaring what they were to it (`x-customer-scope`: `root`, `owned`, `shared`) — is removed, replaced by person rules. Declare who reaches each record type in its `x-access` instead: [person entries](access.md#person-entries) for records that belong to people, `{ shared: true }` for a catalog every [customer-facing call](access.md#customer-facing-calls) may read. A token an app or portal mints per session is [bound to persons](#tokens-bound-to-persons).
 
-**Each record type it reaches says what it is**, with `x-customer-scope` at the root of its schema ([records.md](records.md#customer-scope-x-customer-scope)):
-
-- `{ "role": "root" }` — the customer record type itself (`customers`). A base has one.
-- `{ "role": "owned", "owner": "customer_id" }` — each record belongs to one customer, named by `owner`: a top-level property that declares `x-fk` into the root record type ([records.md](records.md#referential-integrity-x-fk)).
-- `{ "role": "shared" }` — no customer data: a catalog, a plan, a price list. Every call may reach it, as far as the toolset's tools allow.
-
-A record type that declares none cannot be reached by a customer-scoped toolset. `root` and `owned` need a native record type; a source-backed one can only be `shared`.
-
-**The toolset says it is scoped**, with `customer_scope`:
-
-```bash
-wayai toolsets upsert support-agent --base my-base --config '{
-  "name": "Support Agent",
-  "customer_scope": true,
-  "actions": [
-    { "action": "get_my_account" },
-    { "action": "list_my_orders" },
-    { "action": "list_products" }
-  ],
-  "files": [
-    { "file_type": "policies", "path_prefix": "public", "operations": ["list", "get"] }
-  ]
-}'
-```
-
-A customer-scoped toolset is refused when it:
-
-- exposes `sql_query` or `batch` — both reach any record;
-- reaches, through an Action or a composite step, a record type that declares no role;
-- holds a [SQL Action](#sql-actions) that declares a record type other than `shared`: its query reads every row of the type;
-- creates or deletes the customer record (`root`): it may read and update it.
-
-A base is refused a second `root`, and an `owned` type whose `owner` does not point at the root.
-
-An `internal_write` [trigger](integrations.md#triggers) that fires on a record type a customer-scoped toolset can write (`create` or `update`, by an Action or a composite step) must locate its target through a field that declares `x-fk` into that target: `match.source_field` names one top-level field, `data.<field>`, whose `x-fk.record_type` is the trigger's `target` and whose key (`x-fk.key`, `external_id` by default) is its `match.target_key`. A customer-scoped write keeps every `x-fk` within its customer's reach, so such a trigger patches only a record the customer reaches. Matched on any other field (a plain string, the record's own `id`), it is refused, naming the trigger, the field, the record type and the toolsets that write it. A trigger fires on a record type when its `record_type_scope` names it or is omitted; an empty scope fires on none. A disabled trigger is judged when it is enabled.
-
-Under the config as it stands, no trigger cascades past that first hop. The patch such an `internal_write` makes on its `target` is a cascade write, and a trigger with `skip_cascade_writes: false` would run on it as configured: matched on a plain field of the patched record, it reaches whatever record that field names. On a shared record, that field may hold what another customer's write put there. So on every record type such an `internal_write` can patch, every trigger that would fire on the patch must keep `skip_cascade_writes: true`, the default. It applies to a trigger of any action type, a webhook included, that fires on `record.updated` on that type. One with `false` is refused, naming it, the `internal_write` whose patch would set it off, the record types and the toolsets.
-
-The rule reads the config as it stands, and an `async` patch already queued is applied as it was queued, to the record type it was queued for. A config change can leave no such `internal_write` patching that type any more, for example by removing or re-targeting the one that queued it. Once that happens, in the same write or a later one, the triggers on that type are no longer held to `skip_cascade_writes: true`, and the queued patch sets off whichever of them then fire on it.
-
-- **Where each rule is checked:**
-  - when the toolset, a record type or Action it reaches, or a trigger is written;
-  - for the config a `wayai push` (as its files describe it) or a batch of record type writes leaves as a whole;
-  - for the whole production config at [promotion](#promotion-blocking), which refuses any of these problems, including one production already has.
-- **What is not checked when written:**
-  - A single record type delete ([records.md](records.md#customer-scope-x-customer-scope) says why).
-  - A preview clone copies its source as it is, problems included: a scoped toolset reaching a record type without a role carries over. It is refused only for a problem its source did not already have.
-  - A rollback restores the snapshot as it was.
-  - A relationship tool or a composite's relationship step names its endpoints per call, so the record types it reaches are not checked when the toolset is written.
-
-A base left with any of these problems refuses the customer-scoped calls they affect, and its promotion is refused.
-
-- **Its write tools leave the owner out.** The create and update tools of an `owned` record type do not offer its `owner` field: the owner of a record a customer-scoped call writes is the customer the call serves.
-- **What it reaches.** `wayai toolsets get --resolved` reports `customer_scope` and `record_type_scopes`: what each record type the toolset can reach is — `root`, `owned` or `shared`, or `null` for one that declares none — including every record type its relationship tools and composite relationship steps can link (every record type, when a relationship type names none on an end).
-- **Calls read and write within their customer.** A call reaches only what its customer reaches, and writes only there. See [Serving a customer](#serving-a-customer).
-- **A WayAI hub's calls are customer-facing too.** Such a call is also held to [access.md](access.md#customer-facing-calls): it reaches a record only when customer scope and those rules both let it, so a record type it reaches must also declare person entries in `enforce` or `x-access: [{ shared: true }]` (a `shared` catalog: `{ shared: true }`); any other holds nothing for it, answered as not found.
-- **Turning it off.** A toolset write that omits `customer_scope` keeps the stored value — unlike `files` on `toolsets upsert` — so an older client writing a toolset back never turns a scope off. Send `"customer_scope": false` to turn it off.
+- **Refused when written.** A toolset write or a `wayai push` stating `customer_scope: true` is refused; `customer_scope: false` is accepted and stored as nothing, and a promotion never carries the flag. A record type's `x-customer-scope` is refused at config write and at promotion ([records.md](records.md#customer-scope-x-customer-scope--removed)).
+- **Read as absent where stored.** A toolset a base still stores as customer-scoped, and a record type still declaring a role, are served as any other: neither grants a call anything or narrows it. A write tool names every field the record type's schema has, the owner field included; who may write it is the person rule's ([Person writes](access.md#person-writes)).
+- **A call naming a customer is refused** with `CUSTOMER_SCOPE_MISMATCH` (403), before anything is read: no toolset serves a customer. Such a call comes from a token minted with `toolset_binding.customer` before the removal, or a WayAI connection that still records its toolset as customer-scoped ([Base Toolset](../connections.md#base-toolset)). Minting a token with `toolset_binding.customer` is refused.
+- **What the resolve reports.** `wayai toolsets get --resolved` still answers `customer_scope`, always `false`, and `record_type_scopes`: for each record type the toolset can reach, its relationship tools' ends included, `{ "role": "shared" }` when its `x-access` declares `{ shared: true }`, else `null`. A stored `x-customer-scope` role is never reported.
 
 ### Serving a customer
 
-Every call to a customer-scoped toolset names the customer it serves. A token bound to the toolset carries it: mint one per customer session, naming the customer under `toolset_binding.customer`. Name the customer record by its id, or by its `external_id` (with its `external_source`, if it has one):
-
-```bash
-curl -X POST "https://data.wayai.pro/v1/tokens" \
-  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  --data '{"name": "support session",
-           "toolset_binding": {"base_id": "my-base", "toolset_id": "support-agent",
-                               "customer": {"external_id": "cus_123", "external_source": "crm"}}}'
-```
-
-A token naming a customer must be bound to a customer-scoped toolset. It expires within 24 hours: 24 hours from the mint when `expires_at` is omitted. A later `expires_at` is refused. A token names a customer or [persons](#tokens-bound-to-persons), never both.
-
-A WayAI hub's agents name no customer: a [Base Toolset](../connections.md#base-toolset) connection's call names the people its turn is for instead ([Person entries](access.md#person-entries)), so an agent's call to a customer-scoped toolset is refused before it reaches the base. Declare person entries or `{ shared: true }` on the record types an agent serves customers from, and keep customer scope off its toolset. Only an eval on a preview hub names a customer, the contact its scenario or journey declares ([`customer_contact_id`](../evals.md#name-the-customer-customer_contact_id--customer-scoped-toolsets)); a [customer page](../pages.md#customer-pages)'s call names the person using it instead, as an agent's does.
-
-A WayAI contact's customer record is the root record whose `external_id` is the contact id and whose `external_source` is `wayai_contact`. That source is reserved. Only a person signed in to WayAI keys a record under it (`wayai records upsert <type> --base <base_id> --data <json|@file> --external-id <contact_id> --external-source wayai_contact`), or a seed fixture on a preview base, so an eval can seed a customer. Any other write that would key a record under it — a new record, or one re-keyed onto it — is refused, a tool call included. A single write answers `RESERVED_EXTERNAL_SOURCE` (403). A batch or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `RESERVED_EXTERNAL_SOURCE` as its `details.original_error.code`. Updating a record that already holds such a key, without changing the key, is not refused.
-
-What a call reaches:
-
-- **`root`:** the customer's own record. `get` answers another customer's record as not found, and `list` returns only the customer's own.
-- **`owned`:** the records whose `owner` holds the customer record's key — the key the owner's `x-fk` names (`external_id` by default). The same applies to `get` and `list` as for the root.
-- **`shared`:** every record, as far as the tool allows.
-- **File tools:** `list`, `get` and `get_url` as configured, of a file type [marked shared](access.md#shared-file-types); of any other, a WayAI hub's call (customer-facing) reads with `get` only a file an owning link holds from a record it reads ([Customer-facing calls](access.md#customer-facing-calls)). `put`, `delete` and `put_url` are refused: under a customer scope, files are shared documents. A toolset switched to customer scope stops its outstanding upload URLs.
-
-The rule applies to every filter an agent sends, archived records included.
-
-**Relationship `list` tools.** These answer only links whose other end both the toolset reads ([one hop](#relationship-list-tools-one-hop)) and the customer reaches: its own record, a record it owns, a shared record, or a file — for a WayAI hub's call, a file only through an owning link or of a file type marked shared ([Customer-facing calls](access.md#customer-facing-calls)). A node's `fields` are those of the record the scope was judged on. A walk through a shared record does not widen the scope. From a product, the orders linked to it come back only when they are the customer's. Such a call starts from a record the customer reaches; any other start is answered as not found. Owned records are matched as the base holds them now, so an archived order is not reached by a link. A link whose other end is a record type the relationship type no longer names on either end is left out too, so narrowing a relationship type's record types hides the links it no longer admits.
-
-**Writes.** A record tool's `create`, `update` and `delete`, a relationship tool's `create` and `delete`, and every step of a composite write only inside the customer's reach:
-
-- **An owned record is the customer's.** Its `owner` is set to the customer record's key, whether or not the call names it. A call naming another owner is refused.
-- **Another customer's record is not there.** An `update` or `delete` of a record the customer does not reach is answered as not found. A `create` whose `external_id` such a record holds — or a link `create` whose `external_id` a link outside the reach holds — is refused with `CONFLICT` (409), and a composite `update` step whose `external_id` such a record holds is answered as not found. A free key creates in both cases, so either answer does tell the call that a record or link outside its reach holds the key, though nothing of it.
-- **References stay inside.** Every `x-fk` a written record holds must name a record the customer reaches: its own, one it owns, or a shared one. A reference to any other record is refused exactly as a reference to a record that does not exist (400), on a shared record too.
-- **The customer record is updated, never created or deleted.** A call writes only the customer's own: a write of any other customer record, or one that would create one, is answered as not found. Its `external_id`, its `external_source`, and every field an `owned` type's owner matches on (the owner's `x-fk.key`) never change, and its delete is refused.
-- **Both ends of a link are inside.** A link joins only records the customer reaches, as a `list` reads them, and a call deletes or overwrites only such a link. Any other end, or a delete of any other link, is answered as one that does not exist. Deleting a link of a `cascade` relationship type to a file, or overwriting one (a link `create` whose `external_id` it holds), is refused, since dropping it removes the file unless another such link still holds it ([files.md](files.md)).
-- **A composite is all or nothing.** A step refused under these rules rolls back every step of the call, which answers `BATCH_OPERATION_FAILED`, naming the refused step, with the refusal's code as its `details.original_error.code`.
-- **A source-backed record type** is written only when it is `shared`.
-
-**Triggers.** An `internal_write` [trigger](integrations.md#triggers) that such a write sets off is located through an `x-fk` into its target ([Customer scope](#customer-scope)), which the write has kept within reach, so it patches a record the customer reaches. A base that holds one located otherwise — stored before the rule, cloned from such a source, or kept by a push that `--prune` did not finish — refuses a customer-scoped write on that record type with `CUSTOMER_SCOPE_UNSUPPORTED`, naming the trigger. No trigger fires on that patch while the config holds the rule: every trigger on the target keeps `skip_cascade_writes: true`. An `async` patch queued across a config change is the exception ([Customer scope](#customer-scope)). A base that holds one with `false` is refused the write the same way, naming it and the `internal_write` whose patch would set it off.
-
-A call is refused when:
-
-| Code | Status | When |
-|---|---|---|
-| `CUSTOMER_SCOPE_REQUIRED` | 403 | The call names no customer. |
-| `CUSTOMER_SCOPE_MISMATCH` | 403 | The call names a customer, and the toolset is not customer-scoped. |
-| `CUSTOMER_NOT_FOUND` | 404 | No live record of the root type matches the customer. |
-| `CUSTOMER_SCOPE_UNAVAILABLE` | 409 | The base declares no root record type, or more than one. |
-| `CUSTOMER_SCOPE_UNSUPPORTED` | 403 | The call reaches a record type the customer cannot. That is a type that declares no role, or an `owned` type whose key this customer record does not hold (an empty value counts as none) — or holds in common with another customer record, under any `external_source`. A `list` is also refused for a customer whose key reads as a full date-time (`2026-01-01T00:00:00Z`): a filter compares those as instants, not as text. A write is also refused when it writes a file, names another owner, deletes the customer record or changes one of its keys, deletes or overwrites a `cascade` link to a file, writes a source-backed type that is not `shared`, or writes a record type an `internal_write` fires on that is not located through an `x-fk` into its target, or whose patch a trigger with `skip_cascade_writes: false` fires on. |
-
-The customer record is read from the base's live records. Once its record type is declared `root`, archival keeps every record of the type there. A customer record archival had already moved out before then, by whichever rule moved it, is not found.
+The `external_source` `wayai_contact` keyed a contact's customer record, the record a customer-scoped toolset served when a WayAI eval named the contact. It grants nothing now, and stays reserved: only a person signed in to WayAI keys a record under it (`wayai records upsert <type> --base <base_id> --data <json|@file> --external-id <contact_id> --external-source wayai_contact`), or a seed fixture on a preview base. Any other write that would key a record under it — a new record, or one re-keyed onto it — is refused, a tool call included. A single write answers `RESERVED_EXTERNAL_SOURCE` (403). A batch or an import answers `BATCH_OPERATION_FAILED` (403), naming the refused operation, with `RESERVED_EXTERNAL_SOURCE` as its `details.original_error.code`. Updating a record that already holds such a key, without changing the key, is not refused.
 
 ## Reviewed record types
 
@@ -390,7 +288,7 @@ A [reviewed record type](records.md#reviewed-records-x-review) holds drafts and 
 
 A toolset that breaks either list is refused when it, an Action it references, or the record type is written, and at [promotion](#promotion-blocking). A config restored without these checks — a rollback, or a preview clone of a source that already had the problem — still refuses each such call with `REVIEW_READER_REFUSED` (403). The same code refuses every reader of a type whose `x-review` is malformed, whose status or audience field is not one plain top-level name, or, when an audience is declared, a reader whose own toolset id reads as a date-time (`2026-01-01`).
 
-A [customer-scoped](#customer-scope) reader of a `shared` reviewed type is held to both rules at once.
+A reader whose record type also declares [person entries](access.md#person-entries), or `{ shared: true }`, is held to both rules at once.
 
 **What the resolve reports.** `wayai toolsets get --resolved` carries, under `record_types`, the schema (its `x-review` included) of each record type the toolset's Actions, composite record steps and SQL Actions reach, and of every reviewed record type it reaches any other way: at either end of a relationship tool's or a composite relationship step's relationship type (every reviewed type, when that type names none on an end), in a `batch` entry that names a record type, and every reviewed type for `sql_query`. So whoever holds the toolset can tell from `x-review.writers` which reviewed types it writes.
 
@@ -425,7 +323,7 @@ If the slug cannot be resolved for your token's base — unknown toolset, or one
 - removing a field its `filterable_fields`, `writable_fields`, `base_filter`, or `precondition` depend on,
 - removing a named write binding an Action's `binding` selects,
 - a toolset naming a tool `describe_graph`, the [reserved](#navigating-the-graph) name,
-- breaking a [customer scope](#customer-scope): a second `root`, an `owned` type whose `owner` no longer points at the root, a customer-scoped toolset left reaching a record type without a role or holding a SQL Action over a type that is not `shared`, an `internal_write` trigger on a type such a toolset writes that is not located through an `x-fk` into its target, or a trigger with `skip_cascade_writes: false` on a type such an `internal_write` patches.
+- a record type declaring `x-customer-scope`, which [customer scope](#customer-scope)'s removal refuses.
 - breaking a [reviewed record type](#reviewed-record-types): a malformed `x-review`, a toolset its `writers` do not name holding a write on the type or a SQL Action that declares it, `sql_query` on a toolset that is not a writer of every reviewed type, a writer's `writable_fields` naming the status or a stamp, or an `internal_write` trigger targeting the type.
 
 So promote the Actions and the toolset **together with** the schema change. `--dry-run` lists any such conflicts first. Promotion is human-run.
@@ -726,8 +624,8 @@ curl -X POST "https://data.wayai.pro/v1/tokens" \
   a later `expires_at` is refused.
 - **Who mints it:** whoever may mint a token bound to the toolset (`write:bases`, and the permissions its
   tools need on the base).
-- **Refused:** beside `toolset_binding.customer`; for a [customer-scoped](#customer-scope) toolset, which
-  refuses every call naming no customer; and on a hub's [Base Toolset](../connections.md#base-toolset)
+- **Refused:** beside `toolset_binding.customer`, which is refused on its own ([Customer scope](#customer-scope));
+  and on a hub's [Base Toolset](../connections.md#base-toolset)
   connection, whose calls are for the conversation's people.
 - `wayai bases tokens list` shows each token's `toolset_binding.person`.
 

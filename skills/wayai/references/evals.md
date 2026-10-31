@@ -218,9 +218,9 @@ Rules:
 
 Pairs with `variables:` — a `{{var()}}` leaf inside a `value` is resolved per run, so each run can seed a distinct patient.
 
-### Name the customer (`customer_contact_id`) — customer-scoped toolsets
+### Name the customer (`customer_contact_id`)
 
-**When the agent under test calls a [customer-scoped toolset](bases/toolsets.md#customer-scope), declare `customer_contact_id:`** — the contact id of the customer the scenario's runs serve. Each of the toolset's calls in the run then names that customer, so the agent reads and writes only that customer's records and the shared ones. Without it, an eval names no customer, and every call to a customer-scoped toolset is refused with a tool error. A live conversation names no customer at all, so the same agent's calls to that toolset are refused outside an eval: an agent that talks to customers is better given a toolset with no customer scope, whose record types declare [person entries](bases/access.md#person-entries) ([Base Toolset](connections.md#base-toolset), *Customer-scoped toolsets*).
+**When the agent under test serves a customer from a base, declare `customer_contact_id:`** — the id the scenario's runs serve as the conversation's customer. Each of the agent's [Base Toolset](connections.md#base-toolset) calls in the run then names it as the customer's [person id](bases/access.md#person-entries), used as declared: the agent reaches the records whose person fields hold it, and the `{ shared: true }` ones, and a `create` that leaves the `owner` field out fills it with that id. Without it, the run declares no customer: its calls are for the parties its turn names ([Whose sets bound a turn](bases/access.md#whose-sets-bound-a-turn)).
 
 ```yaml
 # evals/orders/where-is-my-order.yaml
@@ -236,8 +236,8 @@ expected:
 ```
 
 Rules:
-- **Preview hubs only.** A production hub's eval names no customer, whatever its scenario declares, so its calls to a customer-scoped toolset are refused. On production, a declared id would let an eval author act as any real customer.
-- **A contact id (a UUID).** Anything else is refused at `wayai push` and on save. The id is used as declared, so it need not be a contact in the contact book: in the base, the customer is the root record keyed by that id under the reserved `wayai_contact` source — seed it with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base ([Serving a customer](bases/toolsets.md#serving-a-customer)).
+- **Preview hubs only.** A production hub's eval names no customer, whatever its scenario declares. On production, a declared id would let an eval author act as any real customer.
+- **A contact id (a UUID).** Anything else is refused at `wayai push` and on save. The id is used as declared, so it need not be a contact in the contact book: seed the customer's records with a [`fixture:`](#seed-fixtures-fixture--repeatable-mutating-evals) on the preview base, their person fields holding that id.
 - **Frozen per run.** A session's runs keep the customer their scenario named when the session started.
 - **On a journey too.** A journey's `customer_contact_id:` names the customer every step serves, by the same rules ([Journeys](#journeys-hub-as-code)).
 
@@ -354,7 +354,7 @@ Transcript turn fields: `role` (`user`/`assistant`/`tool`), `content`, `tool_cal
 
 **Per-run variables on a journey.** A journey-level `variables:` map (same shape and `{{var()}}` semantics as [scenario variables](#per-run-variables-var--parallelize-mutating-evals)) **propagates to every derived step eval**, so run *i* of the whole journey — every step — resolves against the same `variables.NAME[i-1]` row. That makes a multi-turn **mutating** journey runnable at `runs: N` in parallel with each run on its own disjoint fixture. Give each step the same `runs` (or a `step_config` that never exceeds the array length) so the per-step indices stay aligned; a step whose `runs` exceeds a variable array is rejected with `insufficient_variables` at run-launch, same as a scenario.
 
-**The customer on a journey.** A journey-level `customer_contact_id:` propagates to every derived step eval as `variables:` does, so every step's calls to a [customer-scoped toolset](bases/toolsets.md#customer-scope) name that customer, by the [scenario rules](#name-the-customer-customer_contact_id--customer-scoped-toolsets): preview hubs only, a contact id, frozen per run. A journey that declares none names no customer, and those calls are refused.
+**The customer on a journey.** A journey-level `customer_contact_id:` propagates to every derived step eval as `variables:` does, so every step's calls name that customer, by the [scenario rules](#name-the-customer-customer_contact_id): preview hubs only, a contact id, frozen per run. A journey that declares none names no customer.
 
 **Push / pull / diff / apply.** Journeys diff by `id` first, then by `name`. A push creates new journeys, updates changed ones (transcript, step_config, evaluator_instructions, variables, customer_contact_id, agent, enabled), and deletes journeys absent from the folder. Creating/deleting a journey on push also creates/deletes its managed scenario set and re-materializes the derived evals — all server-side.
 
