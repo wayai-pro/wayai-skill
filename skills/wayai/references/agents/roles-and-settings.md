@@ -230,7 +230,7 @@ A conversation's **earlier** files are announced to every agent as a text annota
 
 | Setting | What it still does |
 |---|---|
-| `file_handling_mode` | No longer changes what the model receives. `metadata_only` still auto-enables `read_file` for the agent — the one way, besides assigning the tool, to let it open a path it was told about. Not on a `user_message` monitor, which is offered no tools at all (see `trigger`). |
+| `file_handling_mode` | No longer changes what the model receives. `metadata_only` still auto-enables `read_file` for the agent, unless the agent holds a disabled `read_file` — the one way, besides assigning the tool, to let it open a path it was told about. Not on a `user_message` monitor, which is offered no tools at all (see `trigger`). |
 | `max_attachment_size_mb` | Nothing. There is no attachment to cap. |
 
 Which agents see the annotations: the pilot/copilot track, `monitor`, and `conversation_evaluator` — the roles whose context is assembled from turn history. Three roles are not, so instructions that key on `[Attached files: …]` never match for them: `message_evaluator` (dispatched with a single synthesized instruction message), `summarizer` (reads its own synthesized message list), and `consultant` (its customer transcript is rendered by hand, text-only, into a `<customer_conversation>` frame). Any of them can still hold `read_file`: the auto-append gate is the per-agent `metadata_only` setting and carries no role check, so an evaluator configured that way gets the tool even though nothing in its context names a path. One exception to holding it and being able to USE it: a monitor on the `user_message` trigger is offered no tools, so the tool is on the agent and never reaches the model.
@@ -640,7 +640,7 @@ monitor_config:
 
 **One call per message.** First match wins; later rules are not tried, and a monitor makes at most one tool call per customer message.
 
-**The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule.
+**The tool must be assigned to the monitor itself.** A rule naming a tool the monitor does not carry is refused when you save it, and refused again at run time if the tool is unassigned later. Assigning it to another agent is not enough — a monitor reaches only its own tools. The order is: create the monitor, assign its tools, then add the rule. A rule naming a tool you have disabled on the monitor still saves, but the tool does not run: the run is recorded as a failed call, and the customer is answered as usual. The rule did match, so its `fallback` does not run.
 
 **Available actions.** `call_tool`, and `none` (evaluate and flag, but do nothing) — which is also the default `fallback`. Holding a reply (`hold`) and asking for one revision of it (`rewrite`) belong to the reply gate (`assistant_reply`) — see [The reply gate](#the-reply-gate--assistant_reply) — and are refused on every other trigger. `steer` belongs to `call_utterance` alone, `run` and `run_with_agent` to `automation_fire` alone ([An automation's fire gate](#an-automations-fire-gate--automation_fire)), `start` and `start_with_agent` to `automation_item` alone ([An automation's item gate](#an-automations-item-gate--automation_item)), and `skip` to those two.
 

@@ -25,7 +25,7 @@ tools:
 | `keep_in_history` | catalog default | When set, controls whether this tool's call/result remain in agent history. Omit to leave the existing value untouched (no diff). |
 | `expose_schema_to_llm` | `true` | When `false`, the tool's schema is excluded from the agent's inline tool list (token optimization). Reachable via `execute_tool`. Omit to leave untouched. |
 
-Other native fields (schema, instructions, operation) come from the platform catalog and are not round-trippable via YAML.
+Other native fields (schema, instructions, operation) come from the platform catalog and are not round-trippable via YAML. Neither is `enabled`: turn a native tool off with the toggle on its card.
 
 ## Table of Contents
 - [Conversation Tools](#conversation-tools)
@@ -519,6 +519,7 @@ Execute a tool with parameters.
 ### Usage requirements
 
 - **Hide the target tool from the inline list:** set `expose_schema_to_llm: false` on the deferred tool (custom or native — see the YAML form section above for native tools). This is a prompt-token optimization — it keeps the schema out of the inline tool list. It is **not** an access control: an agent with `execute_tool` assigned can still invoke the tool by name.
+- **A disabled tool does not run.** Turning a tool off is the access control. Turn off a custom tool with `enabled: false` under `tools.custom` in `agents/<slug>.yaml`, or the toggle on its card; a native tool with the toggle on its card; an MCP tool with `POST /api/setup/tools/:id/disable`. Native and MCP entries have no `enabled` field in `agents/<slug>.yaml`: the key is ignored on a push, and a pull does not show that one is off. Once it is off, `execute_tool` and `get_tool_schema` refuse it, as does a call to its name or a monitor rule, and the agent is told it is disabled. Another tool's `composed_tools` chain that names it still runs it: the chain is that tool's own configuration, so turn that tool off, or edit its chain. A conversation picks the change up when it next reads the hub's configuration, at its next inbound message: until then, a turn it runs (one already in progress, or a scheduled one) can still make the call.
 - **Assign both meta tools to the agent** — `get_tool_schema` to fetch the schema, `execute_tool` to run it. Co-assignment is the intended pattern but is not enforced. The lookup is agent-scoped: meta tools only resolve tools assigned to the calling agent.
 - **`keep_in_history` AND-combines across both meta tools.** For both `get_tool_schema` and `execute_tool`, the target tool's `keep_in_history` is AND-combined with the meta tool's own flag — **both must be `true`** for the call/result to remain in history. Both meta tools default to `keep_in_history: false`. Override per-instance via the YAML object form (see [YAML form](#yaml-form)).
 

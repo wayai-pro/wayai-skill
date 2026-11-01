@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.227.0
+version: 6.228.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -876,7 +876,7 @@ settings:
   max_tokens: 4096
   # temperature (only sampling knob): Sonnet 5+ / Haiku 5.5 / Opus 4.7+ / Fable strip a non-default value — set it only on Opus 4.6 / Sonnet 4.6 & older
   # reasoning per provider: Anthropic thinking_enabled + effort · OpenAI/OpenRouter/xAI reasoning_effort · Gemini reasoning_level (see roles-and-settings.md)
-  # file_handling_mode: no longer changes what the model receives (earlier files are always announced by path, never re-attached); metadata_only still auto-enables read_file. max_attachment_size_mb is inert (see roles-and-settings.md#file-handling-all-llm-connectors)
+  # file_handling_mode: no longer changes what the model receives (earlier files are always announced by path, never re-attached); metadata_only still auto-enables read_file, unless the agent holds it disabled. max_attachment_size_mb is inert (see roles-and-settings.md#file-handling-all-llm-connectors)
   # deliver_preamble: true           # default; pre-tool "let me check…" text is delivered as its own message (voice: own TTS clip; ignored on email). false = only the final reply (see roles-and-settings.md#pre-tool-preamble-delivery-all-llm-connectors)
   # copilot_trigger: every_message   # copilot-track only; on_demand suppresses the automatic per-message suggestion — the team pulls one via the "Suggest reply" button (cost/noise lever; see roles-and-settings.md)
 tools:
