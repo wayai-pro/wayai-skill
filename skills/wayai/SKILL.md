@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.228.0
+version: 6.229.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -234,6 +234,8 @@ Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with
 | Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
 | MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
 | Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`, `start_consult_thread`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`, `start_consult_thread`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name — a hub name resolves only among the hubs an API token's grants cover; name any other hub by `target_id`) |
+
+Any of these entries takes `enabled: false` to turn its tool off, and `wayai pull` writes it on a tool that is off. On a native, MCP or delegation entry, leaving the key out leaves the tool as it is ([A disabled tool does not run](references/agents/native-tools.md#usage-requirements)).
 
 Meta tools (`get_tool_schema`, `execute_tool`) let agents call tools whose schemas are excluded from the inline list. Full native catalog + params: [`references/agents/native-tools.md`](references/agents/native-tools.md); custom tool schema: [`references/agents/custom-tools.md`](references/agents/custom-tools.md); designing *which* tools/params to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md).
 

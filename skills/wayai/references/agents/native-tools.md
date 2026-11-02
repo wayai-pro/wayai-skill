@@ -16,6 +16,8 @@ tools:
       keep_in_history: true
     - name: generate_monthly_report
       expose_schema_to_llm: false
+    - name: send_files
+      enabled: false
 ```
 
 | Field | Default | Notes |
@@ -24,8 +26,9 @@ tools:
 | `id` | set by `wayai pull` | Stable tool_id for rename safety; do not author manually |
 | `keep_in_history` | catalog default | When set, controls whether this tool's call/result remain in agent history. Omit to leave the existing value untouched (no diff). |
 | `expose_schema_to_llm` | `true` | When `false`, the tool's schema is excluded from the agent's inline tool list (token optimization). Reachable via `execute_tool`. Omit to leave untouched. |
+| `enabled` | `true` for a new tool | `false` turns the tool off, `true` turns it back on. Omit to leave untouched. See [A disabled tool does not run](#usage-requirements). |
 
-Other native fields (schema, instructions, operation) come from the platform catalog and are not round-trippable via YAML. Neither is `enabled`: turn a native tool off with the toggle on its card.
+Other native fields (schema, instructions, operation) come from the platform catalog and are not round-trippable via YAML.
 
 ## Table of Contents
 - [Conversation Tools](#conversation-tools)
@@ -519,7 +522,7 @@ Execute a tool with parameters.
 ### Usage requirements
 
 - **Hide the target tool from the inline list:** set `expose_schema_to_llm: false` on the deferred tool (custom or native — see the YAML form section above for native tools). This is a prompt-token optimization — it keeps the schema out of the inline tool list. It is **not** an access control: an agent with `execute_tool` assigned can still invoke the tool by name.
-- **A disabled tool does not run.** Turning a tool off is the access control. Turn off a custom tool with `enabled: false` under `tools.custom` in `agents/<slug>.yaml`, or the toggle on its card; a native tool with the toggle on its card; an MCP tool with `POST /api/setup/tools/:id/disable`. Native and MCP entries have no `enabled` field in `agents/<slug>.yaml`: the key is ignored on a push, and a pull does not show that one is off. Once it is off, `execute_tool` and `get_tool_schema` refuse it, as does a call to its name or a monitor rule, and the agent is told it is disabled. Another tool's `composed_tools` chain that names it still runs it: the chain is that tool's own configuration, so turn that tool off, or edit its chain. A conversation picks the change up when it next reads the hub's configuration, at its next inbound message: until then, a turn it runs (one already in progress, or a scheduled one) can still make the call.
+- **A disabled tool does not run.** Turning a tool off is the access control. Turn off any tool with `enabled: false` on its entry in `agents/<slug>.yaml`, under `tools.native`, `tools.mcp`, `tools.delegation` or `tools.custom`. The toggle on its card does the same. `wayai pull` writes `enabled: false` on an entry whose tool is off, and nothing on one that is on. On a native, MCP or delegation entry, leaving the key out leaves the tool as it is, so deleting the line does not turn the tool back on, and a folder pulled before it went off shows no difference in `wayai diff` until the next pull. Write `enabled: true` to turn it back on, which takes the same access as the toggle; a native tool the agent's role may not hold is refused either way. A custom tool differs: leaving the key out turns it on. Once it is off, `execute_tool` and `get_tool_schema` refuse it, as does a call to its name or a monitor rule, and the agent is told it is disabled. Another tool's `composed_tools` chain that names it still runs it: the chain is that tool's own configuration, so turn that tool off, or edit its chain. A conversation picks the change up when it next reads the hub's configuration, at its next inbound message: until then, a turn it runs (one already in progress, or a scheduled one) can still make the call.
 - **Assign both meta tools to the agent** — `get_tool_schema` to fetch the schema, `execute_tool` to run it. Co-assignment is the intended pattern but is not enforced. The lookup is agent-scoped: meta tools only resolve tools assigned to the calling agent.
 - **`keep_in_history` AND-combines across both meta tools.** For both `get_tool_schema` and `execute_tool`, the target tool's `keep_in_history` is AND-combined with the meta tool's own flag — **both must be `true`** for the call/result to remain in history. Both meta tools default to `keep_in_history: false`. Override per-instance via the YAML object form (see [YAML form](#yaml-form)).
 
@@ -547,7 +550,7 @@ tools:
 - **`wayai sync-mcp --connection <name>` re-syncs an existing connection's catalog.** `push` only discovers tools *new* to the catalog — it does **not** refresh the cached schema of tools already catalogued. When the server changes a tool's input schema (adds/renames params), run `wayai sync-mcp --connection "My MCP Server"` to re-discover and refresh the stored catalog (the `--connection` value is the display name or the connection UUID). Preview-only. This keeps the GitOps catalog (what `pull` exports and the diff compares) accurate — and the catalog doubles as the runtime fallback: at turn time the schema is resolved live from the server on a best-effort basis, but when the server is slower than the turn-time budget, unreachable, or the connection's credential fails, the turn falls back to the last synced snapshot. A fresh catalog is what makes that fallback accurate. A Base Toolset's tools are never resolved live: agents always get the synced catalog, so re-sync after the toolset changes.
 - **Drift is now surfaced, not silent (you no longer have to already know to run `sync-mcp`).** `wayai push` re-verifies every referenced MCP connection whose tools were all already catalogued and **warns** when the cached schema is behind the server (naming the connection and the changed/removed tools) — best-effort, so a slow/unreachable server never blocks the push. And **`wayai sync-mcp --connection <name> --check`** (alias `--dry-run`) reports that drift **without writing anything**, exiting non-zero when the catalog is behind — run it in CI to gate on a stale catalog. `--check` is read-only and works against production hubs too.
 - **Omitted vs present:** when the `mcp` key is **omitted**, existing MCP tool rows are left untouched (tools assigned in the Platform UI survive). When **present** (even `[]`), the list is **authoritative** — unlisted MCP tools are removed. (This differs from `native`/`custom`, whose absence deletes them, because MCP tools are dual-origin: UI + GitOps. Same rule as `evaluation_variables`.)
-- **`wayai pull`** emits a `tools.mcp` block for the agent's MCP tools (`id` / `connection_id` included for stable round-trips). The tool schema and description stay derived from the connection's discovered catalog — they are not round-tripped.
+- **`wayai pull`** emits a `tools.mcp` block for the agent's MCP tools (`id` / `connection_id` included for stable round-trips, and `enabled: false` on a tool that is off: see [A disabled tool does not run](#usage-requirements)). The tool schema and description stay derived from the connection's discovered catalog — they are not round-tripped.
 
 ### Assigning MCP tools via the Platform UI
 
