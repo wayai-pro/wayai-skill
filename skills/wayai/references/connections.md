@@ -689,7 +689,7 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
    - **Connection Name** (required): A name to identify this connection
    - **Base URL**: Base URL for the API (e.g., `https://api.example.com`). The connection's credential is only ever sent to this URL's origin (scheme, host and port), never past a redirect off it, so a connection that holds a credential takes no custom tool without one, and a tool's full-URL path must stay on that origin. A base URL needs a fixed host and scheme: one with a `{{placeholder}}` host, or without an `https://` or `http://` scheme, has no origin, and the credential is sent nowhere. Changing it to another origin clears the stored credential ([Moving a connection's base URL](#moving-a-connections-base-url))
    - Auth credentials (varies by type — see above)
-   - **Custom Headers** (optional): Additional headers to include in all requests
+   - **Custom Headers** (optional): Additional headers for this connection's tools. Like the credential, they are only sent to the Base URL's origin (if the Base URL is blank or fixes no host, to the host a tool's URL fixes, never one an agent fills in) and never follow a redirect off it. A request that leaves the origin goes without them.
 5. Click Save
 
 **Usage:** A custom-variant (REST API) connection is required before creating custom tools. Each custom tool must reference a connection for authentication.
