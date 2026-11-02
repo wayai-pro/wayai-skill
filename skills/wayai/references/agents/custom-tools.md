@@ -227,6 +227,8 @@ Placeholders are replaced at runtime in URLs, headers, query params, and body.
 - **Query params:** `?token={{api_key}}&id={{order_id}}`
 - **Body params:** Merge additional params with AI-provided body
 
+A tool's configured query and body params can hold a literal key, so, like `tool_headers`, they are sent only to the host `tool_path` or the base URL fixes, never one an agent fills in: a call to such a host goes out with only what the agent gave. A redirect to another origin never carries them: query params are not added to it, and a redirect that would resend the body there is refused.
+
 ---
 
 ## composed_tools (side effects on success)
