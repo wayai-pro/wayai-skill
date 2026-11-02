@@ -67,13 +67,17 @@ Then run `wayai push` to create the tools on the hub.
 2. Tools → Add Tool → Custom
 3. Fill in configuration fields
 
+**Tool Name** is the label people see. The agent calls the tool by the `name` in **Tool Configuration**, and that is also the `name` a `wayai pull` writes, so changing Tool Name later changes only the label. To change what the agent calls an existing tool, edit the `name` in Tool Configuration.
+
+A new tool left on the default configuration takes its `name` from Tool Name (`My tool` becomes `my_tool`, with a number added if the agent already has that name or the name is a native tool's), and its description from **Description**.
+
 ---
 
 ## Tool Configuration
 
 | Field | Description |
 |-------|-------------|
-| `tool_name` | Display name for the tool |
+| `tool_name` | The name the agent calls the tool by: the `name` in `tool_config` |
 | `tool_method` | HTTP method: GET, POST, PUT, DELETE, PATCH |
 | `tool_path` | URL path — either relative to connection base_url (e.g., `/orders/{{order_id}}`) or a full URL (e.g., `https://api.example.com/orders`). Full URLs are used as-is, ignoring base_url. A connection's credential is only ever sent to its base URL's origin (scheme, host and port), never past a redirect off it: on a connection that holds a credential, creating a tool whose URL leaves that origin, or editing a tool's path or connection so that it does, is refused (UI or `wayai push`); an existing such tool can still be edited in every other field, and its calls go out without the credential. A connection with no base URL takes no such tool — nor does one whose base URL has no fixed host (a `{{placeholder}}` host, or no `https://` or `http://` scheme), which has no origin, so its credential is sent nowhere. Publishing, syncing or replicating a hub copies an existing such tool as it is, and its calls go out without the credential. Supports `{{placeholders}}` |
 | `tool_config` | OpenAI function schema (auto-generated or custom) |
