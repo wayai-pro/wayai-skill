@@ -25,7 +25,7 @@ tools:
 | `name` | required | Native tool name (must match catalog) |
 | `id` | set by `wayai pull` | Stable tool_id for rename safety; do not author manually |
 | `keep_in_history` | catalog default | When set, controls whether this tool's call/result remain in agent history. Omit to leave the existing value untouched (no diff). |
-| `expose_schema_to_llm` | `true` | When `false`, the tool's schema is excluded from the agent's inline tool list (token optimization). Reachable via `execute_tool`. Omit to leave untouched. |
+| `expose_schema_to_llm` | `true` | When `false`, the tool's schema is excluded from the agent's inline tool list (token optimization). Reachable via `execute_tool`. The value is `true` or `false`, and a push refuses anything else. Omit to leave untouched. |
 | `enabled` | `true` for a new tool | `false` turns the tool off, `true` turns it back on. Omit to leave untouched. See [A disabled tool does not run](#usage-requirements). |
 
 Other native fields (schema, instructions, operation) come from the platform catalog and are not round-trippable via YAML.

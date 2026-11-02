@@ -173,7 +173,7 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 | _(none)_ | One matching credential for the auth type | Auto-bound implicitly. If **multiple** match, push errors and asks you to add `credential:` |
 | `credential: "<name>"` | Pin a specific org credential by its display name | Binds that credential. Errors if the name doesn't resolve among the hub-visible credentials of the chosen auth type |
 | `access_token_credential: "<name>"` | Dual-credential connectors (API Key auth **plus** a Bearer Token access token) | Binds the named **Bearer Token** credential as the secondary secret. Requires `authentication_type: api_key`. **Push-only** — not echoed on pull (see Round-trip note) |
-| `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server) | Creates the connection with no bound credential and **no warning**. On an existing connection it clears the org credential it uses and its secret. A connection holding a secret [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential) is refused instead, and left as it is: a `hub.yaml` pulled before pulls told the two apart may say `no_auth: true` for it, so pull again or remove the line. Cannot be combined with `credential:`; rejected if the connector mandates a secret |
+| `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server) | The value is `true` or `false`, and a push refuses anything else. Creates the connection with no bound credential and **no warning**. On an existing connection it clears the org credential it uses and its secret. A connection holding a secret [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential) is refused instead, and left as it is: a `hub.yaml` pulled before pulls told the two apart may say `no_auth: true` for it, so pull again or remove the line. Cannot be combined with `credential:`; rejected if the connector mandates a secret |
 
 ```yaml
 connections:
@@ -201,6 +201,8 @@ connections:
 ### Credential propagation to production (`sync_credentials_to_production`)
 
 A hub starts as a `preview`; publishing clones it to a `production` hub and later changes flow via sync. By default a connection's credential is **copied into production** on publish/sync — fine when preview and production share the same secret.
+
+The value is `true` or `false`, and a push refuses anything else, naming the connection and the value. Before that refusal, a file saying `sync_credentials_to_production: no` left the flag on, so a publish or sync copied the credential into production: if such a file was published, write `false` and set production's own credential.
 
 Set `sync_credentials_to_production: false` on a connection to **keep production's credential separate** — the preview credential is not copied, and production's credential is set directly on the production connection instead (via `wayai set-connection-credential` or the UI; production hubs are otherwise read-only). Until a production credential is set, that connection raises a "production credential missing" alert.
 
