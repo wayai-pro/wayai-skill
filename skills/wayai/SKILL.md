@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.235.0
+version: 6.236.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -231,7 +231,7 @@ Capabilities assigned per agent in `agents/<slug>.yaml`. Remember: replying with
 | Type | Source | How |
 |------|--------|-----|
 | Native | Platform built-ins (e.g., `update_kanban_status`, `get_state`, `send_files`, `close_conversation`, `read_file`) | Listed by name under `tools.native` |
-| Custom | HTTP endpoints you define | Defined under `tools.custom` with `connection`, `method`, `path`, `config` |
+| Custom | HTTP endpoints you define | Defined under `tools.custom` with `description`, `connection`, `method`, `path`, `config` |
 | MCP | Tools from connected MCP servers | Dual-origin — declared per-agent under `tools.mcp` **and/or** assigned in the Platform UI. `wayai push` discovers + assigns in one run; a present `mcp` key (even `[]`) is authoritative, an omitted one preserves UI-assigned tools. See [native-tools.md](references/agents/native-tools.md#mcp-tools) |
 | Delegation | Agent-to-agent (`transfer_to_agent`, `consult_agent`, `start_consult_thread`), agent-to-team (`transfer_to_team`), or agent-to-**hub** (`delegate_to_hub`, `start_consult_thread`) | Declared under `tools.delegation` with `target` (agent display name, team name, or hub name — a hub name resolves only among the hubs an API token's grants cover; name any other hub by `target_id`) |
 

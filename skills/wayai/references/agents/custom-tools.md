@@ -64,6 +64,19 @@ A new custom tool needs a `connection`: an entry with none is refused, naming th
 
 A tool already stored under two names, or under a name outside that form, still pushes unchanged, with a warning on every `wayai diff` and `wayai push`: under two names, its calls answer `Tool not found` until you set `name` and `config.name` to one name.
 
+#### Descriptions in a file
+
+A tool has one description: what the agent is told it does. Write it as `description`, and as `config.description` too if the entry has a `config`; either alone is enough, and the other takes it. When the two differ:
+
+- **A new entry** takes `config.description`. `wayai diff` and `wayai push` warn that `description` is not used, and the file reads `config.description` after the push.
+- **An entry with its `id`** takes whichever you changed. Change both to different text and `config.description` wins, with the same warning.
+- **An entry with no `id`** goes by a `config.description` that states text: editing `description` alone changes nothing, with the warning, and blanking it changes nothing either.
+- **A `config.description` that is blank**, or still holds the old form's `Function description`, states nothing: `description` is used.
+
+An agent is not offered a tool with no description, so a new entry with none, or an edit that leaves a tool with none, is refused before anything is written, and the error names the field to fill. `Function description` counts as no text. So a new entry whose only `description` is blank or `Function description` is refused the same way, and so is changing a stored tool's text to either, unless `config.description` brings new text, or the entry has no `id` and its `config.description` states text: that text is used.
+
+A tool already stored with no description still pushes unchanged, and other edits to it still save, with a warning on every `wayai diff` and `wayai push`: the agent is not offered it until you write one, and a blank or `Function description` does not count. A pulled file that creates such a tool on another hub is refused, because there it is new.
+
 ```yaml
 # hub.yaml (connections section)
 connections:
@@ -194,11 +207,13 @@ three are a custom tool's fields, in its YAML and in its form in the console.
 tools:
   custom:
     - name: create_order
+      description: Place an order
       method: post
       path: /orders
       connection: shop-api
       idempotency_header: Idempotency-Key   # each call sends its own key in this header
     - name: refund_payment
+      description: Refund a payment
       method: post
       path: /refunds
       connection: shop-api
@@ -226,7 +241,7 @@ OpenAI function calling format. Required fields: `name`, `description`, `paramet
 }
 ```
 
-> **Note:** `tool_name` follows `tool_config.name` ([Names in a file](#names-in-a-file)). A `wayai push` that changes `config` also sets `tool_description` from its `description`. The agent is told `config.description`, or the entry's `description` if `config` states none, and a tool with neither is not offered to the agent.
+> **Note:** `tool_name` follows `tool_config.name` ([Names in a file](#names-in-a-file)). A `wayai push` that changes `config`'s `description` also sets `tool_description` to it, and one left blank or holding the old placeholder takes the entry's `description` instead ([Descriptions in a file](#descriptions-in-a-file)). The agent is told `config.description`, or the entry's `description` if `config` states none, and a tool with neither is not offered to the agent.
 
 ---
 
