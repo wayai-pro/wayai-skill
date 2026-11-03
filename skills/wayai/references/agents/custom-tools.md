@@ -96,7 +96,7 @@ Then run `wayai push` to create the tools on the hub.
 
 **Tool Name** is the label people see. The agent calls the tool by the `name` in **Tool Configuration**, and that is also the `name` a `wayai pull` writes, so changing Tool Name later changes only the label. To change what the agent calls an existing tool, edit the `name` in Tool Configuration.
 
-A new tool left on the default configuration takes its `name` from Tool Name (`My tool` becomes `my_tool`, with a number added if the agent already has that name or the name is a native tool's).
+A new tool left on the default configuration takes its `name` from Tool Name (`My tool` becomes `my_tool`, with a number added if the agent already has that name or the name is a native tool's). A `name` you write yourself is refused if another tool on the agent goes by it, is offered under it or has it as its Tool Name, or if it is a native tool's, and the error names the field to change. Tools already stored under one name still save any edit that keeps it.
 
 **Description** is required, and it is what the agent is told the tool does: it and the `description` in **Tool Configuration** are one description. Change either and the other follows; change both to different text and Tool Configuration's wins. A tool with no description anywhere is not offered to the agent.
 
