@@ -50,6 +50,18 @@ tools:
       connection: my-api-connection
 ```
 
+#### Names in a file
+
+A tool has one name: the one the agent is offered and calls it by. Write it as `name`, and as `config.name` too if the entry has a `config`. When the two differ:
+
+- **A new entry** takes `config.name`. `wayai diff` and `wayai push` warn that `name` is not used, and the file reads `config.name` after the push.
+- **An entry with its `id`** can be renamed by editing `name` alone or `config.name` alone, and the other follows. Edit both to different names and `config.name` wins, with the same warning.
+- **An entry with no `id`** is matched by `config.name`, then by `name`. Editing `name` alone does not rename it: the tool keeps its name, with the warning.
+
+The name must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`, which every model provider accepts: letters, digits, `_` and `-`, starting with a letter or `_`, at most 64 characters. A new name or a changed one outside that is refused, and the error names the field to change. Two new entries of one name on an agent are refused too, as is a new entry with the name another entry already has.
+
+A tool already stored under two names, or under a name outside that form, still pushes unchanged, with a warning on every `wayai diff` and `wayai push`: under two names, its calls answer `Tool not found` until you set `name` and `config.name` to one name.
+
 ```yaml
 # hub.yaml (connections section)
 connections:
@@ -210,7 +222,7 @@ OpenAI function calling format. Required fields: `name`, `description`, `paramet
 }
 ```
 
-> **Note:** `tool_name` and `tool_description` are auto-populated from `tool_config.name` and `tool_config.description` by a database trigger.
+> **Note:** `tool_name` follows `tool_config.name` ([Names in a file](#names-in-a-file)). A `wayai push` that changes `config` also sets `tool_description` from its `description`.
 
 ---
 
