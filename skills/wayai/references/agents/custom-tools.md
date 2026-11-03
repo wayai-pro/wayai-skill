@@ -60,6 +60,8 @@ A tool has one name: the one the agent is offered and calls it by. Write it as `
 
 The name must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`, which every model provider accepts: letters, digits, `_` and `-`, starting with a letter or `_`, at most 64 characters. A new name or a changed one outside that is refused, and the error names the field to change. Two new entries of one name on an agent are refused too, as is a new entry with the name another entry already has.
 
+A new custom tool needs a `connection`: an entry with none is refused, naming the agent and the tool, before anything is written. An entry that updates a stored tool and names none leaves the tool on its connection.
+
 A tool already stored under two names, or under a name outside that form, still pushes unchanged, with a warning on every `wayai diff` and `wayai push`: under two names, its calls answer `Tool not found` until you set `name` and `config.name` to one name.
 
 ```yaml
