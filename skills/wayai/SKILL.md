@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.244.0
+version: 6.245.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -250,7 +250,7 @@ Treats **another hub as a consultant**. The tool spawns a task conversation in t
   context_boundary: summary  # instruction | summary | transcript
 ```
 
-- **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call). With an API token, `target` resolves by name only among the hubs the token's grants cover with `hub:read` in production, and the push error lists only those; a token limited to some hubs, to tags, or to the `preview` environment names any other target by `target_id`, the target hub's id (`wayai pull` writes the hub's existing hub delegations in that form).
+- **`target` must be a published (production) `hub_type: task` hub in the same organization.** Production because it matches branching semantics; **task** because a task hub gives each request its own conversation — a `chat` hub keeps one conversation per user, so every delegation would pile into a single thread and mix customers. A cross-org, unpublished, or chat-type target fails the push (and, at runtime, the tool call). With an API token, `target` resolves by name only among the hubs the token's grants cover with `hub:read` in production, and the push error lists only those; a token limited to some hubs, to tags, or to the `preview` environment names any other target by `target_id`, the target hub's id (`wayai pull` writes each existing hub delegation with its `target_id`, and its `target` as the hub's name, or as the id again for a hub the token's grants do not cover).
 - **The target hub must CLOSE the spawned conversation** — its close is the completion signal. The request text instructs it to, but a target whose agents can never close (no `close_conversation` tool, no terminal kanban status) will leave the asker waiting. (An **agent-started** consult carries an expiry — see `start_consult_thread`; a team-started hub delegation does not, so give the target hub a way to finish.)
 - **`context_boundary` is a data-sensitivity decision, not a tuning knob.** Hubs can differ in team membership and what they may see, so choose deliberately — there is no safe default that fits every pair of hubs:
 
