@@ -62,7 +62,7 @@ Hand off the conversation to a human support team. The result returns to the cal
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `team_name` | string | Yes | Name of the team to transfer to (a team defined in Hub → Users → Teams; unknown names fail at runtime) |
+| `team_name` | string | Yes | Name of the team to transfer to (a push is refused when the tool's `target:` names a team neither the hub nor the file's `teams:` holds; an unknown name here fails the call only on a tool left with no team) |
 
 ### consult_agent
 
