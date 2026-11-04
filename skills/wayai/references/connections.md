@@ -232,7 +232,7 @@ wayai set-connection-credential --hub <id|name> --connection "OpenAI" --org-cred
 echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connection "OpenAI" --field api_key --stdin
 ```
 
-- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`.
+- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`. A Telegram connection's webhook secret is generated when its webhook is enabled: a production write of `webhook_secret_token` on one is refused.
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
 - **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
 - **A raw secret switches that field to Direct Input**, on preview and production, whether it comes from `--field`, the UI's Direct Input or the API. The org credential that supplied that field is unlinked from the connection, so its next rotation no longer overwrites the secret you set. Only that field's link goes: a connection that takes its API key from one org credential and its access token from another keeps the other one linked. The org credential itself, and its links to other connections, stay.
