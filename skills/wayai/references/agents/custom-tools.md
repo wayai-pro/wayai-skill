@@ -52,11 +52,13 @@ tools:
 
 #### Names in a file
 
-A tool has one name: the one the agent is offered and calls it by. Write it as `name`, and as `config.name` too if the entry has a `config`. When the two differ:
+A tool has one name: the one the agent is offered and calls it by. Write it as `name`, and as `config.name` too if the entry has a `config`. A `config.name` decides whenever it states a name, with an `id` or without, so a file pushed again unchanged leaves the tool as the first push did. When the two differ:
 
 - **A new entry** takes `config.name`. `wayai diff` and `wayai push` warn that `name` is not used, and the file reads `config.name` after the push.
-- **An entry with its `id`** can be renamed by editing `name` alone or `config.name` alone, and the other follows. Edit both to different names and `config.name` wins, with the same warning.
-- **An entry with no `id`** is matched by `config.name`, then by `name`. Editing `name` alone does not rename it: the tool keeps its name, with the warning.
+- **An entry with its `id`** is renamed by editing `config.name`, or both, and `name` follows. Editing `name` alone beside a `config.name` that states the old name does not rename it: the tool keeps its name, with the warning. With no name in `config` (or no `config`), editing `name` renames it.
+- **An entry with no `id`** is matched by `config.name`, then by `name`: editing `config.name` alone renames it, but editing both makes a new tool and removes the old one. Editing `name` alone does not rename it, with the warning.
+
+`wayai pull` lists a `name` the push would not use and asks before replacing the file.
 
 The name must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`, which every model provider accepts: letters, digits, `_` and `-`, starting with a letter or `_`, at most 64 characters. A new name or a changed one outside that is refused, and the error names the field to change. Two new entries of one name on an agent are refused too, as is a new entry with the name another entry already has. So is a new or changed name that is a native tool's (`read_file`, `close_conversation`, assigned to the agent or not), or that another tool of the agent goes by, is offered under or has as its label once the push is done (a native, MCP or custom tool), since a call by that name would run only one of them; each refusal names the field to change. A name a stored tool already holds is never refused, so a pulled file pushes back unchanged. Adding a native tool to an agent that already has a tool going by its name, or offered under it, is refused too, in the console and through the API.
 
@@ -66,14 +68,15 @@ A tool already stored under two names, or under a name outside that form, still 
 
 #### Descriptions in a file
 
-A tool has one description: what the agent is told it does. Write it as `description`, and as `config.description` too if the entry has a `config`; either alone is enough, and the other takes it. When the two differ:
+A tool has one description: what the agent is told it does. Write it as `description`, and as `config.description` too if the entry has a `config`; either alone is enough, and the other takes it. A `config.description` that states text decides, with an `id` or without, so a file pushed again unchanged leaves the tool as the first push did. When the two differ:
 
 - **A new entry** takes `config.description`. `wayai diff` and `wayai push` warn that `description` is not used, and the file reads `config.description` after the push.
-- **An entry with its `id`** takes whichever you changed. Change both to different text and `config.description` wins, with the same warning.
-- **An entry with no `id`** goes by a `config.description` that states text: editing `description` alone changes nothing, with the warning, and blanking it changes nothing either.
+- **A stored tool** changes its text when you edit `config.description`, or both. Editing `description` alone beside a `config.description` that states text changes nothing, with the warning, and blanking it changes nothing either. A pulled file holds both, so edit both.
 - **A `config.description` that is blank**, or still holds the old form's `Function description`, states nothing: `description` is used.
 
-An agent is not offered a tool with no description, so a new entry with none, or an edit that leaves a tool with none, is refused before anything is written, and the error names the field to fill. `Function description` counts as no text. So a new entry whose only `description` is blank or `Function description` is refused the same way, and so is changing a stored tool's text to either, unless `config.description` brings new text, or the entry has no `id` and its `config.description` states text: that text is used.
+`wayai pull` lists a `description` the push would not use and asks before replacing the file.
+
+An agent is not offered a tool with no description, so a new entry with none, or an edit that leaves a tool with none, is refused before anything is written, and the error names the field to fill. `Function description` counts as no text. So a new entry whose only `description` is blank or `Function description` is refused the same way, and so is changing a stored tool's text to either where `config.description` states none: a `config.description` that states text is used.
 
 A tool already stored with no description still pushes unchanged, and other edits to it still save, with a warning on every `wayai diff` and `wayai push`: the agent is not offered it until you write one, and a blank or `Function description` does not count. A pulled file that creates such a tool on another hub is refused, because there it is new.
 
@@ -222,7 +225,7 @@ tools:
 
 ### tool_config Schema
 
-OpenAI function calling format. Required fields: `name`, `description`, `parameters`.
+OpenAI function calling format. Required fields: `name`, `description`, `parameters`. A push also takes a `config` sent as JSON text holding that object, and reads it as the object: its name and description count, and the object is what is stored.
 
 ```json
 {
