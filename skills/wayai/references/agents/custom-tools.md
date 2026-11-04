@@ -60,7 +60,7 @@ A tool has one name: the one the agent is offered and calls it by. Write it as `
 
 `wayai pull` lists a `name` the push would not use and asks before replacing the file.
 
-The name must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`, which every model provider accepts: letters, digits, `_` and `-`, starting with a letter or `_`, at most 64 characters. A new name or a changed one outside that is refused, and the error names the field to change. Two new entries of one name on an agent are refused too, as is a new entry with the name another entry already has. So is a new or changed name that is a native tool's (`read_file`, `close_conversation`, assigned to the agent or not), or that another tool of the agent goes by, is offered under or has as its label once the push is done (a native, MCP or custom tool), since a call by that name would run only one of them; each refusal names the field to change. A name a stored tool already holds is never refused, so a pulled file pushes back unchanged. Adding a native tool to an agent that already has a tool going by its name, or offered under it, is refused too, in the console and through the API.
+The name must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`, which every model provider accepts: letters, digits, `_` and `-`, starting with a letter or `_`, at most 64 characters. A new name or a changed one outside that is refused, and the error names the field to change. Two new entries of one name on an agent are refused too, as is a new entry with the name another entry already has. So is a new or changed name that is a native tool's (`read_file`, `close_conversation`, assigned to the agent or not), or that another tool of the agent goes by, is offered under or has as its label once the push is done (a native, MCP or custom tool), since a call by that name would run only one of them; each refusal names the field to change. A name a stored tool already holds is never refused, so a pulled file pushes back unchanged, except for a tool stored as text, whose `config` is written as a new one ([tool_config Schema](#tool_config-schema)). Adding a native tool to an agent that already has a tool going by its name, or offered under it, is refused too, in the console and through the API.
 
 A new custom tool needs a `connection`: an entry with none is refused, naming the agent and the tool, before anything is written. An entry that updates a stored tool and names none leaves the tool on its connection.
 
@@ -225,7 +225,7 @@ tools:
 
 ### tool_config Schema
 
-OpenAI function calling format. Required fields: `name`, `description`, `parameters`. A push also takes a `config` sent as JSON text holding that object, and reads it as the object: its name and description count, and the object is what is stored.
+OpenAI function calling format. Required fields: `name`, `description`, `parameters`. A push also takes a `config` sent as JSON text holding that object, and reads it as the object: its name and description count, and the object is what is stored. A tool an earlier push stored as text is not offered to the agent, and a pull writes its `config` as text. Pushing that file writes the object, `wayai diff` lists it as a `tool_config` change, and the agent is offered the tool from then on if it has a description. A name in that text which the rules above refuse for a new tool is refused here too, and the tool stays as it is until `config.name` changes. Text nested more than 16 layers deep is refused: write `config` as the object.
 
 ```json
 {
