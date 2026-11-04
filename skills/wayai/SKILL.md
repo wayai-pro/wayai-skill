@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.239.0
+version: 6.240.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -402,7 +402,7 @@ Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--
 
 ## Teams, Users & Access
 
-People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML. A team's own settings, not its members, also appear in `hub.yaml` under `teams:`, which `wayai pull` writes. A file with no `teams:` key (or a key with no value) leaves the hub's teams and their members as they are. `teams: []` deletes every team and everyone's membership, and the hub gets a new, empty Support team, again on each push of it. A push that writes anything else also deletes a team a list of entries leaves out, with its members, without listing it; a change to the list alone is not seen, and the push answers `No changes to push`:
+People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML. A team's own settings, not its members, also appear in `hub.yaml` under `teams:`, which `wayai pull` writes. A file with no `teams:` key (or a key with no value) leaves the hub's teams and their members as they are. `teams: []` deletes every team and everyone's membership, and the hub gets a new, empty Support team, again on each push of it. `wayai diff` and `wayai push` list a team the list adds, changes or deletes, by name, and a change to the list alone is pushed. A push never deletes a team a list of entries leaves out: it keeps it and its members and warns, naming it — remove a single team in the Users tab. A team renamed in the file keeps its row only when its entry carries the team's `id`, as `wayai pull` writes it; renamed with no `id`, the push creates a team of the new name and keeps the old one:
 
 - **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
 - **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — an unknown `target` fails at runtime
