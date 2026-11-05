@@ -95,7 +95,7 @@ What the statuses, transitions, outcomes and lanes are, and how a builder sets t
 **Transfer** is offered while the person holds the conversation:
 
 - **Transfer to Agent** hands the conversation back to one of the hub's AI agents, which answers the customer again. It is offered only on a hub whose AI answers customers (AI mode `pilot` or `pilot+copilot`).
-- **Transfer to Team** releases the conversation, unclaimed, to the team picked: it waits in that team's queue, where one of its members can claim it ([which conversations a team member sees](#the-inbox)).
+- **Transfer to Team** releases the conversation, unclaimed, to the team picked: it waits in that team's queue, where one of its members can claim it ([which conversations a team member sees](#the-inbox)). A team with no enabled member who has joined is refused: the transfer fails with an error, and the conversation stays where it is.
 
 ## Closing
 
