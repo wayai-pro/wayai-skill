@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.248.0
+version: 6.249.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -406,7 +406,7 @@ Query with `wayai analytics` (summary + per-variable aggregates; `--metric`, `--
 People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/<orgId>/hubs/<hubId>/users`), never in YAML. A team's own settings, not its members, also appear in `hub.yaml` under `teams:`, which `wayai pull` writes. A file with no `teams:` key (or a key with no value) leaves the hub's teams and their members as they are. `teams: []` deletes every team and everyone's membership, and the hub gets a new, empty Support team, again on each push of it. `wayai diff` and `wayai push` list a team the list adds, changes or deletes, by name, and a change to the list alone is pushed. A push never deletes a team a list of entries leaves out: it keeps it and its members and warns, naming it — remove a single team in the Users tab. A team renamed in the file keeps its row only when its entry carries the team's `id`, as `wayai pull` writes it; renamed with no `id`, the push creates a team of the new name and keeps the old one:
 
 - **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
-- **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name — a push is refused when `target` names a team neither the hub nor the file's `teams:` holds
+- **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name, and an AI handoff reaches only that team — a push is refused when `target` names a team neither the hub nor the file's `teams:` holds
 - **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Access values** — which records of a base each org member, hub, hub admin, team member, hub user and agent may reach, per access dimension; set in the app (an agent's also as `access_values` in its YAML). They filter only record types whose `x-access` is in `enforce` mode: see [`references/bases/access.md`](references/bases/access.md)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`

@@ -58,11 +58,11 @@ Hand off the conversation to another AI agent on the same track (specialist, or 
 
 ### transfer_to_team
 
-Hand off the conversation to a human support team. The result returns to the caller — confirm to the user *after* the call.
+Hand off the conversation to a human support team. The result returns to the caller — confirm to the user *after* the call, from the result: it names the team the conversation landed on, or says it went to the hub's unassigned queue ([roles-and-settings.md](roles-and-settings.md#delegation-flow) says when).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `team_name` | string | Yes | Name of the team to transfer to (a push is refused when the tool's `target:` names a team neither the hub nor the file's `teams:` holds; an unknown name here fails the call only on a tool left with no team) |
+| `team_name` | string | Yes | Name of the team to transfer to, read only on a tool with no team of its own on a hub not in account mode (a push is refused when the tool's `target:` names a team neither the hub nor the file's `teams:` holds; an unknown name here fails the call only on a tool left with no team) |
 
 ### consult_agent
 

@@ -40,8 +40,8 @@ What a hub's support team (**Hub Team Users**) and its **Hub Admins** do in Supp
 | **Ended** | Closed conversations, most recently closed first. **See archived conversations** reaches older ones. |
 
 **Which conversations a team member sees:**
-- those belonging to their own teams;
-- those not assigned to any team;
+- those belonging to their own teams: claimed from there, or handed to that team by a person's transfer or the AI's;
+- those not assigned to any team, such as one the AI handed to a team that was deleted or has no members, one left when a team's last member went, a reply a gate held, or one moved to the team after an AI failure;
 - those they have claimed.
 
 A hub admin who is on none of the hub's teams sees all of the hub's conversations, but must join a team to claim or reply ([Who Has Support](#who-has-support)).

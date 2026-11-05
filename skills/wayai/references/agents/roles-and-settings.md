@@ -108,7 +108,7 @@ tools:
       target: Compliance Advisor
 ```
 
-**`transfer_to_team`** — agent-to-team handoff. Switches the conversation's `current_responder_type` to `team` (with `ai_mode: pilot+copilot`, the active track shifts Pilot → Copilot). Unlike `transfer_to_agent`, **the tool result returns to the calling agent** — so the caller writes the next user-facing message itself.
+**`transfer_to_team`** — agent-to-team handoff. Switches the conversation's `current_responder_type` to `team` (with `ai_mode: pilot+copilot`, the active track shifts Pilot → Copilot). Unlike `transfer_to_agent`, **the tool result returns to the calling agent** — so the caller writes the next user-facing message itself. The conversation lands, unclaimed, on one team: the delegation's `target`, or on a hub whose `support_model` is `account`, the customer's own team. Only that team's members and hub admins on no team then see it and are notified. A team that has been deleted, or that has no enabled member who has joined, cannot hold it, so it goes to the hub's unassigned queue, which every team sees; so does anything still unclaimed on a team when its last such member leaves. A copilot's call, made with the conversation already on the team track, stays on the team only if the conversation is already on that team's list; otherwise it goes to that queue too. The tool's result names where it landed, whichever `team_name` the call passed, so have the agent tell the customer from the result.
 
 - **Prompt rule:** call the tool, **then confirm** to the user ("You're now with our team — someone will help you shortly."). Do **not** pre-announce before the call.
 
@@ -729,7 +729,7 @@ monitor_config:
 
 Both are declared under `tools.delegation` and assigned to the monitor — that is the only place these two tools can be declared, for a monitor exactly as for a pilot. **Where each one gets its destination differs, and it is the same difference a pilot sees:**
 
-- `transfer_to_team` goes to the team you pinned as the delegation's `target`. The rule must still pass `team_name` — the tool requires it — but that value does not choose the team; it is what the handoff note records. **Write the same name you pinned**, or the note will say one team and the conversation will go to the queue of another. Declare one delegation per destination team and let the rule pick which one to call.
+- `transfer_to_team` goes to the team you pinned as the delegation's `target`. The rule must still pass `team_name` — the tool requires it — but that value does not choose the team: the conversation, the handoff note and the tool's result all follow the pin. Declare one delegation per destination team and let the rule pick which one to call.
 - `transfer_to_agent` goes to the agent the CALL names, not to the delegation's `target`. So `agent_name` is what decides, and the rule must supply it.
 
 ```yaml
@@ -756,9 +756,9 @@ tools:
           agent_name: { const: Refunds Specialist }   # ← this is what routes it
 ```
 
-A team handoff puts the conversation in the team's queue, unclaimed — a member picks it up in the support UI, exactly as for a handoff from a pilot.
+A team handoff puts the conversation in that team's queue, unclaimed — one of its members picks it up in the support UI, exactly as for a handoff from a pilot. Other teams no longer see it. A team that is deleted or has nobody on it leaves the conversation in the hub's unassigned queue instead ([`transfer_to_team`](#delegation-flow)).
 
-> **On an account-mode hub, neither the pinned target nor `team_name` chooses the team.** When the hub's `support_model` is `account`, every `transfer_to_team` — from a rule or from a pilot — goes to the customer's own assigned team, falling back to the hub's default team, and fails if the hub has neither. Set the customer's team (or a hub default) rather than expecting the delegation's `target` to route the escalation.
+> **On an account-mode hub, neither the pinned target nor `team_name` chooses the team.** When the hub's `support_model` is `account`, every `transfer_to_team` — from a rule or from a pilot — lands on the customer's own assigned team, falling back to the hub's default team, and fails if the hub has neither. Set the customer's team (or a hub default) rather than expecting the delegation's `target` to route the escalation.
 
 A transfer that cannot be carried out — an agent that is disabled, on the other track, or named by something that resolves to nothing — is recorded as a failed call and changes nothing: the original agent answers as it would have. The usual transfer rules still apply; a rule is simply another caller.
 
@@ -847,7 +847,7 @@ With [`include_tool_results: true`](#history_messages-and-include_tool_results),
 |---|---|
 | `none` | The reply is sent as drafted. |
 | `call_tool` | The tool runs, then the reply is sent as drafted. |
-| `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the team's queue, unclaimed, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
+| `hold` | The reply is **not sent**. It is kept in the conversation for your support team to read — the customer never receives it or sees it, on any channel or in any app view. The conversation is flagged and moved to the hub's unassigned queue, unclaimed, which every team sees, where a person decides what to send. If moving it to the queue fails, the reply is still held and the conversation still flagged. |
 | `rewrite` | The answering agent is asked **once** to revise its reply, following a `note` you write. It revises the text only: it sees what its tools returned while it answered (up to the 50 most recent results) and the files it was shown — the customer's attachments on the message it answered, and any image or PDF it opened while answering — and none of its tools runs again. The gate then judges the revision: if it passes, the **revision** is sent and the original never is. If the gate objects again — a second `rewrite` or a `hold` — or anything on the way fails, the reply is **held** as above. |
 
 ```yaml
