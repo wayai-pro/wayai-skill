@@ -225,7 +225,7 @@ tools:
 
 ### tool_config Schema
 
-OpenAI function calling format. Required fields: `name`, `description`, `parameters`. A push also takes a `config` sent as JSON text holding that object, and reads it as the object: its name and description count, and the object is what is stored. A tool an earlier push stored as text is not offered to the agent, and a pull writes its `config` as text. Pushing that file writes the object, `wayai diff` lists it as a `tool_config` change, and the agent is offered the tool from then on if it has a description. A name in that text which the rules above refuse for a new tool is refused here too, and the tool stays as it is until `config.name` changes. Text nested more than 16 layers deep is refused: write `config` as the object.
+OpenAI function calling format. Required fields: `name`, `description`, `parameters`. A push also takes a `config` sent as JSON text holding that object, and reads it as the object: its name and description count, and the object is what is stored. A tool an earlier push stored as text is not offered to the agent, and a pull writes its `config` as text. Pushing that file writes the object, `wayai diff` lists it as a `tool_config` change, and the agent is offered the tool from then on if it has a description. An entry for that tool with no `config` writes the object too, keeping the text's keys but naming it by the entry's `name`, as an entry with no `config` always does. Saving the tool in the console writes the object as well. A name in the text which the rules above refuse for a new tool is refused when the file's `config` states it, and the tool stays as it is until `config.name` changes. Text nested more than 16 layers deep is refused: write `config` as the object.
 
 ```json
 {
