@@ -58,7 +58,7 @@ Hand off the conversation to another AI agent on the same track (specialist, or 
 
 ### transfer_to_team
 
-Hand off the conversation to a human support team. The result returns to the caller — confirm to the user *after* the call, from the result: it names the team the conversation landed on, or says it went to the hub's unassigned queue ([roles-and-settings.md](roles-and-settings.md#delegation-flow) says when, and why on an account-mode hub that answer can leave it on a team).
+Hand off the conversation to a human support team. The result returns to the caller — confirm to the user *after* the call, from the result: it names the team the conversation landed on, or says it went to the hub's unassigned queue ([roles-and-settings.md](roles-and-settings.md#delegation-flow) says when), or, on the rare call where that could not be read, only that it went to the support team.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
