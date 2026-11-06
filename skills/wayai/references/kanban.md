@@ -211,7 +211,7 @@ Enforced on every write — REST, CLI `wayai push`:
 - `event_due_delay_minutes` requires the status to have `isSchedulingStatus: true`; it must be a non-negative integer
 - `scheduled_event_date` (supplied per transition, not config) must be an ISO-8601 date-time: either zoned (`2026-06-02T15:00:00Z`, `…-03:00`) or a zone-less wall clock (`2026-06-02T15:00`) resolved in the hub timezone. Anything else is rejected; the stored value is always canonical UTC
 - Followups with `delivery_mode: direct` require non-empty `direct_text`
-- `additional_context_schema` must be a well-formed JSON Schema; the schema's `properties` must not declare a top-level `additional_data` key (reserved placeholder name); JSON-serialized size ≤ 16 KB
+- `additional_context_schema` must be a well-formed JSON Schema; the schema's `properties` must not declare a top-level `additional_data` key (reserved placeholder name); JSON-serialized size ≤ 16 KB. It may not use `prefixItems`, `patternProperties`, `if`/`then`/`else`, `not`, `dependentSchemas`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems`, `contains`, `definitions` (use `$defs`) or a tuple `items`, anywhere a `$ref` reaches as well. Each object node that sets no `additionalProperties`, one a `$ref` names included, is saved with `additionalProperties: false`, so a submitted value with a key the schema does not declare is refused
 
 ---
 
