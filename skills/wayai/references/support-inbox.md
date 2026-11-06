@@ -41,7 +41,7 @@ What a hub's support team (**Hub Team Users**) and its **Hub Admins** do in Supp
 
 **Which conversations a team member sees:**
 - those belonging to their own teams: claimed from there, or handed to that team by a person's transfer or the AI's;
-- those not assigned to any team, such as one the AI handed to a team that was deleted or has no members, one left when a team's last member went, a reply a gate held, or one moved to the team after an AI failure;
+- those not assigned to any team, such as one the AI handed to a team that was deleted or has no members, one left when a team's last member went, a reply a gate held, or one moved to the team after an AI failure. On a hub whose support model is account, a move to the team that names no team (a held reply, a move after an AI failure) keeps the customer's conversation on the list it is on, or puts it on the customer's own team, and goes to no team only when nobody on that team can answer; a hand-back to an AI agent returns it to the customer's own team;
 - those they have claimed.
 
 A hub admin who is on none of the hub's teams sees all of the hub's conversations, but must join a team to claim or reply ([Who Has Support](#who-has-support)).
@@ -166,7 +166,7 @@ A flag on a row or a card means the hub's conversation evaluator, a monitor, or 
 |-------|--------------------------|
 | A browser tab | Nothing: the Support count and the unread counts show what is waiting. |
 | The desktop app | System notifications for support work: [navigation.md → Desktop app](navigation.md#desktop-app). |
-| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | "Conversation transferred" when a conversation is handed to the team on a hub the person supports, and it is one their Support shows ([which conversations a team member sees](#the-inbox)): a handoff to a named team reaches that team's members and hub admins on no team. Tapping it opens the conversation in Support. A customer's new message does not notify. |
+| The mobile app, while the person has WayAI open nowhere (no app, browser tab or desktop app connected) | "Conversation transferred" when a conversation is handed to the team on a hub the person supports, and it is one their Support shows ([which conversations a team member sees](#the-inbox)): a handoff to a named team reaches that team's members and hub admins on no team. On a hub whose support model is account, a move to the team that names no team (a held reply, a move after an AI failure) still notifies every team, though only the team it stays with shows it. Tapping it opens the conversation in Support. A customer's new message does not notify. |
 
 ## Support in the Mobile App
 
