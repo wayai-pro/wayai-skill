@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.260.0
+version: 6.261.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -570,6 +570,7 @@ wayai update            # Update CLI (run before any operation)
 wayai login             # OAuth — or `wayai login --token` for headless/CI
 wayai logout            # Sign out and clear stored credentials
 wayai whoami            # Show the authenticated identity
+wayai 2fa verify        # Enter a two-step code for this session, when a command asks for one (--recovery for a recovery code)
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-ws/org/
 wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
