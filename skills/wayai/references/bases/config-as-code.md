@@ -192,7 +192,8 @@ records, relationships, file metadata and config are retained, and recreating th
 `--purge` (preview bases only) destroys them permanently, and also starts a background deletion of
 everything the base leaves outside itself — its analytical rows and its uploaded file contents — so
 those stop occupying storage rather than lingering. Until that deletion finishes, the base's records
-keep counting toward the organization's record limit, because they still exist.
+keep counting toward the organization's record limit, because they still exist. Deleting a production
+base is the organization owner's alone (a 403 for any other member); a preview stays open to every member.
 
 A purged id is **retired while that deletion runs** — recreating it is refused, because the previous
 base's rows are still out there and would otherwise be served to the new one — and **frees itself

@@ -610,6 +610,8 @@ wayai bases tokens list                # status, last_used_at, expires_at, descr
 wayai bases tokens revoke <token_id>   # permanent
 ```
 
+**Only the organization's owner can mint a token holding `write:bases` or `*`** (a 403 for any other member); a token without either, and a toolset-bound one, stays open to members.
+
 `--grants` takes inline JSON or `@file.json`. `--ttl` and `--expires-at` are mutually exclusive. **Mint probe/test/diagnostic tokens with `--ttl`** so they expire on their own — a disposable token never needs a manual revoke. Use `--description` to record what holds a token, so future you knows what breaks if it is revoked.
 
 **Toolset-bound (consumer) tokens.** For least privilege, mint a token whose authorization **is** the toolset: it can call that toolset's tools through its MCP endpoint and nothing else. The plain API (records, relationships, batch, SQL) refuses it with a 403, even for a record type its toolset has a tool for; use a normal base token for the plain API. A leaked one cannot reach past the tools you exposed, and you rotate or revoke one per agent — so what such a token can do is exactly what those tools can.
