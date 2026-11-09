@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.261.0
+version: 6.262.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -407,7 +407,7 @@ People entities are **UI-managed** (Hub → Users tab: `/settings/organizations/
 
 - **Hub User** — the end user the AI talks to (customer/lead/employee). Uses `/chat` (the mobile apps' Chat tab); what they can do there: [`references/using-the-app.md`](references/using-the-app.md)
 - **Hub Team User** — support team member handling conversations in `/support` (the inbox, claim, transfer, close, the board: [`references/support-inbox.md`](references/support-inbox.md)); grouped into **Teams** (e.g. "Tier 2 Support") that `transfer_to_team` targets by name, and an AI handoff reaches only that team — a push is refused when `target` names a team neither the hub nor the file's `teams:` holds
-- **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (billing, credentials, hubs). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
+- **Hub Admin** — full hub config access. **Org Owner/Admin** — org level (credentials, hubs, reading billing; only the owner changes billing). Access is per-level, not inherited (an org admin isn't automatically a hub admin)
 - **Access values** — which records of a base each org member, hub, hub admin, team member, hub user and agent may reach, per access dimension; set in the app (an agent's also as `access_values` in its YAML). They filter only record types whose `x-access` is in `enforce` mode: see [`references/bases/access.md`](references/bases/access.md)
 - **Contact access control** — with `non_app_permission: require_permission`, unknown channel contacts are held `pending` (localized auto-reply, overridable via `access_request_message`) until approved/blocked by the role in `access_approval_role`
 
