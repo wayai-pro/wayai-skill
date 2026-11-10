@@ -612,6 +612,14 @@ wayai bases tokens revoke <token_id>   # permanent
 
 **Only the organization's owner can mint a token holding `write:bases` or `*`** (a 403 for any other member); a token without either, and a toolset-bound one, stays open to members.
 
+**A token holding `write:bases` or `*` that was minted before this rule is revoked**, the owner's own included: no record says who minted it. Every request with it is refused as revoked (a 401), `tokens list` shows it as `revoked`, and `tokens prune` removes it. Whatever held one — a CI pipeline, an MCP client, a connection's credential — needs a new token, minted by the owner:
+
+```bash
+wayai bases tokens create --name "ci" --grants '[{"scope":{"bases":["*"]},"permissions":["*"]}]'
+```
+
+A token without `write:bases` or `*`, and a toolset-bound token, keep working.
+
 `--grants` takes inline JSON or `@file.json`. `--ttl` and `--expires-at` are mutually exclusive. **Mint probe/test/diagnostic tokens with `--ttl`** so they expire on their own — a disposable token never needs a manual revoke. Use `--description` to record what holds a token, so future you knows what breaks if it is revoked.
 
 **Toolset-bound (consumer) tokens.** For least privilege, mint a token whose authorization **is** the toolset: it can call that toolset's tools through its MCP endpoint and nothing else. The plain API (records, relationships, batch, SQL) refuses it with a 403, even for a record type its toolset has a tool for; use a normal base token for the plain API. A leaked one cannot reach past the tools you exposed, and you rotate or revoke one per agent — so what such a token can do is exactly what those tools can.
@@ -682,15 +690,15 @@ Tokens enforce a privilege ceiling: you can only create tokens with equal or nar
 
 ### Revoking and pruning
 
-Revoking a token that was used in the last 7 days, or that is toolset-bound (a consumer token an MCP connection likely holds), is refused with a warning; `--force` overrides. Off a TTY the command prints the reason and exits 1 rather than auto-confirming. Do **not** `--force` (or prune with `--include-bound`) unless a human has confirmed nothing depends on the token — revocation is permanent and breaks live traffic immediately, a hub's Base Toolset connection holding it included, with one exception for older connections ([connections.md](../connections.md#base-toolset)). Expired tokens revoke without friction.
+Revoking a token that was used in the last 7 days, or that is toolset-bound (a consumer token an MCP connection likely holds), is refused with a warning; `--force` overrides. Off a TTY the command prints the reason and exits 1 rather than auto-confirming. Do **not** `--force` (or prune with `--include-bound`) unless a human has confirmed nothing depends on the token — revocation is permanent and breaks live traffic immediately, a hub's Base Toolset connection holding it included, with one exception for older connections ([connections.md](../connections.md#base-toolset)). Expired and revoked tokens revoke without friction.
 
 ```bash
-wayai bases tokens prune                        # expired tokens only (preview)
+wayai bases tokens prune                        # expired and revoked tokens only (preview)
 wayai bases tokens prune --unused-since 30d     # + tokens with no activity for 30 days
 wayai bases tokens prune --unused-since 30d --yes
 ```
 
-`prune` selects by **staleness only** — expired, or unused past the window — never by name, and previews before revoking (`--yes` is required non-interactively). Expiry is authoritative: an **expired** token is pruned regardless of binding, so `--include-bound` does not gate that half. The bound-token skip (and `--include-bound`) applies to the *unused-past-the-window* branch only, which also always skips legacy tokens whose usage was never tracked — "stale" is unknowable for those; revoke them individually if truly unused.
+`prune` selects by **staleness only** — expired, revoked, or unused past the window — never by name, and previews before revoking (`--yes` is required non-interactively). Expiry is authoritative: an **expired** token is pruned regardless of binding, so `--include-bound` does not gate that half; a **revoked** token is pruned however recently it was used. The bound-token skip (and `--include-bound`) applies to the *unused-past-the-window* branch only, which also always skips legacy tokens whose usage was never tracked — "stale" is unknowable for those; revoke them individually if truly unused.
 
 ## Credentials behind a base's integrations
 
