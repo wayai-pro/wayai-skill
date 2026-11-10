@@ -133,6 +133,6 @@ connections:
     credential: support-faq-preview   # a Bearer Token org credential holding a token bound to the toolset on the preview knowledge base
     settings:
       toolset: support-faq
-    # A token is bound to one base: production's connection holds one minted on the production
+    # A token is bound to one base: production's connection is saved with one minted on the production
     # knowledge base, so the preview's is never copied to it.
     sync_credentials_to_production: false
