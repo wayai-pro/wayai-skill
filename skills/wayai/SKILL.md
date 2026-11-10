@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.263.0
+version: 6.264.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -199,7 +199,7 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 | **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs) — the app's composer offers the voice-message button, to end users and team alike, only on a hub with an enabled STT connection; TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs, Google), each at the same loudness |
 | **Realtime** | OpenAI GPT-Live — the voice of live AI voice calls, used only by a `pilot_voice` agent |
 
-**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Realtime, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed. Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
+**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Realtime, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed (a Base Toolset connection, and one whose URL is on WayAI's data service, take none: see `references/connections.md`). Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
 
 **OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → Bearer Token), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
