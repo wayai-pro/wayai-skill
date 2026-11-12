@@ -66,7 +66,7 @@ Everything is ordinary hub configuration — `wayai push`, or the web Settings.
 **1. The OpenAI project key**, once per organization, as an org credential of type API Key:
 
 ```bash
-echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --type "API Key" --stdin
+echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --service OpenAI --stdin
 ```
 
 **2. `hub.yaml`** — a chat hub with a pilot, and the Realtime connection:

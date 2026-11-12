@@ -28,11 +28,17 @@ Organization credentials store API keys, tokens, and passwords at the organizati
 
 **Supported auth types:** API Key, Bearer Token, Basic Auth
 
-**Setup (UI only):**
+Each credential names its **service** when it is created: the catalog connector it is for (OpenAI, Anthropic, Telegram, …), or none, for a credential a base uses. A credential for a service binds only to that service's connections, and its service never changes. REST API, External Resources and MCP Server credentials are entered on the connection itself, not as a credential for that service.
+
+**Setup (UI):**
 1. Settings → Organization → Credentials tab
 2. Click "+ Add Credential"
-3. Enter name, description, auth type, and credential fields
+3. Enter a name and description, pick the **Service** (or "No service (for a base)"), then the auth type it takes and the credential fields
 4. Save — credentials are stored securely in vault
+
+The UI creates API Key and Bearer Token credentials; a Basic Auth org credential is created with the CLI.
+
+**Setup (CLI):** `wayai create-credential --name <name> --service <connector name> --stdin`. The auth type follows from a service that takes one; pass `--type` otherwise, and with no `--service` (`--type basic_auth` included).
 
 **Using with CLI (`wayai push`):**
 
@@ -166,7 +172,7 @@ connections:
 
 ### Binding an organization credential
 
-The raw secret never goes in YAML (anti-pattern for git). Instead, a connection **references** an org credential by name. Auto-creation resolves the binding in this order:
+The raw secret never goes in YAML (anti-pattern for git). Instead, a connection **references** an org credential by name. An org credential created for a service (`wayai create-credential --service <connector name>`, or the console's Service picker) binds only to connections of that service, or of the same provider's other connectors (an OpenAI key serves OpenAI, OpenAI STT, OpenAI TTS and OpenAI GPT-Live), and its service never changes. A credential a base uses names no service. Auto-creation resolves the binding in this order:
 
 | Field | When to use | Behavior |
 |-------|-------------|----------|
@@ -261,7 +267,7 @@ A connection whose URL is on WayAI's data service takes no credential: the data 
 
 ### Requirements
 
-- Organization credential must exist (create in UI: Settings → Organization → Credentials)
+- Organization credential must exist (`wayai create-credential`, or in UI: Settings → Organization → Credentials). The UI creates a credential for a catalog service, or an API Key or Bearer Token credential with no service (for a base); a Basic Auth org credential is created with `wayai create-credential --type basic_auth`
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
 - The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (untagged, or sharing ≥1 tag with the hub — plus environment)
 - OAuth connections (WhatsApp, Instagram, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
@@ -922,7 +928,7 @@ A Realtime connection is not an LLM connection: no turn runs on it, and it binds
 **CLI (`wayai push`):** create the key once as an org credential of type API Key, then declare the connection. Auto-creation binds by auth type, so pin the credential by name whenever the hub can see more than one API Key credential ([Binding an organization credential](#binding-an-organization-credential)):
 
 ```bash
-echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --type "API Key" --stdin
+echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --service OpenAI --stdin
 ```
 
 ```yaml

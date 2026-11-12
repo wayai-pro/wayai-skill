@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.264.0
+version: 6.265.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -479,7 +479,7 @@ The user's entry point is `wayai.pro`, whose onboarding section carries the inst
 | 4 | `workspace.scoped: false` and `repo_scope_blocker: null` | Agent runs `wayai init --org <active_org.id>` — writes the org binding into `wayai-ws/wayai.yaml`, the repo's one committed workspace manifest. |
 | 4b | `workspace.scoped: false` and `repo_scope_blocker` is set | **Do NOT run `wayai init`** — it rewrites `wayai-ws/wayai.yaml` and cannot fix a repo whose two config files disagree. For `kind: "conflict"`, tell the user both organization ids and ask which one this repo belongs to, then delete or correct the root `.wayai.yaml`. For `kind: "invalid"`, show the named file and its `detail` and ask the user to fix it. Re-run `status --json` afterwards. |
 | 5 | Workspace scoped, hub goal not yet known | User handoff: "What should this hub do? Describe the goal, who talks to it, and the main use case." |
-| 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --type "Bearer Token" --stdin`. |
+| 6 | LLM credential missing for chosen provider | User handoff: "Paste your OpenAI/Anthropic/Google API key here." Then agent runs `wayai create-credential --name <name> --service <connector name: OpenAI, Anthropic, Google AI Studio, …> --stdin`. |
 | 7 | Hub needs an OAuth connection (WhatsApp / Instagram / MCP OAuth) | Apply the **OAuth connection handoff** (Connections & Credentials → OAuth connection handoff): send the full-path connections deeplink for the connector, wait for completion, then `wayai pull -y`. The same handoff applies any time an OAuth connection is needed later, not only here. |
 | 8 | Prerequisites met | Read [`references/canonical-example/README.md`](references/canonical-example/README.md) once for end-to-end wiring, then generate `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md` from the user's description (per-domain refs below for individual shapes), then `wayai create -y` to create + push the new hub (`wayai push -y` also auto-creates when the workspace has just this one new folder). |
 | 9 | Push succeeded | Agent runs `wayai send-message "Hi"` and shows the response. User handoff: "Refine, add tools, or publish?" |
@@ -490,7 +490,7 @@ The user's entry point is `wayai.pro`, whose onboarding section carries the inst
 | State | URL |
 |-------|-----|
 | 3 (org create — manual fallback) | `https://app.wayai.pro/settings/organizations/new` |
-| 6 (credential pre-fill) | `https://app.wayai.pro/settings/organizations/<org_id>/credentials?type=bearer&name=<key-name>&prefill=true` |
+| 6 (credential pre-fill) | `https://app.wayai.pro/settings/organizations/<org_id>/credentials?service=<connector name, e.g. OpenAI>&name=<key-name>&prefill=true` |
 | 7 (OAuth connection) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/connections?connector=<whatsapp\|instagram\|mcp-server>` |
 | 10 (publish — manual fallback) | `https://app.wayai.pro/settings/organizations/<org_id>/hubs/<hub_id>/overview?action=publish` |
 
@@ -516,7 +516,7 @@ The user's entry point is `wayai.pro`, whose onboarding section carries the inst
 9. **Go live** — `wayai publish` (or the platform UI) when ready: shows the preview→production diff, confirms, then first-publishes (clones preview → new production hub) or syncs subsequent changes. `push` first — it promotes the pushed preview state, not unpushed local edits
 
 ### New hub (from scratch)
-1. **Credentials** — `wayai create-credential --name "openai-key" --type "Bearer Token"` (one-time per org per credential)
+1. **Credentials** — `wayai create-credential --name "openai-key" --service OpenAI` (one-time per org per credential)
 2. **Init** — `wayai init` (interactive) or `wayai init --org <uuid>`
 3. **Create files** — `wayai-ws/hubs/<hub>/hub.yaml` + `agents/*.yaml` + `agents/*.md`
 4. **Create** — `wayai create -y` creates the hub, non-OAuth connections, and applies all config (auto-binds the worktree). `create <folder>` when the workspace has more than one hub folder. (`wayai push -y` also auto-creates when it resolves to a single new folder; in a multi-hub workspace it requires `--hub`, so `create` is the explicit, unambiguous verb.)
@@ -574,7 +574,7 @@ wayai 2fa verify        # Enter a two-step code for this session, when a command
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-ws/org/
 wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
-wayai create-credential # Create org credential (--name, --type "API Key"|"Bearer Token"|"Basic Auth", --org, --stdin)
+wayai create-credential # Create org credential (--name, --service <connector name>, --type "API Key"|"Bearer Token"|"Basic Auth" when the service takes several or there is none, --org, --stdin)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt

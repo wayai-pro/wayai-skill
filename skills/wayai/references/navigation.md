@@ -169,7 +169,7 @@ Tab pages accept these query strings to pre-open modals or pre-fill forms.
 
 | Tab | Query | Effect |
 |-----|-------|--------|
-| `…/credentials` | `?prefill=true&name=<name>&type=<api_key\|bearer\|basic_auth>` | Opens the create-credential modal pre-filled |
+| `…/credentials` | `?prefill=true&name=<name>&service=<connector name>&type=<api_key\|bearer>` | Opens the create-credential modal pre-filled (`service` and `type` optional; a service that takes one type sets it; the modal creates no Basic Auth credential) |
 | `…/connections` | `?connector=<slug>` | Lands on the Connections tab; if a connection for that connector **already exists** it's scrolled to and highlighted (`slug` = hyphen/space-tolerant substring of the connector name: `whatsapp`, `instagram`, `mcp-server`). Canonical **OAuth-connection handoff** target — the slug does **not** pre-open the add form, so to create one the user clicks **Add Connection** on this tab, picks the connector, and chooses OAuth |
 | `…/connections/new` | `?connector=<connector_id>` | Opens the create form pre-picked to a connector — matched by `connector_id` **UUID**, not a slug. For multi-auth connectors it defaults to the first auth type (e.g. MCP → Bearer Token), so it is **not** a reliable deeplink for MCP OAuth — use the `…/connections` slug form above |
 | `…/overview` | `?action=publish` | Opens the publish (preview→production) modal |
