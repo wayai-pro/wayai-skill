@@ -1,6 +1,6 @@
 # Connections
 
-Setup guide for WayAI hub connections. Non-OAuth connections are **auto-created by `wayai push`** from organization credentials. OAuth connections require **UI** setup.
+Setup guide for WayAI hub connections. Non-OAuth connections are **auto-created by `wayai push`** from organization credentials, except REST API, External Resources and MCP Server connections, whose key is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server). OAuth connections require **UI** setup.
 
 For the canonical, programmatic source of connector definitions (auth schemas, settings schemas, model lists), inspect `packages/core/src/catalog/connectors.ts` in the WayAI platform monorepo — this reference reflects that catalog and is updated alongside it.
 
@@ -36,9 +36,9 @@ Each credential names its **service** when it is created: the catalog connector 
 3. Enter a name and description, pick the **Service** (or "No service (for a base)"), then the auth type it takes and the credential fields
 4. Save — credentials are stored securely in vault
 
-The UI creates API Key and Bearer Token credentials; a Basic Auth org credential is created with the CLI.
+The UI creates API Key and Bearer Token credentials. No service takes Basic Auth, and a base takes only an API key or a bearer token, so a new Basic Auth org credential has nothing to serve: its one connector, REST API, takes its username and password on the connection.
 
-**Setup (CLI):** `wayai create-credential --name <name> --service <connector name> --stdin`. The auth type follows from a service that takes one; pass `--type` otherwise, and with no `--service` (`--type basic_auth` included).
+**Setup (CLI):** `wayai create-credential --name <name> --service <connector name> --stdin`. The auth type follows from a service that takes one; pass `--type` otherwise, and with no `--service`.
 
 **Using with CLI (`wayai push`):**
 
@@ -48,11 +48,9 @@ connections:
   - name: anthropic
     type: Agent
     service: Anthropic
-  - name: my-api
-    type: Tool
-    service: REST API
-    base_url: https://api.example.com   # Where its credential may be sent (custom tools)
 ```
+
+A REST API, External Resources or MCP Server connection takes its key on the connection instead ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)).
 
 **Benefits:**
 - **No duplication** — same API key used across multiple hubs
@@ -113,19 +111,21 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 
 ---
 
-**Supported connectors (non-OAuth):**
+**Supported connectors (non-OAuth, auto-created from an org credential):**
 - All Agent connectors (OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI, TypeSafe)
 - Channel connectors with API Key auth (Resend, Telegram)
-- Tool / custom variant (REST API)
-- Tool / mcp variant (MCP Server — Bearer Token auth)
-- Tool / native variant (External Resources, Base Toolset)
 - STT (Groq STT, OpenAI STT, ElevenLabs STT)
 - TTS (OpenAI TTS, Groq TTS, ElevenLabs TTS, Google AI Studio TTS)
 - Realtime (OpenAI GPT-Live — voice calls; see [Realtime](#realtime))
 
+**Key entered on the connection (no org credential):**
+- Tool / custom variant (REST API) and Tool / native variant (External Resources): added in the console with its key, then `wayai pull`
+- Tool / mcp variant (MCP Server — Bearer Token auth): created by `wayai push`, then its token set with `wayai set-connection-credential`, in the steps [Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server) gives
+- Tool / native variant (Base Toolset): created by `wayai push`, then its toolset token saved on it ([Base Toolset](#base-toolset))
+
 **Not supported (OAuth — requires UI):**
 - Channel connectors (WhatsApp, Instagram)
-- Tool / mcp variant (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created)
+- Tool / mcp variant (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created, and take their token on the connection)
 
 OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
 
@@ -142,11 +142,11 @@ connections:
   - name: anthropic           # Display name for the connection
     type: Agent               # Connector type (see Quick Reference)
     service: Anthropic        # Connector name (the card label in the UI)
-  - name: my-custom-api
+  - name: my-custom-api       # added in the console with its key, then pulled: a push does not create it
     type: Tool
     service: REST API
     base_url: https://api.example.com   # Required for custom tools when it holds a credential
-  - name: mcp-server
+  - name: mcp-server          # its token is set on the connection: see "Keys entered on the connection"
     type: Tool
     service: MCP Server
     base_url: https://mcp.example.com/mcp   # Streamable HTTP endpoint (required for MCP)
@@ -167,7 +167,7 @@ connections:
 
 1. `wayai push` reads the `connections` section from `hub.yaml`
 2. For each connection not yet on the hub, it finds a matching connector by `type` + `service`
-3. It looks up a matching organization credential (by auth type), except for a [Base Toolset](#base-toolset) connection or one [to WayAI's data service](#connections-to-wayais-data-service), which take none
+3. It looks up a matching organization credential (by auth type), except for a [Base Toolset](#base-toolset) connection or one [to WayAI's data service](#connections-to-wayais-data-service), which take none. A REST API, External Resources or MCP Server connection's key is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server) instead
 4. Creates the connection automatically — no secrets needed in the repo
 
 ### Binding an organization credential
@@ -184,11 +184,10 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 ```yaml
 connections:
   # Pin a specific org credential by name
-  - name: clinic-scheduling
-    type: Tool
-    service: MCP Server
-    base_url: https://mcp.example.com/mcp
-    credential: clinica-medica-mcp          # org credential display name
+  - name: openai-main
+    type: Agent
+    service: OpenAI
+    credential: openai-prod-key             # org credential display name
 
   # Deliberately no-auth MCP server (optional-auth connector)
   - name: public-mcp
@@ -198,9 +197,9 @@ connections:
     no_auth: true
 ```
 
-> **MCP binds a Bearer Token credential.** An MCP Server connection's token is sent to the server as `Authorization: Bearer <token>` — it is a **Bearer Token**, the connector's only non-OAuth auth type. Create the org credential as type **Bearer Token** (not API Key) and the connection auto-binds it. The connection's token field is labeled "Bearer Token" in the UI for the same reason.
+> **An MCP Server token is a Bearer Token.** It is sent to the server as `Authorization: Bearer <token>`, the connector's only non-OAuth auth type, and the connection's token field is labeled "Bearer Token" for that reason. It is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server), not as an org credential.
 
-> **No silent unbound connections.** If an optional-auth connector (MCP Server) ends up with **no** resolvable credential and you didn't set `no_auth: true`, `wayai push` still creates it but prints a yellow **warning** telling you to bind a credential or declare `no_auth: true`. Bind a credential, or make the no-auth intent explicit — never leave it ambiguous.
+> **No silent unbound connections.** If an optional-auth connector (MCP Server) ends up with **no** credential and you didn't set `no_auth: true`, `wayai push` still creates it but prints a yellow **warning** saying so. Set its token on the connection next, or make the no-auth intent explicit with `no_auth: true` — never leave it ambiguous.
 
 > **Round-trip.** `wayai pull` writes the bound credential back as `credential: "<name>"` (or `no_auth: true` for an intentional no-auth endpoint: one that names no org credential and stores no credential; a connection whose secret was [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential), and a [Base Toolset](#base-toolset) connection a token was saved on, get neither line) so the binding is visible in review and GitOps diffs. The secret itself is never exported. **Only the primary `credential` round-trips** — a dual-credential connection's secondary `access_token_credential` is push-only (the connection stores a single credential reference), so re-add it by hand if you recreate such a connection from a pulled file. `headers` likewise remain write-only (may carry an `Authorization` value) and are not echoed on pull.
 
@@ -240,10 +239,23 @@ echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connectio
 
 - `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`. A Telegram connection's webhook secret is generated when its webhook is enabled: a production write of `webhook_secret_token` on one is refused.
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
-- **Org credentials stay the default** for secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. Secrets are never written to YAML or passed as arguments.
+- **Org credentials stay the default** for a catalog service's secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. A REST API, External Resources or MCP Server connection's key is always connection-specific ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Secrets are never written to YAML or passed as arguments.
 - **A raw secret switches that field to Direct Input**, on preview and production, whether it comes from `--field`, the UI's Direct Input or the API. The org credential that supplied that field is unlinked from the connection, so its next rotation no longer overwrites the secret you set. Only that field's link goes: a connection that takes its API key from one org credential and its access token from another keeps the other one linked. The org credential itself, and its links to other connections, stay.
 - **Linking an org credential to a field replaces that field's link the same way**: from `--org-credential`, the UI, or a push's `credential:` / `access_token_credential:`. A field the write leaves alone keeps its link.
 - **A preview's `hub.yaml` that still names the old credential links it again on the next `wayai push`.** After setting a secret directly, remove the line that names its credential: `access_token_credential:` for a token, or `credential:` for the connection's own secret (and with it `access_token_credential:`, which needs a `credential:`; a token linked that way keeps its link).
+
+### Keys entered on the connection (REST API, External Resources, MCP Server)
+
+These connectors reach a host you choose, so their key is entered on the connection itself, never as an organization credential: a credential cannot name REST API, External Resources or MCP Server as its service (`wayai create-credential --service` and the console's Service picker refuse them), and a credential with no service is only for a base.
+
+- **REST API and External Resources** need their key to be created, and a push carries no key, so add the connection in the console: hub → **Connections** → **Add Connection** → the connector's card, with its key typed in (**Direct Input**). Then `wayai pull` writes it to `hub.yaml` with no `credential:` line, and later pushes leave its key as it is. Custom tools on it can be pushed once it exists.
+- **MCP Server (Bearer Token):** declare the connection in `hub.yaml` with no `credential:` and `wayai push`: it is created without its token, with a warning. Set the token, and only then add its tools under `tools.mcp` and push again, since discovering them needs the token. If the hub can see a Bearer Token org credential, a push without `credential:` links it, or asks which one when it sees several: declare `no_auth: true` for the push that creates the connection, and remove the line once the token is set (a push refuses `no_auth: true` on a connection holding a token set directly). The console's form takes the token too.
+- **Set or rotate the key** with [`wayai set-connection-credential`](#setting-a-connections-credential-directly-wayai-set-connection-credential), one field per call: `--field api_key` (and `--field access_token` for an API Key connection's second credential), `--field username` and `--field password` for Basic Auth, `--field access_token` for a Bearer Token, an MCP Server's included. On a production hub, the same command sets production's own.
+- **A connection already linked to an organization credential keeps it**, and a `hub.yaml` whose `credential:` names it pushes unchanged. Setting its key directly unlinks that credential from it; then remove the `credential:` line.
+
+```bash
+echo "$MCP_TOKEN" | wayai set-connection-credential --connection mcp-server --field access_token --stdin
+```
 
 ### Moving a connection's base URL
 
@@ -267,7 +279,7 @@ A connection whose URL is on WayAI's data service takes no credential: the data 
 
 ### Requirements
 
-- Organization credential must exist (`wayai create-credential`, or in UI: Settings → Organization → Credentials). The UI creates a credential for a catalog service, or an API Key or Bearer Token credential with no service (for a base); a Basic Auth org credential is created with `wayai create-credential --type basic_auth`
+- Organization credential must exist (`wayai create-credential`, or in UI: Settings → Organization → Credentials). The UI creates a credential for a catalog service, or an API Key or Bearer Token credential with no service (for a base). A REST API, External Resources or MCP Server connection takes none: its key is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
 - The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (untagged, or sharing ≥1 tag with the hub — plus environment)
 - OAuth connections (WhatsApp, Instagram, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
@@ -611,7 +623,7 @@ Connect to external file storage services for agent file access.
 3. Fill the form:
    - **Connection Name** (required): A name to identify this connection
    - **Storage API URL** (required): External storage service API endpoint (e.g., `https://storage.example.com/api`). The API key is only sent to this URL's origin: a redirect to another origin fails the request, and changing the URL to another origin clears the key
-   - **API Key** (required): Your storage service API key
+   - **API Key** (required): Your storage service API key, typed into the connection: it is not an organization credential ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server))
 4. Click Save
 
 **Agent tools:** `get_external_files`, `send_external_files`
@@ -707,7 +719,7 @@ Connect to any REST API using API key, basic auth, or bearer token authenticatio
 4. Fill the form:
    - **Connection Name** (required): A name to identify this connection
    - **Base URL**: Base URL for the API (e.g., `https://api.example.com`). The connection's credential is only ever sent to this URL's origin (scheme, host and port), never past a redirect off it, so a connection that holds a credential takes no custom tool without one, and a tool's full-URL path must stay on that origin. A base URL needs a fixed host and scheme: one with a `{{placeholder}}` host, or without an `https://` or `http://` scheme, has no origin, and the credential is sent nowhere. Changing it to another origin clears the stored credential ([Moving a connection's base URL](#moving-a-connections-base-url))
-   - Auth credentials (varies by type — see above)
+   - Auth credentials (varies by type — see above), typed into the connection (**Direct Input**): they are not an organization credential ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server))
    - **Custom Headers** (optional): Additional headers for this connection's tools. Like the credential, they are only sent to the Base URL's origin (if the Base URL is blank or fixes no host, to the host a tool's URL fixes, never one an agent fills in) and never follow a redirect off it. A request that leaves the origin goes without them.
 5. Click Save
 
@@ -735,7 +747,7 @@ Connect to external MCP servers with a Bearer Token or OAuth 2.0 authentication.
 1. Settings → Organizations → Hub → Connections
 2. In the **Tool** group, click the **MCP Server** card
 3. Choose an authentication type:
-   - **Bearer Token** — provide a bearer token (or leave empty for no auth). Bind a **Bearer Token** org credential to reuse it across connections.
+   - **Bearer Token** — provide a bearer token (or leave empty for no auth), typed into the connection: it is not an organization credential ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server))
    - **OAuth** — complete OAuth 2.0 authorization flow (RFC 9728)
 4. Fill the form:
    - **Connection Name** (required): A friendly name for this MCP connection

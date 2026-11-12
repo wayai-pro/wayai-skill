@@ -15,7 +15,7 @@ Create custom API integrations for agents using REST API connections (`type: Too
 ## Overview
 
 Custom tools allow agents to call external APIs. They require:
-1. A **REST API connection** (API Key or Basic Auth) — defined in `hub.yaml` connections section (auto-created from org credentials during push) or created via UI. Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
+1. A **REST API connection** (API Key, Basic Auth or Bearer Token) — added in the UI with its key typed in (the key is entered on the connection, never an org credential), then brought into `hub.yaml` with `wayai pull`; rotate its key with `wayai set-connection-credential` ([Keys entered on the connection](../connections.md#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
 ### Hosted agents
@@ -28,7 +28,7 @@ An agent on a hosted agent connection ([Claude Agent (Managed)](../connections.m
 
 ### Via Files + CLI (Recommended)
 
-Add custom tools to the agent's YAML file (`agents/<slug>.yaml`) under `tools.custom`, and declare the connection in `hub.yaml`:
+Add custom tools to the agent's YAML file (`agents/<slug>.yaml`) under `tools.custom`, on a connection `hub.yaml` declares (a REST API connection is added in the UI with its key, then pulled):
 
 ```yaml
 # agents/order-agent.yaml
@@ -81,7 +81,7 @@ An agent is not offered a tool with no description, so a new entry with none, or
 A tool already stored with no description still pushes unchanged, and other edits to it still save, with a warning on every `wayai diff` and `wayai push`: the agent is not offered it until you write one, and a blank or `Function description` does not count. A pulled file that creates such a tool on another hub is refused, because there it is new.
 
 ```yaml
-# hub.yaml (connections section)
+# hub.yaml (connections section), as `wayai pull` writes it once the connection is added in the UI
 connections:
   - name: my-api-connection
     type: Tool
@@ -373,7 +373,7 @@ connections:
     base_url: https://api.example.com/v1
 ```
 
-**Connection setup (UI, or the org credential `wayai push` binds):**
+**Connection setup (UI, the key typed into the connection):**
 - Auth type: API Key
 - Base URL: `https://api.example.com/v1` (on the connection: `base_url:` in `hub.yaml`, or the connection form)
 - API Key: `sk-xxx`

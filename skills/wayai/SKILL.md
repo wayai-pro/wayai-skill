@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.265.0
+version: 6.266.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -56,7 +56,9 @@ WayAI is where AI agents and people work together — serving your customers and
 | Hub lists (a hub's own filters over the contact book, which its automations target) | CLI (`hub.yaml` `contact_lists:`, `wayai push`) or UI (hub → Automations → Lists) |
 | Eval journeys (hub-as-code) — `journeys/<slug>.yaml`, flat folder | CLI (`wayai push` / `wayai pull`; pull after first create to sync step ids) |
 | Pages (a hub's small working tools over its bases, for its team or its customers) — `pages/<slug>/page.yaml` + `index.html` | CLI (`wayai page new`, `wayai push` / `wayai pull`, `wayai publish`) — see [Pages](#pages) |
-| Connections — non-OAuth (Agent providers, STT/TTS, Tool API key, MCP Bearer Token) | CLI (auto-created from org credentials) |
+| Connections — non-OAuth catalog services (Agent providers, STT/TTS, Realtime, Telegram, Resend) | CLI (auto-created from org credentials) |
+| Connections — MCP Server (Bearer Token) | CLI (`wayai push` creates it, then `wayai set-connection-credential --field access_token --stdin`; see `references/connections.md` for a hub that sees a Bearer Token org credential) or UI — its token is entered on the connection, never an org credential |
+| Connections — REST API, External Resources | UI (added with its key typed in), then `wayai pull`; rotate with `wayai set-connection-credential` — its key is entered on the connection, never an org credential |
 | Connections — OAuth (WhatsApp, Instagram, MCP OAuth) | Platform UI |
 | Set/rotate a connection's credential directly (incl. production) | CLI (`wayai set-connection-credential`) or UI |
 | Org credentials — create / rotate / edit | CLI (`wayai create-credential` / `wayai update-credential`) or UI |
@@ -107,7 +109,7 @@ Organization                ← CLI (`wayai org create`) or UI
 ├── Bases                   ← CLI (`wayai bases`) — the Data surface. Org-level, NOT inside a hub (see Bases)
 ├── Contact book            ← UI (Contacts) or API — contacts + org lists that automations target. Org-level, NOT in `hub.yaml`
 └── Hub                     ← CLI (`wayai create`, or auto-creates on push) or UI; publish/sync via CLI (`wayai publish`) or UI
-    ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI
+    ├── Connections         ← auto-created from org credentials on push (non-OAuth); OAuth via UI; REST API / External Resources / MCP Server keys entered on the connection
     ├── Channels            ← auto-provisioned, never authored (see Channels)
     ├── Agents              ← CLI — `agents/<slug>.yaml` + `<slug>.md`
     │   ├── Tools           ← CLI — native, custom HTTP, MCP, delegation
@@ -193,13 +195,13 @@ A **connection** is a configured instance of a connector (a catalog entry: LLM p
 |----------|----------|
 | **Agent** | OpenAI, Anthropic, Google AI Studio, OpenRouter, xAI (required for AI); TypeSafe (decisions models for monitors and gates only) |
 | **Channel** | WhatsApp, Instagram (OAuth — UI only); Resend (email), Telegram (API Key — auto-created) |
-| **Tool — Native** | Wayai (auto-created), External Resources (API Key), Base Toolset (Bearer Token — a token bound to one toolset of a base) |
-| **Tool — Custom** | User-defined HTTP endpoints (API Key, Bearer Token, Basic Auth) |
-| **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token via CLI; OAuth via UI |
+| **Tool — Native** | Wayai (auto-created), External Resources (API Key, entered on the connection), Base Toolset (Bearer Token — a token bound to one toolset of a base) |
+| **Tool — Custom** | User-defined HTTP endpoints, the REST API connector (API Key, Bearer Token, Basic Auth, entered on the connection) |
+| **Tool — MCP** | External MCP servers (Streamable HTTP) — Bearer Token entered on the connection (UI, or `wayai set-connection-credential`); OAuth via UI |
 | **Speech** | STT transcribes inbound voice notes (Groq, OpenAI, ElevenLabs) — the app's composer offers the voice-message button, to end users and team alike, only on a hub with an enabled STT connection; TTS synthesizes spoken replies (OpenAI, Groq, ElevenLabs, Google), each at the same loudness |
 | **Realtime** | OpenAI GPT-Live — the voice of live AI voice calls, used only by a `pilot_voice` agent |
 
-**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Realtime, Tool — Custom, Tool — MCP via Bearer Token) are auto-created from matching organization credentials when `hub.yaml` is pushed (a Base Toolset connection, and one whose URL is on WayAI's data service, take none: see `references/connections.md`). Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
+**Auto-creation rule:** Non-OAuth connections (Agent, STT, TTS, Realtime, API Key channels) are auto-created from matching organization credentials when `hub.yaml` is pushed (a Base Toolset connection, and one whose URL is on WayAI's data service, take none: see `references/connections.md`). A REST API, External Resources or MCP Server connection's key is entered on the connection, never as an org credential ([`references/connections.md`](references/connections.md#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Matching respects **org tags** (an untagged credential is global — every hub can use it; a tagged credential is visible only to hubs sharing ≥1 of its tags) and credential `environment`. OAuth connections must be set up in the UI first.
 
 **OAuth connection handoff (any time — not just onboarding):** OAuth connections (WhatsApp, Instagram, **MCP OAuth**) can't be created from the CLI — they need a one-time UI flow. **Whenever** one is needed — first-time setup *or* later (a new channel, an OAuth MCP server) — hand the user the full-path connections-tab deeplink `https://app.wayai.pro/settings/organizations/<orgId>/hubs/<hubId>/connections?connector=<slug>` (`<orgId>`/`<hubId>` from `wayai status --json`; `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server`), then `wayai pull -y` once they're done. The deeplink opens the **Connections** tab (and highlights the connector if a connection already exists — e.g. re-auth); to create one the user clicks **Add Connection**, picks the **\<Connector\>** card, chooses **OAuth**, and finishes the provider flow. Use this tab form — **not** `/connections/new?connector=…`, which takes a `connector_id` UUID and defaults to the first auth type (MCP → Bearer Token), so it can't reach MCP OAuth (see [navigation.md](references/navigation.md)).
 
@@ -574,7 +576,7 @@ wayai 2fa verify        # Enter a two-step code for this session, when a command
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-ws/org/
 wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
-wayai create-credential # Create org credential (--name, --service <connector name>, --type "API Key"|"Bearer Token"|"Basic Auth" when the service takes several or there is none, --org, --stdin)
+wayai create-credential # Create org credential (--name, --service <connector name>, --type "API Key"|"Bearer Token" when the service takes several or there is none, --org, --stdin; a Basic Auth one serves nothing new: REST API takes its username and password on the connection)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
@@ -847,7 +849,7 @@ connections:
     type: Agent
     service: Anthropic
     # sync_credentials_to_production: true   # default; false keeps production's credential separate (set it via `wayai set-connection-credential`). See references/connections.md#credential-propagation-to-production-sync_credentials_to_production
-  - name: my-api-connection
+  - name: my-api-connection           # added in the UI with its key typed in, then pulled: its key is entered on the connection
     type: Tool
     service: REST API
     base_url: https://api.example.com   # Its credential is only sent to this origin: required for custom tools while it holds one
@@ -930,7 +932,7 @@ For full agent options (settings per connector, `additional_context_template`, `
 ## Key Rules
 
 - **Read-only fields:** `hub_id`, `hub_environment`, `id` — set by `wayai pull`, never edit
-- **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. OAuth connections (WhatsApp, Instagram, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
+- **Connection auto-creation:** non-OAuth connections in `hub.yaml` resolve to org credentials by matching `service` + `authentication_type`. Use `credential` field to disambiguate when multiple org credentials share the same auth type. A REST API, External Resources or MCP Server connection's key is entered on the connection instead, never as an org credential ([`references/connections.md`](references/connections.md#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). OAuth connections (WhatsApp, Instagram, MCP OAuth) must already exist (UI setup — see OAuth connection handoff) — referenced by name only
 - **Production credentials:** a connection copies its credential into production on publish/sync by default. Set `sync_credentials_to_production: false` to keep production's credential separate, then set it directly with `wayai set-connection-credential` (production is otherwise read-only). A Base Toolset connection's token is never copied, whatever the flag says: always set production's own. Nor is a hosted agent connection's webhook signing secret (`Claude Agent (Managed)`): each hub registers its own endpoint and sets its own. See [`references/connections.md`](references/connections.md#credential-propagation-to-production-sync_credentials_to_production)
 - **Org tags:** `hub.tags` (slug names, created in the UI first) gate which org credentials the hub can resolve (matching rule in Connections & Credentials above). Only an organization admin may change them; a push that leaves them as they are works for anyone. A tag's slug is permanent — the UI edits only its display name and color — so these lists never need rewriting. See [`references/connections.md`](references/connections.md#organization-tags)
 - **Tool groups:** `native` (platform built-ins by name), `delegation` (agent-to-agent/team handoff), `custom` (HTTP endpoints with connection), `mcp` (tools from an MCP Server connection, by `name` + `connection` — push discovers + assigns; see references/agents/native-tools.md). Designing *which* params/tools to expose: [`references/agents/tool-principles.md`](references/agents/tool-principles.md)
