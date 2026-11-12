@@ -15,7 +15,7 @@ Create custom API integrations for agents using REST API connections (`type: Too
 ## Overview
 
 Custom tools allow agents to call external APIs. They require:
-1. A **REST API connection** (API Key, Basic Auth or Bearer Token) — added in the UI with its key typed in (the key is entered on the connection, never an org credential), then brought into `hub.yaml` with `wayai pull`; rotate its key with `wayai set-connection-credential` ([Keys entered on the connection](../connections.md#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
+1. A **REST API connection** (API Key, Basic Auth or Bearer Token) — declared in `hub.yaml` and created by `wayai push` without its key, or added in the UI with its key typed in. Its key is entered on the connection, never an org credential: set or rotate it with `wayai set-connection-credential` ([Keys entered on the connection](../connections.md#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Give it the API's **base URL**: a connection's credential is only sent to its base URL's origin, so a connection that holds a credential takes no tool until it has one, and moving the base URL to another origin clears the credential ([Moving a connection's base URL](../connections.md#moving-a-connections-base-url))
 2. A **custom tool** attached to an agent — defined in `agents/<slug>.yaml` under the agent's `tools.custom` section
 
 ### Hosted agents
@@ -28,7 +28,7 @@ An agent on a hosted agent connection ([Claude Agent (Managed)](../connections.m
 
 ### Via Files + CLI (Recommended)
 
-Add custom tools to the agent's YAML file (`agents/<slug>.yaml`) under `tools.custom`, on a connection `hub.yaml` declares (a REST API connection is added in the UI with its key, then pulled):
+Add custom tools to the agent's YAML file (`agents/<slug>.yaml`) under `tools.custom`, on a connection `hub.yaml` declares (a push creates a REST API connection without its key, which is then set on the connection):
 
 ```yaml
 # agents/order-agent.yaml
@@ -81,11 +81,12 @@ An agent is not offered a tool with no description, so a new entry with none, or
 A tool already stored with no description still pushes unchanged, and other edits to it still save, with a warning on every `wayai diff` and `wayai push`: the agent is not offered it until you write one, and a blank or `Function description` does not count. A pulled file that creates such a tool on another hub is refused, because there it is new.
 
 ```yaml
-# hub.yaml (connections section), as `wayai pull` writes it once the connection is added in the UI
+# hub.yaml (connections section)
 connections:
   - name: my-api-connection
     type: Tool
     service: REST API
+    authentication_type: api_key        # REST API takes api_key, basic_auth or bearer
     base_url: https://api.example.com   # Required for tools on a connection that holds a credential
 ```
 
@@ -370,10 +371,11 @@ connections:
   - name: my-api
     type: Tool
     service: REST API
+    authentication_type: api_key
     base_url: https://api.example.com/v1
 ```
 
-**Connection setup (UI, the key typed into the connection):**
+**Connection setup (the key set on the connection: its form, or `wayai set-connection-credential`):**
 - Auth type: API Key
 - Base URL: `https://api.example.com/v1` (on the connection: `base_url:` in `hub.yaml`, or the connection form)
 - API Key: `sk-xxx`
