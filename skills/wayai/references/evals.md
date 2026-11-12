@@ -176,14 +176,32 @@ Lifecycle and rules:
 - **Set-level agreement** — the fixture is a property of the shared base, so **all enabled scenarios in a set must declare the same fixture** (or none); two different fixtures in one set is rejected with `fixture_mismatch`. A journey declares it once for its whole flow.
 - **`target_base`** — the preview **base** the fixture is seeded against ([bases/README.md](bases/README.md)). Required alongside `fixture:` (the hub seed connection supplies the API origin + token; the base rides the eval config). Must agree across a set, same as the fixture.
 
-**Setup (once per hub):** create a **seed connection** — a **REST API** connection (`type: Tool`, `service: REST API`) whose **Base URL** is the Data API origin (`https://data.wayai.pro`) and whose bearer/API-key credential is a base token (`wayai bases tokens create`) scoped **`write:seeds`** (the ops are preview-only) — then point the hub at it. **Config-as-code (recommended for CI):** declare that connection under `connections:` and set the hub's **`seed_connection: <connection name>`** field in `hub.yaml`, then `wayai push`. The binding resolves by name (the Base URL is validated on push, same guard as the setup PATCH) and round-trips on `wayai pull`. Omitting the field leaves the binding unchanged; `seed_connection: null` clears it. It is also settable imperatively via `PATCH /api/setup/hubs/:id`. One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`. The token is only ever sent to the Base URL's origin: a redirect to another origin fails the seed call.
+**Setup (once per hub):** a **seed connection** is a **REST API** connection (`type: Tool`, `service: REST API`) whose **Base URL** is the Data API origin (`https://data.wayai.pro`) and whose bearer/API-key credential is a base token (`wayai bases tokens create`) scoped **`write:seeds`** (the ops are preview-only). A connection to the data service takes a token only once the hub names it as its seed connection, so **name it first, then save its token**:
+
+1. Declare the connection under `connections:` with **no `credential:`**, set the hub's **`seed_connection: <connection name>`** field in `hub.yaml`, and `wayai push`. The push creates it without a token and warns that the token comes next.
+2. Save the token on it: `echo "$TOKEN" | wayai set-connection-credential --connection "Base Seeds" --field access_token --stdin`, or add `credential: <org credential holding the token>` to the connection and `wayai push` again.
+
+A token on the connection before the hub names it is refused: a `credential:` on the push that creates it or that first names it, or a token typed when creating it in the console. The binding resolves by name (the Base URL is validated on push, same guard as the setup PATCH) and round-trips on `wayai pull`. Omitting the field leaves the binding unchanged; `seed_connection: null` clears it, and so does naming another connection: the one it named keeps the token it holds, but takes no new one. It is also settable imperatively via `PATCH /api/setup/hubs/:id` (`seed_connection_id`). One connection per hub covers every fixture; authors then just declare `fixture:` + `target_base:`. The token is only ever sent to the Base URL's origin: a redirect to another origin fails the seed call.
 
 ```yaml
-# hub.yaml — bind the seed connection by name (config-as-code)
+# hub.yaml, step 1: create the seed connection and name it (no credential yet)
 connections:
   - name: Base Seeds
     type: Tool
     service: REST API
+    authentication_type: bearer
+    base_url: https://data.wayai.pro
+hub:
+  seed_connection: Base Seeds
+```
+
+```yaml
+# hub.yaml, step 2 (instead of `wayai set-connection-credential`): link the token, then push again
+connections:
+  - name: Base Seeds
+    type: Tool
+    service: REST API
+    authentication_type: bearer
     base_url: https://data.wayai.pro
     credential: Base Write Seeds   # org credential holding the write:seeds token
 hub:
