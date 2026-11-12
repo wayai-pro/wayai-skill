@@ -42,7 +42,7 @@ The UI creates API Key and Bearer Token credentials. No service takes Basic Auth
 
 **Using with CLI (`wayai push`):**
 
-Add connections to `hub.yaml` and push — `wayai push` auto-creates them using matching org credentials:
+Add connections to `hub.yaml` and push — `wayai push` auto-creates them, linking the org credential created for each one's service ([Binding an organization credential](#binding-an-organization-credential)):
 ```yaml
 connections:
   - name: anthropic
@@ -105,7 +105,7 @@ Omit the `tags:` field to leave hub tags unchanged on push (matches `kanban_stat
 
 The rule is **asymmetric**, and the credential's tags are the side that gates: an **untagged credential is global** — every hub can use it, tagged or not. Only a **tagged** credential is restricted, and it needs the hub to share at least one of its tags. A hub's own tags never hide a global credential. An additional **environment filter** layers on top — a credential's `environment` (`preview` | `production` | `all`) must be `all` or match the hub's environment.
 
-**Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` reports "no matching credential" while the credential clearly exists in the org, the cause is almost always the credential carrying tags the hub doesn't share (or an environment mismatch) — have an organization admin add the tag to the hub (`hub.yaml` `tags`), or clear the credential's tags in the UI to make it global.
+**Why this matters for `wayai push`:** auto-creation looks up org credentials by `service` + auth type, but **only among credentials visible to this hub** under the rule above. If `wayai push` says no credential the hub sees was created for the service while the credential clearly exists in the org, there are two causes. **The credential names no service, or another one:** a push never picks it. Name one with no service in `credential:` (only if it holds this service's key). One created for another service never links to this one, so create a credential for this service instead ([Binding an organization credential](#binding-an-organization-credential)). **The credential carries tags the hub doesn't share** (or an environment mismatch): have an organization admin add the tag to the hub (`hub.yaml` `tags`), or clear the credential's tags in the UI to make it global.
 
 **Tag deletion** is blocked while any credential or hub still references the tag, or while a contact's scope tags, an org list's filter or a hub list's filter (a hub's `contact_lists:`) use it (`OrgTagReferencesError`, which counts each kind). Untag references first, then delete.
 
@@ -132,7 +132,7 @@ OAuth setup is UI-only for all of the above. Hand the user the connections deepl
 
 ## Creating Connections via CLI
 
-Non-OAuth connections are auto-created by `wayai push` using matching organization credentials. Add them to the `connections` section of `hub.yaml`:
+Non-OAuth connections are auto-created by `wayai push`, linked to the organization credential created for their service ([Binding an organization credential](#binding-an-organization-credential)). Add them to the `connections` section of `hub.yaml`:
 
 ### YAML Format
 
@@ -167,7 +167,7 @@ connections:
 
 1. `wayai push` reads the `connections` section from `hub.yaml`
 2. For each connection not yet on the hub, it finds a matching connector by `type` + `service`
-3. It looks up a matching organization credential (by auth type), except for a [Base Toolset](#base-toolset) connection or one [to WayAI's data service](#connections-to-wayais-data-service), which take none. A REST API, External Resources or MCP Server connection is created without its key, which is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server) instead: a push never picks an org credential for one, and links one only when `credential:` names it
+3. It looks up an organization credential of its auth type created for the connector's service (or for the same provider's other connectors), except for a [Base Toolset](#base-toolset) connection or one [to WayAI's data service](#connections-to-wayais-data-service), which take none. A credential naming no service, or one created for another service, is never picked; `credential:` still links one naming no service. A REST API, External Resources or MCP Server connection is created without its key, which is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server) instead: a push never picks an org credential for one, and links one only when `credential:` names it
 4. Creates the connection automatically — no secrets needed in the repo
 
 ### Binding an organization credential
@@ -176,8 +176,8 @@ The raw secret never goes in YAML (anti-pattern for git). Instead, a connection 
 
 | Field | When to use | Behavior |
 |-------|-------------|----------|
-| _(none)_ | One matching credential for the auth type | Auto-bound implicitly. If **multiple** match, push errors and asks you to add `credential:`. Never for a REST API, External Resources or MCP Server connection: it is created without its key, with a warning naming where the key is entered |
-| `credential: "<name>"` | Pin a specific org credential by its display name | Binds that credential. Errors if the name doesn't resolve among the hub-visible credentials of the chosen auth type |
+| _(none)_ | The hub sees exactly one credential of the auth type created for this service | Auto-bound implicitly. Only credentials created for the connection's service count: one naming no service (created before credentials named one, or for a base) is never picked, and one created for another service is ignored. With **none or several**, the connection is created without its key, and the push warns: add `credential: "<name>"` (in place of the `no_auth: true` the next pull writes for it), or [enter the key on the connection](#setting-a-connections-credential-directly-wayai-set-connection-credential) and pull again. Never for a REST API, External Resources or MCP Server connection: it is created without its key, with a warning naming where the key is entered |
+| `credential: "<name>"` | Pin a specific org credential by its display name | Binds that credential. Errors if the name doesn't resolve among the hub-visible credentials of the chosen auth type, or if it was created for another service. One naming no service still binds: name one only if it holds this service's key, as a credential with no service may be a base's |
 | `access_token_credential: "<name>"` | Dual-credential connectors (API Key auth **plus** a Bearer Token access token) | Binds the named **Bearer Token** credential as the secondary secret. Requires `authentication_type: api_key`. **Push-only** — not echoed on pull (see Round-trip note) |
 | `no_auth: true` | Deliberately unauthenticated connection on an **optional-auth** connector (e.g. a no-auth MCP server), or a REST API or External Resources connection to an API that takes no key | The value is `true` or `false`, and a push refuses anything else. Creates the connection with no bound credential and **no warning**. On an existing connection it clears the org credential it uses and its secret; a [Base Toolset](#base-toolset) connection keeps reaching its toolset, so to cut it off revoke its token (a connection whose token was saved before calls named it is cut off only by deleting it, or by saving a new token and revoking that one). A connection holding a secret [set directly](#setting-a-connections-credential-directly-wayai-set-connection-credential) is refused instead, and left as it is: a `hub.yaml` pulled before its secret was set, or before pulls told the two apart, may say `no_auth: true` for it, so pull again or remove the line. Cannot be combined with `credential:`; rejected if a catalog connector mandates a secret (a REST API or External Resources connection takes it) |
 
@@ -282,6 +282,7 @@ A connection whose URL is on WayAI's data service takes no credential: the data 
 
 - Organization credential must exist (`wayai create-credential`, or in UI: Settings → Organization → Credentials). The UI creates a credential for a catalog service, or an API Key or Bearer Token credential with no service (for a base). A REST API, External Resources or MCP Server connection takes none: its key is [entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)
 - The credential's auth type must match one of the connector's `authentication_types` (e.g., API Key for OpenAI)
+- With no `credential:`, the credential must have been created for the connector's service (or the same provider's other connectors), and be the only such one the hub sees ([Binding an organization credential](#binding-an-organization-credential))
 - The credential must be **visible to this hub** under the [Organization Tags](#organization-tags) matching rule (untagged, or sharing ≥1 tag with the hub — plus environment)
 - OAuth connections (WhatsApp, Instagram, MCP OAuth) cannot be auto-created — use UI (see OAuth connection handoff in SKILL.md)
 
@@ -938,7 +939,7 @@ A Realtime connection is not an LLM connection: no turn runs on it, and it binds
 
 **Prerequisites:** an API key of the OpenAI project your calls run in, from [platform.openai.com](https://platform.openai.com). The provider's call minutes are billed by OpenAI to that project (bring your own key). Only WayAI uses the key: a caller's browser never receives it.
 
-**CLI (`wayai push`):** create the key once as an org credential of type API Key, then declare the connection. Auto-creation binds by auth type, so pin the credential by name whenever the hub can see more than one API Key credential ([Binding an organization credential](#binding-an-organization-credential)):
+**CLI (`wayai push`):** create the key once as an org credential for OpenAI, then declare the connection. With no `credential:`, a push links the one API Key credential created for OpenAI; pin it by name when the hub sees none or several ([Binding an organization credential](#binding-an-organization-credential)):
 
 ```bash
 echo "$OPENAI_PROJECT_KEY" | wayai create-credential --name openai-voice --service OpenAI --stdin

@@ -85,7 +85,7 @@ connections:
   - name: voice
     type: Realtime
     service: OpenAI GPT-Live
-    credential: openai-voice      # pin it when the hub can see more than one API Key credential
+    credential: openai-voice      # pin it when the hub sees more than one credential created for OpenAI
 ```
 
 **3. `agents/voice.yaml`** and its instructions, `agents/voice.md`:
