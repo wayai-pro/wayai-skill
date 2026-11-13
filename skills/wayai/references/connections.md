@@ -126,7 +126,7 @@ The rule is **asymmetric**, and the credential's tags are the side that gates: a
 - Channel connectors (WhatsApp, Instagram)
 - Tool / mcp variant (MCP Server — **OAuth** auth only; Bearer Token MCP connections are auto-created, and take their token on the connection)
 
-OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish.
+OAuth setup is UI-only for all of the above. Hand the user the connections deeplink for the connector — `…/connections?connector=<slug>` with `<slug>` ∈ `whatsapp`, `instagram`, `mcp-server` (full path with org + hub; see [navigation.md](navigation.md) and SKILL.md → Connections & Credentials → OAuth connection handoff) — then `wayai pull` once they finish. Instagram cannot be connected yet ([Instagram](#instagram)): say so instead.
 
 ---
 
@@ -237,7 +237,7 @@ wayai set-connection-credential --hub <id|name> --connection "OpenAI" --org-cred
 echo "$OPENAI_KEY" | wayai set-connection-credential --hub <id|name> --connection "OpenAI" --field api_key --stdin
 ```
 
-- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`. A Telegram connection's webhook secret is generated when its webhook is enabled: a production write of `webhook_secret_token` on one is refused.
+- `--field` is one of: `api_key`, `access_token`, `password`, `refresh_token`, `webhook_secret_token`, `username`, `github_app_id`, `github_app_private_key`. A Telegram connection's webhook secret is generated when its webhook is enabled: a production write of `webhook_secret_token` on one is refused. On a production hub, a field the connection's service keeps no value of is refused, naming it (`field_not_held`), with nothing changed: for example `api_key` on a WhatsApp connection, `refresh_token` on a REST API one, or `access_token` on an LLM's. On a preview hub, a field the connection's form does not take is not stored, and one it takes that its service keeps no value of (an `access_token` on an LLM's API Key connection) is refused the same way. Set only the fields the connection's form shows.
 - The command routes by the hub's environment: preview → the standard connection edit; production → the sanctioned production-credential write (`hub:admin`). An org-linked production connection rotates automatically when you `update-credential` the linked org credential.
 - **Org credentials stay the default** for a catalog service's secrets shared across connections/hubs or that you want to rotate once and fan out; use a connection-specific credential for one-off / decoupled-production secrets. A REST API, External Resources or MCP Server connection's key is always connection-specific ([Keys entered on the connection](#keys-entered-on-the-connection-rest-api-external-resources-mcp-server)). Secrets are never written to YAML or passed as arguments.
 - **A raw secret switches that field to Direct Input**, on preview and production, whether it comes from `--field`, the UI's Direct Input or the API. The org credential that supplied that field is unlinked from the connection, so its next rotation no longer overwrites the secret you set. Only that field's link goes: a connection that takes its API key from one org credential and its access token from another keeps the other one linked. The org credential itself, and its links to other connections, stay.
@@ -471,6 +471,8 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 
 ### Instagram
 
+**Connecting Instagram is refused for now.** Its token can be kept only by the platform's credentials vault, which does not renew Instagram tokens yet. Clicking **Connect with Meta** ends on the connections page with "Instagram cannot be connected yet", and nothing is created. The steps below apply once the vault renews Instagram tokens.
+
 **Prerequisites:**
 - Instagram Business or Creator account
 - Connected to Facebook Page
@@ -484,7 +486,7 @@ Only registered testers reach a preview-owned channel — all other inbound is d
 5. Select Instagram account
 6. Connection created automatically
 
-**Features:** Instagram DMs, auto-refresh (7 days).
+**Features:** Instagram DMs, with the token renewed every 7 days once Instagram can be connected.
 
 ### WhatsApp
 
