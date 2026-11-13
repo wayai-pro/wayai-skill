@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.272.0
+version: 6.273.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -575,7 +575,7 @@ wayai 2fa verify        # Enter a two-step code for this session, when a command
 wayai org create        # Create a new organization (you become its owner): `wayai org create "<name>"` [--region <r>] [--json]
 wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-ws/org/
 wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
-wayai create-credential # Create org credential (--name, --service <connector name>, --type "API Key"|"Bearer Token" when the service takes several or there is none, --org, --stdin; a Basic Auth one serves nothing new: REST API takes its username and password on the connection)
+wayai create-credential # Create org credential (--name, --service <connector name> (required; a create without one is refused), --type only when the service takes several, --org, --stdin; REST API, External Resources and MCP Server keys are entered on the connection instead)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt

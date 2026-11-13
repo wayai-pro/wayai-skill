@@ -168,7 +168,7 @@ When an upstream requires a client certificate, store it as a **base credential*
 
 Create it on the base that dispatches to the upstream — `wayai bases credentials create`, the base's
 Credentials tab, or the credential API directly. See [`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)
-for the full surface, including linking an organization credential instead of entering the value here.
+for the full surface.
 
 ```bash
 # The credential value is PIPED, never an argv element: an argument leaks through /proc/<pid>/cmdline

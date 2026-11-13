@@ -706,13 +706,9 @@ Credential storage behind a base's external sources — API keys, signing secret
 
 **A credential belongs to one base.** A `credential:<name>` reference resolves against the credentials of the base serving the request, so the same configuration promoted or cloned elsewhere reads that base's own credential of that name. A preview is created with a copy of its origin's credentials, so cloned integrations keep working.
 
-**Promotion publishes what you opt in.** Each credential carries a publish flag (on by default): promoting a preview copies its opted-in credentials onto production, overwriting the production credential of the same name. Turn the flag off for anything production owns — a live API key you set there directly — and the promotion leaves it untouched. Credentials linked from an organization credential are never published this way; they are re-linked on production instead. Whatever a promoted source references and production still lacks is listed by name in the promotion result, before and after cutover.
+**Promotion publishes what you opt in.** Each credential carries a publish flag (on by default): promoting a preview copies its opted-in credentials onto production, overwriting the production credential of the same name. Turn the flag off for anything production owns — a live API key you set there directly — and the promotion leaves it untouched. Whatever a promoted source references and production still lacks is listed by name in the promotion result, before and after cutover.
 
-**Two ways a base gets one.** Create it **directly** on the base, with the commands below or in the base's Credentials tab. Or **link an organization credential** into the base: the organization credential stays the one place the secret is entered and rotated, the base gets a mirror of it, and rotating the organization credential reaches every base linked to it at once. Linking applies the same tag and environment rules that gate an organization credential's use anywhere else, and only single-value credential types project — an API key or a bearer token, not a username-and-password pair, because a base substitutes one value.
-
-A linked credential is **unlinked**, never deleted, and never rotated on the base: rotating it there would write a value the organization credential does not know about, which the next organization-level rotation would silently overwrite.
-
-**Linking is done by a person.** Creating or removing an organization link marks a credential as the organization's on someone's behalf, so it requires a signed-in session — the dashboard, or a CLI logged in with `wayai login`. An API token cannot do it. This also means a promotion run from CI cannot re-link: the promotion still applies, and its result names every organization-linked credential production is left without, so someone can link them once from the dashboard.
+**A base gets one directly.** Create it on the base, with the commands below or in the base's Credentials tab. An organization credential cannot be linked into a base for now: enter the value on the base itself. A credential an earlier version linked shows as organization-linked: deleting that organization credential removes it.
 
 **Secret values never travel in argv** — there is deliberately no `--value` flag. An argv element is readable from `/proc/<pid>/cmdline` on a default host and lands in shell history and CI job logs. A value arrives from a pipe, a masked prompt, or a file.
 
@@ -736,15 +732,9 @@ wayai bases credentials list --base crm           # metadata; values are never r
 wayai bases credentials get <id> --base crm       # metadata for one
 wayai bases credentials rotate <id> --base crm --value-stdin   # never auto-generates
 wayai bases credentials delete <id> --base crm [-y]
-
-# Link an organization credential into this base, and remove that link.
-# Both require a signed-in person — an API token cannot create or remove an organization
-# link, so these two are not available to CI.
-wayai bases credentials link --base crm --org-credential <organization-credential-id> [--name stripe-key]
-wayai bases credentials unlink <id> --base crm --org-credential <organization-credential-id>
 ```
 
-`--file` cannot be combined with `--value-stdin` or `--value-prompt`: with `--file` silently winning, a CI job that piped the new credential and also named a stale file would store the stale one and report success. `delete` requires `--yes` when non-interactive, and refuses a linked credential — use `unlink`.
+`--file` cannot be combined with `--value-stdin` or `--value-prompt`: with `--file` silently winning, a CI job that piped the new credential and also named a stale file would store the stale one and report success. `delete` requires `--yes` when non-interactive.
 
 Set `--expires-at` (ISO-8601) on credentials that lapse — yearly certificates, time-bound tokens — so `list` shows what needs renewing before it breaks an integration. Expiry is informational; a credential is never auto-disabled.
 
