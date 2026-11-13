@@ -54,7 +54,7 @@ relationship**. Files repeat the pattern (**file type → file**).
 | **Toolset** | A curated MCP server composed of Action references (plus relationship, file, batch and SQL tools), served at `https://data-mcp.wayai.pro/t/<slug>/mcp` | `wayai toolsets` — [toolsets.md](toolsets.md) |
 | **Seed fixture / lease** | Named, reversible records+relationships baseline for hermetic agent evals. Definitions are config; `apply`/`reset`/`clear` are preview-only data operations. An actor-bound lease exclusively resets, owns, and clears fixture state for one eval run | `wayai seed` — [config-as-code.md](config-as-code.md) |
 | **Base API token** | `rec_…` credential: grant-scoped (bases × record types × environments × permissions) or **toolset-bound** (its authorization IS one toolset's tool surface) | `wayai bases tokens` — [toolsets.md](toolsets.md) |
-| **Credential** | Encrypted credential held by a base (string or file blob), referenced from that base's source/trigger config as `credential:<name>`, pullable by an executor at dispatch | [toolsets.md](toolsets.md) |
+| **Credential** | Encrypted credential held by a base (string or file blob), referenced from that base's source config as `credential:<name>`, pullable by an executor at dispatch. Storing one is unavailable for now; one stored earlier still resolves | [toolsets.md](toolsets.md#credentials-behind-a-bases-integrations) |
 
 **Identity rules.** Config slugs are permanent ids — the `id` of a base, record type, relationship
 type, Action, and toolset *is* its identity and is **immutable**. There is no rename: to "rename" one
@@ -107,7 +107,7 @@ large or binary content belongs in Files.
 | Make a state-dependent write race-free | Action `precondition` (compare-and-set) | [toolsets.md](toolsets.md) |
 | Let each person, hub and agent reach only some records (a class, a region) | `x-access` on the record type + the organization's access dimensions and values (`wayai dimensions`, `wayai access explain`) | [access.md](access.md) |
 | Least-privilege machine/CI access | grant-scoped tokens (`bases tokens create --grants`) — a toolset-bound token calls only its toolset's tools, never the plain API | [toolsets.md](toolsets.md) |
-| Store integration credentials | base credentials (`credential:<name>` references) | [toolsets.md](toolsets.md) |
+| Store integration credentials | unavailable for now; base credentials stored earlier still resolve (`credential:<name>` references) | [toolsets.md](toolsets.md#credentials-behind-a-bases-integrations) |
 | Manage config in git / review in PRs | `wayai pull bases/<base>` / `wayai push bases/<base>` | [config-as-code.md](config-as-code.md) |
 | Deterministic agent evals against known data | a preview with integrations disabled + seed fixtures | [config-as-code.md](config-as-code.md), and [`../evals.md`](../evals.md) for the hub side |
 | Import/export provider tool definitions | provider adapters | [integrations.md](integrations.md) |

@@ -124,8 +124,8 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
 - **Secrets are never written to files.** Inbound-webhook, trigger and external-source secrets are
   stripped on pull. On push, a newly added inbound webhook or trigger gets a fresh secret, printed
   once — save it. Existing secrets are left untouched. Manage inbound-webhook and trigger values with
-  `wayai inbound-webhooks` and `wayai triggers`; an external source's credential is a credential of
-  the base itself, managed through its credential API.
+  `wayai inbound-webhooks` and `wayai triggers`. A push carrying an external source's secret is
+  refused: storing one is unavailable for now ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)).
 - **Deletions are opt-in.** Because deleting a record type also removes its records (and the files
   their [`cascade`](files.md) links owned, unless another owning link still holds them), and deleting
   a file type removes its files, `push` is additive by default: an entity on the server that your
@@ -179,13 +179,9 @@ first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhook
 each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists prior
 promotions and `rollback` reverts one by id. Promotion is blocked if it would break a published
 toolset, remove a file type production still holds files of, or change the `cascade` flag of a
-relationship type production still has links of — a dry run lists the conflicts. An **inline**
-source secret does not travel with a promotion — it is environment-local, so a newly-promoted source
-carrying one stays unconfigured until you set it on production. A `credential:<name>` reference
-resolves against the credentials of the base serving the request, and promotion publishes the
-preview credentials you opted in (overwriting production's row of that name), leaving opted-out and
-organization-linked ones alone. A promotion (including `--dry-run`) reports every referenced
-credential production will still lack.
+relationship type production still has links of — a dry run lists the conflicts. A promotion
+carries no credential, inline or `credential:<name>` ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
+and (including `--dry-run`) names every source production will lack one for.
 
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.

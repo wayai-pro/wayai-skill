@@ -702,43 +702,23 @@ wayai bases tokens prune --unused-since 30d --yes
 
 ## Credentials behind a base's integrations
 
-Credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Values are encrypted at rest and always masked in responses. Reference them from source or trigger config as `credential:<name>` (an executor's signing secret, see [`executors.md`](executors.md) and [`integrations.md`](integrations.md)), or have an executor read one at runtime.
+Credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Reference one from source config as `credential:<name>`, or have an executor read one at runtime ([`executors.md`](executors.md)). A `credential:<name>` reference resolves against the credentials of the base serving the request.
 
-**A credential belongs to one base.** A `credential:<name>` reference resolves against the credentials of the base serving the request, so the same configuration promoted or cloned elsewhere reads that base's own credential of that name. A preview is created with a copy of its origin's credentials, so cloned integrations keep working.
+**Storing a credential is unavailable for now.** A base's secrets are to be kept in the credentials vault, which does not hold them yet, so every write that would store one is refused by name, and nothing is stored:
+- creating or rotating a base credential, from the CLI, the base's Credentials tab or the credential API;
+- an inline secret on a source (`auth.secret`), on any write: a record type write, a config push, a promotion or a preview clone.
 
-**Promotion publishes what you opt in.** Each credential carries a publish flag (on by default): promoting a preview copies its opted-in credentials onto production, overwriting the production credential of the same name. Turn the flag off for anything production owns — a live API key you set there directly — and the promotion leaves it untouched. Whatever a promoted source references and production still lacks is listed by name in the promotion result, before and after cutover.
+Promotion and preview clones carry no credential, so a source that uses one has no usable credential on the base they write. The promote result names each such source. A clone warns that it copied none (`CREDENTIALS_NOT_COPIED`) when its origin holds any, and always for a caller without `read:base_credentials` on the origin. Sources with no secret, such as a static header, keep working.
 
-**A base gets one directly.** Create it on the base, with the commands below or in the base's Credentials tab. An organization credential cannot be linked into a base for now: enter the value on the base itself. A credential an earlier version linked shows as organization-linked: deleting that organization credential removes it.
-
-**Secret values never travel in argv** — there is deliberately no `--value` flag. An argv element is readable from `/proc/<pid>/cmdline` on a default host and lands in shell history and CI job logs. A value arrives from a pipe, a masked prompt, or a file.
+**What still works:** a credential stored earlier is listed (metadata only; a value is never returned) and resolves where a source references it, and it can be renamed, re-dated or deleted. A credential an earlier version linked from an organization credential shows as organization-linked: deleting that organization credential removes it.
 
 ```bash
-# From a pipe (recommended for CI)
-printf '%s' "$STRIPE_KEY" | wayai bases credentials create --base crm --name stripe-key --value-stdin
-
-# From a masked interactive prompt
-wayai bases credentials create --base crm --name stripe-key --value-prompt
-
-# A credential file, base64-encoded, with its MIME type and an expiry
-wayai bases credentials create --base crm --name partner-cert --file ./partner.p12 \
-  --content-type application/x-pkcs12 --expires-at 2027-01-01T00:00:00Z
-
-# Production owns this one — do not publish it when this base is promoted
-wayai bases credentials create --base crm --name live-key --value-stdin --no-sync-to-production
-wayai bases credentials set-sync <id> --base crm --no-sync-to-production   # or change it later
-wayai bases credentials set-sync <id> --base crm                            # publish it again
-
 wayai bases credentials list --base crm           # metadata; values are never returned
 wayai bases credentials get <id> --base crm       # metadata for one
-wayai bases credentials rotate <id> --base crm --value-stdin   # never auto-generates
 wayai bases credentials delete <id> --base crm [-y]
 ```
 
-`--file` cannot be combined with `--value-stdin` or `--value-prompt`: with `--file` silently winning, a CI job that piped the new credential and also named a stale file would store the stale one and report success. `delete` requires `--yes` when non-interactive.
-
-Set `--expires-at` (ISO-8601) on credentials that lapse — yearly certificates, time-bound tokens — so `list` shows what needs renewing before it breaks an integration. Expiry is informational; a credential is never auto-disabled.
-
-An **inline** source credential is not carried over by `wayai bases promote` — set it on production directly. A `credential:<name>` reference resolves against the credentials of the base serving the request, and a promotion publishes the preview credentials you opted in (see above); either way the promote prints every credential production will still lack.
+`delete` requires `--yes` when non-interactive. `create`, `rotate` and `set-sync` say that storing is unavailable and send nothing.
 
 ---
 

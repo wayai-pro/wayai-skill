@@ -164,29 +164,11 @@ These are exactly the cases the Data backend deliberately does not handle itself
 
 ## Certificate-bearing integrations (the credential-pull pattern)
 
-When an upstream requires a client certificate, store it as a **base credential** — held by the base itself, making it a first-class, rotatable, audited credential rather than a file baked into the executor image.
+When an upstream requires a client certificate, the pattern is a **base credential** — held by the base itself, a first-class, audited credential rather than a file baked into the executor image — that the executor pulls at dispatch.
 
-Create it on the base that dispatches to the upstream — `wayai bases credentials create`, the base's
-Credentials tab, or the credential API directly. See [`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)
-for the full surface.
+**A new base credential can't be stored for now**, so this pattern serves only a credential a base already holds ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A value is write-only on every verb: reads return metadata, never the stored credential.
 
-```bash
-# The credential value is PIPED, never an argv element: an argument leaks through /proc/<pid>/cmdline
-# on a default host, shell history, and CI job logs. `openssl base64 -A` emits one unwrapped line
-# (GNU `base64` wraps at 76 columns by default, which would put raw newlines inside the JSON string
-# and get the request rejected as malformed); `jq -Rs` builds the body, trimming the trailing
-# newline so the stored value is the certificate exactly. `expires_at` is metadata for your own
-# renewal sweeps — nothing refuses a credential for being past it.
-openssl base64 -A -in ./partner.p12 \
-  | jq -Rs '{name: "partner-cert", value: rtrimstr("\n"),
-             content_type: "application/x-pkcs12", expires_at: "2027-01-01T00:00:00Z"}' \
-  | curl -X POST "https://data.wayai.pro/v1/$BASE/credentials" \
-      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data @-
-```
-
-A value is write-only on every verb: reads return metadata, never the stored credential.
-
-Then declare it on the record type's source config (pushed with `wayai record-types upsert <id> --base <base> --name "<Name>" --sources @sources.json`) so the executor can **pull it at dispatch** — the right pattern for a binary or per-tenant credential too large to inject inline:
+Declare it on the record type's source config (pushed with `wayai record-types upsert <id> --base <base> --name "<Name>" --sources @sources.json`) so the executor can **pull it at dispatch** — the right pattern for a binary or per-tenant credential too large to inject inline:
 
 ```json
 { "executor_secrets": [{ "name": "partner-cert", "secret_ref": "credential:partner-cert" }] }
@@ -209,7 +191,7 @@ const cert = await fetchExecutorCredential(request, 'partner-cert')
 
 A per-tenant certificate needs no templating: a reference already resolves against the credentials of the base serving the request, so the same `"secret_ref": "credential:partner-cert"` picks up each tenant base's own certificate. Placeholders are rejected in a `credential:` reference for that reason.
 
-The certificate is never written to disk: the executor stays stateless, the pull is short-lived, single-use and audited, and rotating the credential on the base installs a new value **you supply** (it is never auto-generated) — the running executor picks it up on its next pull, with no redeploy.
+The certificate is never written to disk: the executor stays stateless, and the pull is short-lived, single-use and audited.
 
 Secrets are stripped from pulled config files and are never committed — see [config-as-code.md](config-as-code.md).
 
@@ -244,4 +226,4 @@ Set that same value as your executor's **signing-secret environment variable** (
 
 Triggers, like inbound webhooks, can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
 
-**Ship checklist:** verification on (bypass off) · raw-body handler mounted before any parser · shared dedupe store if replicated · error envelope with a deliberate `retriable` on every failure path · no secrets or PII in logs · certificate stored as a base credential, not baked into the image · `deliveries` checked after the first real dispatch.
+**Ship checklist:** verification on (bypass off) · raw-body handler mounted before any parser · shared dedupe store if replicated · error envelope with a deliberate `retriable` on every failure path · no secrets or PII in logs · no certificate baked into the image · `deliveries` checked after the first real dispatch.

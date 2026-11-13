@@ -82,7 +82,7 @@ They also round-trip through config-as-code (`sources:` on the record_type file 
 ### What a source declares
 
 - `name` — must equal the record's `external_source`.
-- `auth` — header + value template; the secret inline or a `credential:<name>` reference. An **inline** secret is environment-local and promotion never copies it, so a newly promoted source carrying one stays unconfigured until you set it on production — requests fail with a clear "no usable credential configured" error until you do. A `credential:<name>` reference resolves against the credentials of *the base serving the request*; promotion publishes the preview credentials you opted in and reports every referenced credential production will still lack. A preview is created with a copy of its origin's credentials, so cloned integrations keep working.
+- `auth` — header + value template; the secret inline or a `credential:<name>` reference. **Storing a secret is unavailable for now**, inline or as a base credential, and promotion and clones carry none ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A template that injects no secret (a static header) works as before; a source whose template needs a secret it does not have fails with a clear "no usable credential configured" error.
 - `field_mapping` — optional; omit for identity passthrough. See [below](#field_mapping-rules).
 - `get` / `list` / `create` / `update` / `delete` — [per-operation endpoints](#per-operation-endpoints), optionally as [named write bindings](#named-write-bindings).
 - [`id_path`](#id_path) — where the `external_id` lives in each raw upstream record.
