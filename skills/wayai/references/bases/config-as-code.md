@@ -122,10 +122,11 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   `wayai unbind` without explicit user instruction in the current session; widening the scope is as
   much a routing decision as clearing it. Full semantics: SKILL.md § Worktree scope.
 - **Secrets are never written to files.** Inbound-webhook, trigger and external-source secrets are
-  stripped on pull. On push, a newly added inbound webhook or trigger gets a fresh secret, printed
-  once — save it. Existing secrets are left untouched. Manage inbound-webhook and trigger values with
-  `wayai inbound-webhooks` and `wayai triggers`. A push carrying an external source's secret is
-  refused: storing one is unavailable for now ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)).
+  stripped on pull, and a push generates none: existing secrets are left untouched. A pushed webhook
+  trigger that holds no secret delivers unsigned, and push names it ([integrations.md](integrations.md#triggers)).
+  A push that adds or changes an inbound webhook ([integrations.md](integrations.md#inbound-webhooks)),
+  or carries an external source's secret ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
+  is refused: storing one is unavailable for now.
 - **Deletions are opt-in.** Because deleting a record type also removes its records (and the files
   their [`cascade`](files.md) links owned, unless another owning link still holds them), and deleting
   a file type removes its files, `push` is additive by default: an entity on the server that your
@@ -178,8 +179,9 @@ landing on someone else's would corrupt both runs.
 first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhooks`/`--file-types`:
 each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists prior
 promotions and `rollback` reverts one by id. Promotion is blocked if it would break a published
-toolset, remove a file type production still holds files of, or change the `cascade` flag of a
-relationship type production still has links of — a dry run lists the conflicts. A promotion
+toolset, remove a file type production still holds files of, change the `cascade` flag of a
+relationship type production still has links of, or add or change an inbound webhook
+([integrations.md](integrations.md#inbound-webhooks)) — a dry run lists the conflicts. A promotion
 carries no credential, inline or `credential:<name>` ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
 and (including `--dry-run`) names every source production will lack one for.
 

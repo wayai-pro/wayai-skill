@@ -2,7 +2,7 @@
 
 How a base reaches an external system: **external sources** (back a record_type with an upstream API), **inbound webhooks** (data in), **triggers** (data out), and **provider adapters**. Open this when you are backing a record_type with something outside the base, or wiring change notifications in either direction — and read [Canonical-first modeling](#canonical-first-modeling) *before* picking an edge.
 
-An **executor** is a small stateless HTTP service you deploy for work a base cannot do itself (custom logic, mTLS, SOAP, heavy processing); a base signs every request it dispatches to one. Everything about executors — the contract, the SDK, where to run them — is in [executors.md](executors.md). Most integrations need none.
+An **executor** is a small stateless HTTP service you deploy for work a base cannot do itself (custom logic, mTLS, SOAP, heavy processing); a base signs the requests it dispatches to one (a webhook trigger's only when it holds a signing secret, [below](#triggers)). Everything about executors — the contract, the SDK, where to run them — is in [executors.md](executors.md). Most integrations need none.
 
 ## Contents
 
@@ -291,8 +291,10 @@ A non-REST upstream — all-POST verb paths, a form body, a `{ success, dados }`
 
 External systems push data into a base through inbound webhooks; each provides a unique ingest URL.
 
+**Creating an inbound webhook is unavailable for now.** A webhook is checked against its secret, and a base's secrets are to be kept in the credentials vault, which does not hold them yet ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). So creating one, a config push or promotion that adds or changes one, a preview clone of a base that has one, and a rollback to a config that had one are each refused, naming the webhook, and nothing is written; a promote or push `--dry-run` reports the same refusal. A webhook stored earlier keeps working, and can still be listed, read and deleted.
+
 ```bash
-wayai inbound-webhooks create --base <base> --name <name> --secret-stdin \
+wayai inbound-webhooks create --base <base> --name <name> \
   [--id <id>] [--record-type-scope <comma-separated>] \
   [--field-mapping <json>] [--source-binding <json>] \
   [--ingest-auth <json>] [--hydration <json>]
@@ -302,13 +304,11 @@ wayai inbound-webhooks deliveries --base <base> [--status <pending|delivered|fai
 wayai inbound-webhooks delete <id> --base <base> [-y]
 ```
 
-The shared secret is **read from stdin or a masked prompt, never an argument** — `--secret-stdin` for CI, or omit it to be prompted. An argv element is readable from `/proc/<pid>/cmdline`, shell history and CI job logs, and whoever reads it can sign forged deliveries into the base.
-
 **Authentication.** By default the sender signs each ingest request and the base verifies an HMAC over id + timestamp + method + path + body. The delivery also carries a **timestamp** the receiver checks for freshness and an **idempotency key** (falling back to the message id) used for dedupe: a duplicate replays the first response instead of writing again. **This is one scheme in both directions** — the same signature and timestamp that triggers and proxied executor calls use, so one signer works both ways. A receiver must verify it with the published SDK rather than hand-rolling it — [executors.md](executors.md#the-sdk-and-the-wire) carries the package, the header names, and the exact canonical string the signature covers. A legacy body-only HMAC is still accepted for older senders. For senders that authenticate with a **static per-account header** instead of signing each request, `--ingest-auth '{"type":"static_header","header":"X-Account-Key"}'` compares that header's value against the shared secret in constant time.
 
 **Limits.** Ingest URLs are rate-limited per sending address: past the limit a delivery is answered `429` with `Retry-After: 60`, and nothing is written — retry it after the pause. A URL naming a base that does not exist is refused `401`, exactly like an unknown webhook. If the base's existence cannot be checked at that moment, the delivery is answered `503` and nothing is written — retry it.
 
-`--record-type-scope` restricts which record_types the webhook may write to (omit for all). Inbound webhooks can only be created and deleted in **preview** bases; promote with `wayai bases promote <production-id> --from <preview-id>`.
+`--record-type-scope` restricts which record_types the webhook may write to (omit for all). Inbound webhooks can only be created and deleted in **preview** bases.
 
 **Translate the received payload before write.** By default the payload is stored as-is. To store **canonical** records straight from an external system's raw shape, attach a mapping — the same `field_mapping` contract external sources use (renames, value maps, date reformatting, `computed`), applied in the inbound direction:
 
@@ -320,7 +320,7 @@ The two are mutually exclusive. The mapping is validated when the webhook is cre
 **Hydrating webhooks (notification + fetch).** Many systems send *reference-style* webhooks — "record X changed, here is its id" — instead of the full record (Stripe recommends re-fetching by id; Shopify, Salesforce, HubSpot and legacy CRMs do the same). Point such a webhook at a record_type's read source and the base **fetches the full record itself** on each delivery, then stores the canonical record:
 
 ```bash
-wayai inbound-webhooks create --base <base> --name orders-ref --secret-stdin \
+wayai inbound-webhooks create --base <base> --name orders-ref \
   --record-type-scope orders \
   --source-binding '{"record_type":"orders","source":"shop_api"}' \
   --ingest-auth '{"type":"static_header","header":"X-Account-Key"}' \
@@ -339,14 +339,14 @@ On a delivery the base reads the record id from the thin body (`id_path`), calls
 
 Triggers fire automatically when records or files change. A trigger's action is one of:
 
-- **webhook** — an HMAC-signed HTTP POST to an external system (`--url` plus a signing secret).
+- **webhook** — an HTTP POST to an external system (`--url`), unsigned for now (see **Delivery** below).
 - **internal_write** — the base updates a *referenced* record for you, with no external service. On a matching write it locates a target record and applies a guarded patch, with an optional compare-and-set `precondition` so the update only lands when the target is still in the expected state. Ideal for "when A changes, update related B" — booking an appointment flips its slot to busy only if it was free. `record.created`/`record.updated` only. Two modes: **`async`** applies the patch just after the triggering write (eventual; a precondition miss is recorded but the triggering write still stands), and **`transactional`** applies it atomically *with* the triggering write — if the `precondition` misses, the whole write is rejected and rolled back. Use `transactional` when the two writes must succeed or fail together.
 - **external_write** — the base writes the changed record *out* to an external system by reusing an external source's write path (its field translation, endpoint, body shape and auth), with **no executor**. Use it to keep a native record_type mirrored to a legacy API. The action names the source; `record_type` is the record_type that *defines* the source (a native mirror points at a sibling source-backed record_type, and defaults to the triggering record_type if omitted), and `op` defaults from the event (created→create, updated→update, deleted→delete) and is overridable. On a **create**, the base reads the upstream-assigned id from the response and links it back onto the triggering record as its `external_id` — so the native record points at its upstream counterpart and retries don't duplicate; opt out with `"link_external_id": false`. Updates and deletes are dispatched only for records already linked to that source. By default every matching update is pushed upstream; `watched_fields` scopes **update** dispatch to writes that actually changed an upstream-mapped field — `"mapped"` watches exactly the fields the source maps out (so a write touching only a locally-owned field skips the redundant no-op push), or pass an explicit array of data-field names. Creates and deletes always dispatch. Delivery is async, signed, retried and dead-lettered like a webhook. `record.created`/`record.updated`/`record.deleted` only.
 
 ```bash
-# webhook — the signing secret comes from --secret-stdin or --secret-prompt, never argv
+# webhook — delivered unsigned for now (see Delivery below)
 wayai triggers create --base <base> --name <name> --events <comma-separated> \
-  --url <url> (--secret-stdin | --secret-prompt) \
+  --url <url> \
   [--id <id>] [--record-type-scope <comma-separated>] [--filter <json>] [--skip-cascade-writes <bool>]
 
 # internal_write
@@ -369,7 +369,9 @@ wayai triggers delete <id> --base <base> [-y]
 
 `--filter '<json>'` fires only on records matching a condition, using the same Filter DSL queries use, evaluated against the record (or relationship) being written: `--filter '{"field":"data.status","op":"eq","value":"paid"}'`. Combine conditions with `and`/`or` groups. A malformed filter is rejected at create time.
 
-**Delivery.** Webhook and `external_write` deliveries are HMAC-signed with the same scheme described under [Inbound webhooks](#inbound-webhooks) — a request signature plus a timestamp the receiver checks for freshness and an idempotency key (falling back to the message id) for dedupe — so one signer serves both directions. Verify with the published SDK, never by hand ([executors.md](executors.md)). Failed attempts are retried with backoff and dead-lettered after repeated failure; inspect with `wayai triggers deliveries`.
+**Delivery.** `external_write` deliveries, and a webhook trigger's when it holds a signing secret, are HMAC-signed with the same scheme described under [Inbound webhooks](#inbound-webhooks) — a request signature plus a timestamp the receiver checks for freshness and an idempotency key (falling back to the message id) for dedupe — so one signer serves both directions. Verify with the published SDK, never by hand ([executors.md](executors.md)). Failed attempts are retried with backoff and dead-lettered after repeated failure; inspect with `wayai triggers deliveries`.
+
+**A webhook trigger delivers unsigned for now.** No signing secret can be stored: a base's secrets are to be kept in the credentials vault, which does not hold them yet ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A new webhook trigger is stored with none, whether created, pushed, promoted or cloned, and so is every one a rollback restores, so their deliveries carry no `X-Data-Signature` or `X-Data-Timestamp` (they keep `X-Data-Id` and `X-Data-Delivery-Id`), and a receiver that verifies signatures, as an executor must, rejects them. Creating one, a push, a promotion and a rollback name the triggers they left unsigned, and the CLI prints them; a signing secret given when creating a trigger is refused, and one in a config file is ignored. A trigger stored earlier with a secret keeps it and signs with it, until a rollback re-creates it.
 
 **Loop guards.** By default writes that arrive from an inbound webhook don't re-fire triggers, and `--skip-cascade-writes <bool>` (default `true`) keeps a trigger from firing on writes an `internal_write` cascade produced. Both round-trip in config-as-code as `skip_inbound_webhook_writes` and `skip_cascade_writes` on the trigger file. When a person-bound call's write sets off an `internal_write` into a person-ruled record type, a trigger on that type with `skip_cascade_writes: false` refuses the write ([Person writes](access.md#person-writes)). Triggers can only be created and deleted in **preview** bases.
 

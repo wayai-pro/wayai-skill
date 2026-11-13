@@ -15,6 +15,8 @@ It sits on two directions, and both use the same signing scheme:
 | **Outbound** — the base calls you | A **trigger** POSTs to your URL when records change; an **external source** proxies a record read/write through to your URL | `wayai triggers`, record-type sources |
 | **Inbound** — you call the base | Your executor POSTs results into an **inbound webhook** | `wayai inbound-webhooks` |
 
+For now a new webhook trigger delivers unsigned, and a new inbound webhook can't be created: neither secret can be stored ([integrations.md](integrations.md#triggers), [integrations.md](integrations.md#inbound-webhooks)). The trigger and inbound edges below describe ones stored earlier.
+
 The executor is invisible to the agent. Whether a record is native, source-backed, or executor-backed, the agent reads and writes it through the same `wayai records` / toolset surface — see [toolsets.md](toolsets.md).
 
 ## Table of Contents
@@ -132,16 +134,9 @@ A synchronous executor returns its result in the response body. For work that ou
 https://data.wayai.pro/inbound/<org>/<base>/<inbound_webhook_id>/ingest
 ```
 
-Create the endpoint first. The shared secret is read from stdin, or prompted for when you omit the flag — it is never an argv element:
-
-```bash
-printf '%s' "$HOOK_SECRET" | wayai inbound-webhooks create --base <base> \
-  --name executor-results --record-type-scope results --secret-stdin
-```
-
 Sign the write-back with the **same scheme in the opposite direction** — `signRequest` from the SDK is the inverse of its verify side, returning the `X-Data-Signature` / `X-Data-Timestamp` / `X-Data-Id` headers to attach, so one secret and one signer cover both edges. By default, writes arriving through an inbound webhook do **not** re-fire triggers, so an executor writing its own result back cannot loop.
 
-Inbound webhooks can only be created or deleted in **preview** bases, then promoted. Payload translation, source bindings, and hydrating ("notification + fetch") webhooks are in [integrations.md](integrations.md).
+Payload translation, source bindings, and hydrating ("notification + fetch") webhooks are in [integrations.md](integrations.md).
 
 ---
 
@@ -214,16 +209,8 @@ Because retries replay the same delivery, **idempotency dedupe is the only thing
 
 The SDK exposes a **dev-bypass option** that skips signature verification while you develop locally (dedupe still applies when the headers are present). Gate it on an explicit environment check and **never enable it in production** — it disables the only thing standing between your executor and a forged request.
 
-Point a trigger at your local or deployed executor. The signing secret is read from stdin or a masked prompt; there is no `--secret <value>` flag:
+A trigger stored with a signing secret signs with it; set that same value as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates). A new webhook trigger holds none and delivers unsigned, which a verifying executor rejects ([integrations.md](integrations.md#triggers)). Set `WAYAI_BASE` to drop the repeated `--base`.
 
-```bash
-printf '%s' "$SIGNING_SECRET" | wayai triggers create --base <base> \
-  --name notify-partner --events record.created,record.updated \
-  --record-type-scope orders --url https://executor.example.com/hook --secret-stdin
-```
-
-Set that same value as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates). `--secret-prompt` is the interactive alternative. Set `WAYAI_BASE` to drop the repeated `--base`.
-
-Triggers, like inbound webhooks, can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
+Triggers can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
 
 **Ship checklist:** verification on (bypass off) · raw-body handler mounted before any parser · shared dedupe store if replicated · error envelope with a deliberate `retriable` on every failure path · no secrets or PII in logs · no certificate baked into the image · `deliveries` checked after the first real dispatch.
