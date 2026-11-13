@@ -186,7 +186,8 @@ Two paths work today, and neither is the same thing as the hub's own config:
   domain tools (`book_appointment`, `list_invoices`), not generic data operations, and the connection
   holds the rules a customer-facing agent's toolset must meet.
 - **Eval seeding** — an eval set or journey names a `fixture:` and a `target_base:`, and the hub's
-  seed connection supplies the API origin and a `write:seeds` token. See [`../evals.md`](../evals.md).
+  seed connection, bound to that base with a `write:seeds` token it does not keep, reaches it. See
+  [`../evals.md`](../evals.md).
 
 An organization's documents live in a base, its knowledge base, as files ([files.md](files.md));
 skills stay in the hub ([`../skills.md`](../skills.md)).

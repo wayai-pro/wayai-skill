@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.273.0
+version: 6.274.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -577,6 +577,7 @@ wayai org pull          # Org-as-code: fetch org-level shared skills → wayai-w
 wayai org push          # Org-as-code: apply local org skills to the platform (fans out to linked hubs); `wayai org diff` previews
 wayai create-credential # Create org credential (--name, --service <connector name> (required; a create without one is refused), --type only when the service takes several, --org, --stdin; REST API, External Resources and MCP Server keys are entered on the connection instead)
 wayai update-credential # Rotate/edit an org credential (--name <cred>; --stdin/--secret rotates the secret, --rename, --description, --tag, --environment)
+wayai bind-seed-connection  # Bind a preview hub's eval seed connection to the base its evals seed — --connection <name> --base <base_id>, the base's write:seeds token on --stdin (or prompted). The token is used once and never stored; see references/evals.md
 wayai set-connection-credential  # Set a connection's credential directly — --connection <name> + either --org-credential <name> (link) or --field <f> --stdin (raw secret: unlinks only that field's org credential). Works on preview + production (the sanctioned production-credential write)
 wayai init              # Scope this repo to an org in wayai-ws/wayai.yaml (interactive — creates an org inline if you have none); --org <uuid> to skip prompt
 wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-ws/, and copy a root .wayai.yaml org binding into wayai-ws/wayai.yaml (the root file is KEPT — older CLIs still need it)
