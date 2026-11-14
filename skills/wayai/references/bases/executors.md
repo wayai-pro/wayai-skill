@@ -15,7 +15,7 @@ It sits on two directions, and both use the same signing scheme:
 | **Outbound** — the base calls you | A **trigger** POSTs to your URL when records change; an **external source** proxies a record read/write through to your URL | `wayai triggers`, record-type sources |
 | **Inbound** — you call the base | Your executor POSTs results into an **inbound webhook** | `wayai inbound-webhooks` |
 
-For now a new webhook trigger delivers unsigned, and a new inbound webhook can't be created: neither secret can be stored ([integrations.md](integrations.md#triggers), [integrations.md](integrations.md#inbound-webhooks)). The trigger and inbound edges below describe ones stored earlier.
+**For now no edge is signed or verified, and no credential is pulled.** No secret can be stored, and none stored earlier is used ([toolsets.md](toolsets.md#credentials-behind-a-bases-integrations)): a source that declares `signing` fails before it dispatches, a webhook trigger delivers unsigned ([integrations.md](integrations.md#triggers)), an inbound webhook verifies no delivery ([integrations.md](integrations.md#inbound-webhooks)), and a credential pull is refused. The contract below is what an executor is held to once they are.
 
 The executor is invisible to the agent. Whether a record is native, source-backed, or executor-backed, the agent reads and writes it through the same `wayai records` / toolset surface — see [toolsets.md](toolsets.md).
 
@@ -161,7 +161,7 @@ These are exactly the cases the Data backend deliberately does not handle itself
 
 When an upstream requires a client certificate, the pattern is a **base credential** — held by the base itself, a first-class, audited credential rather than a file baked into the executor image — that the executor pulls at dispatch.
 
-**A new base credential can't be stored for now**, so this pattern serves only a credential a base already holds ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A value is write-only on every verb: reads return metadata, never the stored credential.
+**This pattern is unavailable for now:** no base credential can be stored, and a pull of one stored earlier is refused ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A value is write-only on every verb: reads return metadata, never the stored credential.
 
 Declare it on the record type's source config (pushed with `wayai record-types upsert <id> --base <base> --name "<Name>" --sources @sources.json`) so the executor can **pull it at dispatch** — the right pattern for a binary or per-tenant credential too large to inject inline:
 
@@ -209,7 +209,7 @@ Because retries replay the same delivery, **idempotency dedupe is the only thing
 
 The SDK exposes a **dev-bypass option** that skips signature verification while you develop locally (dedupe still applies when the headers are present). Gate it on an explicit environment check and **never enable it in production** — it disables the only thing standing between your executor and a forged request.
 
-A trigger stored with a signing secret signs with it; set that same value as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates). A new webhook trigger holds none and delivers unsigned, which a verifying executor rejects ([integrations.md](integrations.md#triggers)). Set `WAYAI_BASE` to drop the repeated `--base`.
+Once a base signs again, set its signing secret as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates). For now a webhook trigger delivers unsigned, which a verifying executor rejects ([integrations.md](integrations.md#triggers)). Set `WAYAI_BASE` to drop the repeated `--base`.
 
 Triggers can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
 

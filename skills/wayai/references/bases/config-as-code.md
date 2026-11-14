@@ -183,7 +183,7 @@ toolset, remove a file type production still holds files of, change the `cascade
 relationship type production still has links of, or add or change an inbound webhook
 ([integrations.md](integrations.md#inbound-webhooks)) — a dry run lists the conflicts. A promotion
 carries no credential, inline or `credential:<name>` ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
-and (including `--dry-run`) names every source production will lack one for.
+and (including `--dry-run`) names every source, on a record type it adds or changes, that has no usable credential on production.
 
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.

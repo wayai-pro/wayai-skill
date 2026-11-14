@@ -704,13 +704,15 @@ wayai bases tokens prune --unused-since 30d --yes
 
 Credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Reference one from source config as `credential:<name>`, or have an executor read one at runtime ([`executors.md`](executors.md)). A `credential:<name>` reference resolves against the credentials of the base serving the request.
 
-**Storing a credential is unavailable for now.** A base's secrets are to be kept in the credentials vault, which does not hold them yet, so every write that would store one is refused by name, and nothing is stored:
+**Storing or using a credential is unavailable for now.** A base's secrets are to be kept in the credentials vault, which does not hold them yet, so every write that would store one is refused by name, and nothing is stored:
 - creating or rotating a base credential, from the CLI, the base's Credentials tab or the credential API;
 - an inline secret on a source (`auth.secret`), on any write: a record type write, a config push, a promotion or a preview clone.
 
-Promotion and preview clones carry no credential, so a source that uses one has no usable credential on the base they write. The promote result names each such source. A clone warns that it copied none (`CREDENTIALS_NOT_COPIED`) when its origin holds any, and always for a caller without `read:base_credentials` on the origin. Sources with no secret, such as a static header, keep working.
+A secret stored earlier is not used either: a credential a source references, or an inline secret its `value_template` injects, is no usable credential, so the request fails with `EXTERNAL_CONFIG` before anything is sent upstream, and an executor's pull of a declared credential is refused. Sources with no secret, such as a static header, keep working.
 
-**What still works:** a credential stored earlier is listed (metadata only; a value is never returned) and resolves where a source references it, and it can be renamed, re-dated or deleted. A credential an earlier version linked from an organization credential shows as organization-linked: deleting that organization credential removes it.
+Promotion and preview clones carry no credential. The promote result names every source, on a record type it adds or changes, that has no usable credential on production, and says whether production holds the referenced credential. A clone warns that it copied none (`CREDENTIALS_NOT_COPIED`) when its origin holds any, and always for a caller without `read:base_credentials` on the origin.
+
+**What still works:** a credential stored earlier is listed (metadata only; a value is never returned), and it can be renamed, re-dated or deleted. A credential an earlier version linked from an organization credential shows as organization-linked: deleting that organization credential removes it.
 
 ```bash
 wayai bases credentials list --base crm           # metadata; values are never returned
