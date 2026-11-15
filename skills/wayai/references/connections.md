@@ -163,6 +163,8 @@ connections:
 
 > **`settings:`** carries per-connection parameters (voice, model, language, etc.) and round-trips via `wayai pull`/`push` — the same values you can set on the connection form in the UI. The valid keys per connector are its `connector_settings_schema`: see each STT/TTS connector's **Settings** line below (or inspect `packages/core/src/catalog/connectors.ts`). Keys the connector doesn't recognize are persisted as-is but ignored at runtime.
 
+> **`headers:`** are taken only on a REST API, External Resources or MCP Server connection, the only connectors whose requests send them. On any other connector a push, or a console or API save, that brings a header is refused (`This connection sends no connection headers on any request…`); an empty `headers: {}` clears them. A header such a connection already stores is kept and may be sent back unchanged.
+
 ### How Auto-Creation Works
 
 1. `wayai push` reads the `connections` section from `hub.yaml`
