@@ -268,6 +268,12 @@ Placeholders are replaced at runtime in URLs, headers, query params, and body.
 
 A tool's configured query and body params can hold a literal key, so, like `tool_headers`, they are sent only to the host `tool_path` or the base URL fixes, never one an agent fills in: a call to such a host goes out with only what the agent gave. A redirect to another origin never carries them: query params are not added to it, and a redirect that would resend the body there is refused.
 
+### Reading values back
+
+The values of a tool's headers, query params and body params, and of its connection's custom headers, are never shown again once saved. The console, the API and `wayai pull` (and the workspace download) show each entry's name, and its value only when the value is nothing but placeholders (`{{api_key}}`, `Bearer {{access_token}}`, `{{order_id}}`). Any other value, a key or not, reads as `__USE_EXISTING_VALUE__`.
+
+Sending `__USE_EXISTING_VALUE__` back keeps the value stored under that name, so saving a form or pushing a pulled file leaves the value as it was. To change a value, type the new one in its place. A save or push that sends `__USE_EXISTING_VALUE__` under a name that holds no stored value (a renamed entry, or a new tool or connection) is refused: type the value itself. `wayai diff` lists a value typed into the file as a change even when it equals the stored one, since it never says whether a value matches.
+
 ---
 
 ## composed_tools (side effects on success)
