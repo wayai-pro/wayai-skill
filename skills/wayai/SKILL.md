@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.277.0
+version: 6.278.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -629,6 +629,8 @@ wayai dimensions        # An organization's access dimensions and values (change
 wayai access explain    # The access set a hub agent's toolset calls send for a person, which layer removed each value, and the persons each call is for (person ids to organization admins only): --agent <agent_id> [--hub <uuid|folder>] [--user <user_id> — anyone but yourself needs an organization admin] [--json]
 wayai communities       # An organization's communities (owners and admins; browser `wayai login` only): list, join-link get|rotate|off <community>, stats <community>, access list|add|remove <community> [<email>…] (an invite-only community's access list; remove takes out the members the email admitted); --org, --json, -y. See references/communities.md
 wayai contacts          # Browser `wayai login` only. Person links and the deny list (every hub toolset call reads them): link-person <person_id> --to <person_id|contact_id> / unlink-person (org:write), person-links <person_id>, lookup-person <person_id>, deny-person / undeny-person <person_id|contact_id>, denied-persons [--cursor] [--limit] (organization admins) (references/bases/access.md#person-links-and-the-deny-list); --org, --json
+wayai cases connect     # Connect this machine's code agents to ONE case: `wayai cases connect <org_id> <space_id> <code> [--label <machine>]` (the case's agents page in the web app shows the exact command). Browser `wayai login` only. You approve the request in the web app, signed in as yourself (it waits up to 10 minutes); the case token then reaches that case alone, with your rights, until it expires, and is kept in this machine's keyring apart from your sign-in. Run `wayai logout` after it: the machine otherwise still holds your full sign-in
+wayai cases disconnect  # Revoke a case's token and remove it from this machine: `wayai cases disconnect <code>` (--org/--space when two connected cases share the code). Unreachable server: the local token is still removed; revoke the authorization in the web app
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error). With --hub, auto-attaches the hub's active alerts so triage sees a credential/connection cause up front — check `wayai alerts` yourself first, it's often not a platform bug
