@@ -68,8 +68,8 @@ account can. **Run `wayai logout` next**: the case token does not need it.
 
 Every command below uses the case token, never your sign-in. Inside a clone, it works on the
 clone's case. Outside one, it works on the machine's one connected case; with several, pick one
-with `--case <code>` (and `--org` and `--space` when codes repeat). `pull` and `push` take the
-clone (`--dir`), never a case.
+with `--case <code>` (and `--org` and `--space` when codes repeat). `pull`, `push` and `skeleton` take
+the clone (`--dir`), never a case.
 
 ## The working copy
 
@@ -173,6 +173,7 @@ wayai cases next [--json]
 wayai cases explain [--phase <folder>] [--json]
 wayai cases check [--phase <folder> [--output <code>]] [--json]
 wayai cases decisions [--dir <folder>] [--confidential]
+wayai cases skeleton --phase <folder> [--output <code>] [--dir <clone>] [--confidential]
 wayai cases note "<text>" [--kind observation|next_step|pending|contribution] [--phase <folder>] [--task <task_id>] [--origin <who sent it>]
 wayai cases note done <note_id>
 wayai cases received add <file> --text <markdown file> --phase <folder> --type <type> [--title <title>] [--confidential]
@@ -185,6 +186,7 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
 | `explain` | Why each phase and task is not done, and who can move it. `--phase` names everything holding one phase |
 | `check` | A delivery's checks over the case's files as WayAI holds them: a joint phase's, or one output's (`--output`). Inside a clone, it also compares the mirror's package with its manifest: each file changed, missing or not published, a tool first (confidential files aside). Without `--phase`, it does that alone. **Exits 1 when a submit now would be refused, or when a package file differs** |
 | `decisions` | Writes the approved decisions to `analysis/decisions.csv` under `--dir` (default: the clone's root inside a clone of the case, else the current folder) |
+| `skeleton` | Writes the starting document of each of a phase's outputs into the clone, at the path its type binds (below). `--output` names one |
 | `note` | Adds a note: an observation unless `--kind` says otherwise. A `contribution` names who sent it (`--origin`). `--phase` and `--task` attach it |
 | `note done` | Marks a pending item or next step done |
 | `received add` | Registers a document a party sent, in one phase's `received/`, with its Markdown text read from the file `--text` names |
@@ -195,6 +197,17 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
 - `received add` takes a file in one of these formats: pdf, docx, xlsx, pptx, odt, ods, csv, txt,
   md, png, jpg, jpeg. The file and its text together are at most 20 MiB. The title defaults to the
   file's name.
+- **`skeleton`** starts a phase's documents from its items, so the document and its items never
+  drift apart. Each document output that is not dispensed gets front matter naming the case, its
+  type and title, one heading per item with its anchor (`## Title {#code}`), a fixed item's text as
+  written, and each other item's template from the mirror's package, the case's attributes filled in
+  (`{{city}}`). What is left to write is marked `{{fill: …}}`: replace each with the text, then
+  push. An output bound to a folder of chapters gets `00-cover.md` and one chapter per top-level
+  section. **It never overwrites:** an output whose document is already in the clone is skipped. A
+  template that differs from the package's manifest (changed, missing or not delivered) refuses the
+  run before anything is written: `wayai cases pull --mirror-only` writes it again. An authorization
+  holding the Confidential right needs `--confidential`: the documents then go under `conf/`, with
+  the confidential templates a `wayai cases pull --mirror-only --confidential` delivered.
 - **Readiness is a note.** An agent never submits: it says the work is ready in a note, and a
   person submits in the web app.
 
@@ -238,7 +251,8 @@ and no hook adds it.
 - **Without it**, `review` and the mirror leave out confidential content, and print the same
   notice whatever the case holds, with no count.
 - **With it**, `decisions` also writes a confidential group's decisions to
-  `conf/analysis/decisions.csv`; `received add` registers the document as confidential;
+  `conf/analysis/decisions.csv`; `skeleton` writes the documents under `conf/`, with their
+  confidential templates; `received add` registers the document as confidential;
   `review verdict --mark-confidential` makes your verdict readable only by holders of the
   Confidential right.
 - `--confidential` is refused when the authorization lacks the Confidential right. Every
@@ -296,5 +310,3 @@ type's latest version is refused: pull into a new folder and carry your changes 
   when `review` finds a stopped chain, and when `type diff` finds a push would be refused.
 - Your case commands and your case pages in the web app share one rate budget. A refusal says when
   to try again.
-
-Not available yet: `skeleton`.
