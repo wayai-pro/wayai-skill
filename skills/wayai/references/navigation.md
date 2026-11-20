@@ -79,7 +79,7 @@ A community's rooms and courses, for its members. What members and moderators ca
 An announcement email's **Stop these emails** opens `/communities/unsubscribe` (locale-prefixed, like the marketing pages), whose button stops that community's emails; never hand that page over, since only the email's own link carries the member's token.
 
 ### Mobile app
-The iOS and Android apps show the same agents as `/chat`, the team inbox of `/support` and, for a member, the communities of `/community`; what each tab offers is in [using-the-app.md → The Mobile App](using-the-app.md#the-mobile-app). The mobile apps have no links to hand over: send the user to a screen with the web links above. Inside an agent's message, a link to a screen the app has (among them `/chat`, `/chat/[hubId]`, `/chat/[hubId]/conversations/[conversationId]`, `/support`, `/support/[conversationId]`) opens that screen in the app, and any other page of the web app opens in the phone's browser. That is the app as built today: an older install opens these links in an in-app browser until it is updated.
+The iOS and Android apps show the same agents as `/chat`, the team inbox of `/support` and, for a member, the communities of `/community`; what each tab offers is in [using-the-app.md → The Mobile App](using-the-app.md#the-mobile-app). To install one, send the person to `https://wayai.pro/download`: on a phone it opens on that phone's store badge (App Store for iPhone, Google Play for Android), and on a computer it shows both badges and a QR code that opens the page on the phone. The mobile apps have no links to hand over: send the user to a screen with the web links above. Inside an agent's message, a link to a screen the app has (among them `/chat`, `/chat/[hubId]`, `/chat/[hubId]/conversations/[conversationId]`, `/support`, `/support/[conversationId]`) opens that screen in the app, and any other page of the web app opens in the phone's browser. That is the app as built today: an older install opens these links in an in-app browser until it is updated.
 
 ### Desktop app
 The desktop app is the web app in its own window, with the same screens, for macOS (Apple silicon and Intel) and Windows; there is none for Linux. Send the person to `https://wayai.pro/download`: it offers the one for their computer, on Windows the Microsoft Store listing plus a direct installer for a PC without the Store (Windows may warn when that installer is opened: choose **More info**, then **Run anyway**). Google, Microsoft and Apple sign-in finish in the computer's browser, then return to the app.
@@ -159,7 +159,7 @@ Public, locale-prefixed (`/`, `/en`, `/pt`, `/es`). Default locale (`en`) render
 |------|---------|
 | `/` | Marketing home, and the onboarding entry point — its `#start` section carries the install command and the example prompt, then SKILL.md drives state 1+ |
 | `/pricing` | Plans + pricing |
-| `/download` | The desktop app for macOS and Windows ([Desktop app](#desktop-app)) |
+| `/download` | Every WayAI app: the desktop app for macOS and Windows ([Desktop app](#desktop-app)), and the mobile app's App Store and Google Play badges ([Mobile app](#mobile-app)) |
 | `/privacy` | Privacy policy |
 | `/terms` | Terms of service |
 
