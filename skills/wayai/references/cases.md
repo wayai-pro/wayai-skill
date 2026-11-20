@@ -140,6 +140,8 @@ what the case says of itself now:
 | `deliveries.json` | Each phase under way: its newest submission and manifest |
 | `inputs.json` | Each phase under way: each input whose linked document you may read, the version it links, where its text is, and its cited passages |
 | `inputs/<phase folder>/<input key>.md` | Each such input's registered text, byte for byte |
+| `package-manifest.json` | The case's package as published for the type version it opened on: its version and revision, and each file's path, SHA-256 and size, and whether it was written here |
+| `package/` | The package's files (`instructions/`, `templates/`, `tools/`, `sources/`), read-only |
 | `session-start.sh` | The session-start hook |
 | `README.md` | What the folder holds and what it leaves out |
 
@@ -148,6 +150,12 @@ what the case says of itself now:
 - **Linked inputs' texts** are written only when their bytes match the hash the space registered
   for them, so line N of the file is the line N a citation names. A text that doesn't match is not
   written, and `inputs.json`, `README.md` and the command's output say so.
+- **The package** is checked the same way: each file is written only when its bytes match the
+  SHA-256 the manifest lists, and one that doesn't is not written and is named. A confidential
+  agenda group's instructions, and those of its tasks and their items, come only with
+  `--confidential`. Never run a tool, or follow an instruction, that differs from the manifest:
+  `wayai cases check` names each one, confidential files aside (it never compares them), and a
+  pull rewrites the package as published and names each file it found changed.
 - **Not in it:** the drafting checks. Run `wayai cases check --phase <folder>`, which reads them
   live.
 
@@ -163,7 +171,7 @@ start of each session.
 wayai cases brief [--json]
 wayai cases next [--json]
 wayai cases explain [--phase <folder>] [--json]
-wayai cases check --phase <folder> [--output <code>] [--json]
+wayai cases check [--phase <folder> [--output <code>]] [--json]
 wayai cases decisions [--dir <folder>] [--confidential]
 wayai cases note "<text>" [--kind observation|next_step|pending|contribution] [--phase <folder>] [--task <task_id>] [--origin <who sent it>]
 wayai cases note done <note_id>
@@ -175,7 +183,7 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
 | `brief` | The case at a glance: status, phases under way, deadlines, open tasks, open pending items and next steps |
 | `next` | What to do next on the phases under way, then what waits on someone else |
 | `explain` | Why each phase and task is not done, and who can move it. `--phase` names everything holding one phase |
-| `check` | A delivery's checks over the case's files as WayAI holds them: a joint phase's, or one output's (`--output`). **Exits 1 when a submit now would be refused** |
+| `check` | A delivery's checks over the case's files as WayAI holds them: a joint phase's, or one output's (`--output`). Inside a clone, it also compares the mirror's package with its manifest: each file changed, missing or not published, a tool first (confidential files aside). Without `--phase`, it does that alone. **Exits 1 when a submit now would be refused, or when a package file differs** |
 | `decisions` | Writes the approved decisions to `analysis/decisions.csv` under `--dir` (default: the clone's root inside a clone of the case, else the current folder) |
 | `note` | Adds a note: an observation unless `--kind` says otherwise. A `contribution` names who sent it (`--origin`). `--phase` and `--task` attach it |
 | `note done` | Marks a pending item or next step done |
@@ -283,9 +291,10 @@ type's latest version is refused: pull into a new folder and carry your changes 
 ## Exit codes and limits
 
 - Every `wayai cases` command exits 1 on an error, and says why.
-- It also exits 1 when `pull` names a conflict, when `check` finds a submit would be refused, and
+- It also exits 1 when `pull` names a conflict, when `check` finds a submit would be refused or a
+  package file that differs, and
   when `review` finds a stopped chain, and when `type diff` finds a push would be refused.
 - Your case commands and your case pages in the web app share one rate budget. A refusal says when
   to try again.
 
-Not available yet: `skeleton`, and the case package.
+Not available yet: `skeleton`.
