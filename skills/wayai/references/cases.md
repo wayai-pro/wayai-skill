@@ -205,9 +205,11 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
   push. An output bound to a folder of chapters gets `00-cover.md` and one chapter per top-level
   section. **It never overwrites:** an output whose document is already in the clone is skipped. A
   template that differs from the package's manifest (changed, missing or not delivered) refuses the
-  run before anything is written: `wayai cases pull --mirror-only` writes it again. An authorization
-  holding the Confidential right needs `--confidential`: the documents then go under `conf/`, with
-  the confidential templates a `wayai cases pull --mirror-only --confidential` delivered.
+  run before anything is written: `wayai cases pull --mirror-only` writes it again. Without
+  `--confidential`, confidential items are left out of the documents, with no heading or placeholder,
+  and `wayai cases check` reports a required one missing. With `--confidential`, the documents go
+  whole under `conf/`, with the confidential templates a
+  `wayai cases pull --mirror-only --confidential` delivered.
 - **Readiness is a note.** An agent never submits: it says the work is ready in a note, and a
   person submits in the web app.
 
@@ -248,8 +250,8 @@ and no hook adds it.
 - **Without it**, `clone`, `pull`, `push` and `log` leave every confidential file alone (anything
   under `conf/`, and files the case marks confidential): not pulled, not pushed, not removed. A
   missing confidential file is never read as a deletion.
-- **Without it**, `review` and the mirror leave out confidential content, and print the same
-  notice whatever the case holds, with no count.
+- **Without it**, `review`, `skeleton` and the mirror leave out confidential content, and print
+  the same notice whatever the case holds, with no count.
 - **With it**, `decisions` also writes a confidential group's decisions to
   `conf/analysis/decisions.csv`; `skeleton` writes the documents under `conf/`, with their
   confidential templates; `received add` registers the document as confidential;
