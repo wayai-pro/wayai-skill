@@ -126,8 +126,11 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   stripped on pull, and a push generates none: existing secrets are left untouched. A pushed webhook
   trigger that holds no secret delivers unsigned, and push names it ([integrations.md](integrations.md#triggers)).
   A push that adds or changes an inbound webhook ([integrations.md](integrations.md#inbound-webhooks)),
-  or carries an external source's secret ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
-  is refused: storing one is unavailable for now.
+  or carries an external source's inline secret, is refused: storing one is unavailable for now. A
+  source names a [base credential](toolsets.md#credentials-behind-a-bases-integrations) as
+  `credential:<name>` instead. A push that would send a stored credential where its rule does not
+  reach is refused, naming it; in a terminal, push offers to enter its value again and then pushes
+  once more.
 - **Deletions are opt-in.** Because deleting a record type also removes its records (and the files
   their [`cascade`](files.md) links owned, unless another owning link still holds them), and deleting
   a file type removes its files, `push` is additive by default: an entity on the server that your
@@ -184,7 +187,7 @@ toolset, remove a file type production still holds files of, change the `cascade
 relationship type production still has links of, or add or change an inbound webhook
 ([integrations.md](integrations.md#inbound-webhooks)) — a dry run lists the conflicts. A promotion
 carries no credential, inline or `credential:<name>` ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
-and (including `--dry-run`) names every source, on a record type it adds or changes, that has no usable credential on production.
+and (including `--dry-run`) names every source, on a record type it adds or changes, that has no usable credential on production, and each use production's stored rule does not cover.
 
 **Delete vs purge.** `wayai bases delete <id>` is a tombstone: the base stops being listed, but its
 records, relationships, file metadata and config are retained, and recreating the id restores them.

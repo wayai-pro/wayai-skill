@@ -15,7 +15,7 @@ It sits on two directions, and both use the same signing scheme:
 | **Outbound** — the base calls you | A **trigger** POSTs to your URL when records change; an **external source** proxies a record read/write through to your URL | `wayai triggers`, record-type sources |
 | **Inbound** — you call the base | Your executor POSTs results into an **inbound webhook** | `wayai inbound-webhooks` |
 
-**For now no edge is signed or verified, and no credential is pulled.** No secret can be stored, and none stored earlier is used ([toolsets.md](toolsets.md#credentials-behind-a-bases-integrations)): a source that declares `signing` fails before it dispatches, a webhook trigger delivers unsigned ([integrations.md](integrations.md#triggers)), an inbound webhook verifies no delivery ([integrations.md](integrations.md#inbound-webhooks)), and a credential pull is refused. The contract below is what an executor is held to once they are.
+**For now no edge is signed or verified, and no credential is pulled.** A base credential can only be placed in a request header ([toolsets.md](toolsets.md#credentials-behind-a-bases-integrations)), and signing and webhook secrets cannot be stored yet: a source that declares `signing` fails before it dispatches, a webhook trigger delivers unsigned ([integrations.md](integrations.md#triggers)), an inbound webhook verifies no delivery ([integrations.md](integrations.md#inbound-webhooks)), and a credential pull is refused. The contract below is what an executor is held to once they are.
 
 The executor is invisible to the agent. Whether a record is native, source-backed, or executor-backed, the agent reads and writes it through the same `wayai records` / toolset surface — see [toolsets.md](toolsets.md).
 
@@ -161,7 +161,7 @@ These are exactly the cases the Data backend deliberately does not handle itself
 
 When an upstream requires a client certificate, the pattern is a **base credential** — held by the base itself, a first-class, audited credential rather than a file baked into the executor image — that the executor pulls at dispatch.
 
-**This pattern is unavailable for now:** no base credential can be stored, and a pull of one stored earlier is refused ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A value is write-only on every verb: reads return metadata, never the stored credential.
+**This pattern is unavailable for now:** every credential pull is refused, and a source that names a stored base credential as an executor secret is refused when saved ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)). A value is write-only on every verb: reads return metadata, never the stored credential.
 
 Declare it on the record type's source config (pushed with `wayai record-types upsert <id> --base <base> --name "<Name>" --sources @sources.json`) so the executor can **pull it at dispatch** — the right pattern for a binary or per-tenant credential too large to inject inline:
 

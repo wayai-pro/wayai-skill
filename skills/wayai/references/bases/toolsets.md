@@ -702,25 +702,43 @@ wayai bases tokens prune --unused-since 30d --yes
 
 ## Credentials behind a base's integrations
 
-Credential storage behind a base's external sources — API keys, signing secrets, or credential-grade blobs (a client certificate, keystore, service-account JSON). Reference one from source config as `credential:<name>`, or have an executor read one at runtime ([`executors.md`](executors.md)). A `credential:<name>` reference resolves against the credentials of the base serving the request.
+A base credential is a secret held by the base itself, such as an API key, that its external sources send to a third-party API. A source names one as `credential:<name>`, in its `auth` (`header` and a `value_template` around `{{secret}}`, text before and after it allowed) or in a header injection. A reference resolves against the credentials of the base serving the request, so a preview and production each use their own credential of that name. The value is write-only: no read, on any surface, returns it.
 
-**Storing or using a credential is unavailable for now.** A base's secrets are to be kept in the credentials vault, which does not hold them yet, so every write that would store one is refused by name, and nothing is stored:
-- creating or rotating a base credential, from the CLI, the base's Credentials tab or the credential API;
-- an inline secret on a source (`auth.secret`), on any write: a record type write, a config push, a promotion or a preview clone.
+**Storing one can be off.** Until storing base credentials is turned on, creating a credential and entering a new value are refused by name and store nothing, and a source whose credential is not usable fails with a clear "no usable credential configured" error before anything is sent upstream. The CLI and the base's Credentials tab ask first, before reading a value, and say so.
 
-A secret stored earlier is not used either: a credential a source references, or an inline secret its `value_template` injects, is no usable credential, so the request fails with `EXTERNAL_CONFIG` before anything is sent upstream, and an executor's pull of a declared credential is refused. Sources with no secret, such as a static header, keep working.
+**Source first.** Write the source, then enter the credential it names: a credential no source names is refused. The platform derives where the credential may be sent from the sources that name it, and stores the value with that **rule**:
+- each origin the sources call, with each path and the methods called there;
+- a path and the paths below it become one destination with every method (`/orders` and `/orders/{{id}}` become `/orders` and below);
+- the header the credential is placed in, and the headers each call forwards.
 
-Promotion and preview clones carry no credential. The promote result names every source, on a record type it adds or changes, that has no usable credential on production, and says whether production holds the referenced credential. A clone warns that it copied none (`CREDENTIALS_NOT_COPIED`) when its origin holds any, and always for a caller without `read:base_credentials` on the origin.
+A create and a new value answer the rule they stored, and `list` and `get` show it (`policy`). The person entering the value may state a **wider rule**: for each destination an origin, a path, whether it covers only that path or everything below it, and its methods. It must still cover every use the sources make, each destination must cover at least one, it holds at most 16 destinations, and none may be a whole host (a path of `/` with everything below it). A path with everything below it takes no trailing slash: `/api`, not `/api/`.
 
-**What still works:** a credential stored earlier is listed (metadata only; a value is never returned), and it can be renamed, re-dated or deleted. A credential an earlier version linked from an organization credential shows as organization-linked: deleting that organization credential removes it.
+**What a credentialed source must be:** `https` on the default port, to a public host name (no IP address, single-label or private host, and no WayAI host), with at most 8 credentials placed in one call. The value is printable ASCII with no spaces, from 8 characters to 16 KiB (`--file` base64-encodes a file). A base credential can be placed in a header only: one a source names for `signing`, a body injection or an executor secret cannot be created, a save that names a stored one that way is refused, and an inline `auth.secret` is refused on every write.
 
 ```bash
-wayai bases credentials list --base crm           # metadata; values are never returned
-wayai bases credentials get <id> --base crm       # metadata for one
+wayai bases credentials create --base crm --name erp-key --value-prompt     # or --value-stdin, or --file <path>
+wayai bases credentials create --base crm --name erp-key --value-stdin \
+  --rule '{"scopes":[{"origin":"https://erp.example.com","path":"/api","match":"prefix","methods":["GET","POST"]}]}'
+wayai bases credentials list --base crm                  # metadata and each one's rule; never a value
+wayai bases credentials get <id> --base crm
+wayai bases credentials rotate <id> --base crm --value-prompt [--keep-rule | --rule @rule.json]
 wayai bases credentials delete <id> --base crm [-y]
 ```
 
-`delete` requires `--yes` when non-interactive. `create`, `rotate` and `set-sync` say that storing is unavailable and send nothing.
+There is no `--value` flag: a value comes from a pipe, a masked prompt or a file, never the command line. `delete` requires `--yes` when non-interactive.
+
+**A new value** (`rotate`) gets the rule derived again from the sources as they are now. A wider rule stated earlier is kept only when stated again: `--keep-rule` states the stored one again, and the Credentials tab fills it in. A credential whose sources grew past 16 derived destinations under a wider rule needs it stated again; the CLI says so when a rotation is refused for that.
+
+**A use outside the rule needs the value again.** A config push, a record type write or a preview re-clone that would send a stored credential where its rule does not reach (a new host, a path outside it, a new method, header or header template) is refused, naming the credential and what is new, and nothing is saved. The fix is to enter the value again with the change: the rotation takes the sources the save proposed and stores a rule covering them beside every use the base already makes, then the same save lands.
+- `wayai push` in a terminal offers this itself: it asks for each refused credential's value, rotates it, and pushes again. Off a terminal it prints the rotation to run: `wayai bases credentials rotate <id> --base <base> --value-stdin --proposed-sources @sources.json`, with a JSON list of the sources in your files that name the credential.
+- When the change and the existing uses together do not fit one rule (for example many sources moved to a new host), the refusal says to delete the credential, save the change, and create the credential again.
+- A use no rule can hold (plain `http`, a whole host, signing) says to change the source.
+
+**Production has its own credential.** Promotion and preview clones carry no credential: a person, or a CI token holding `write:base_credentials`, enters production's own value on the production base. The promote result names every source, on a record type it adds or changes, whose credential production does not hold or holds only as a value stored before the credentials vault (which no call uses), and each use production's stored rule does not cover: the promotion applies, and those calls fail until the value is entered again on production. A clone warns that it copied none (`CREDENTIALS_NOT_COPIED`) when its origin holds any, and always for a caller without `read:base_credentials` on the origin.
+
+**When the credentials vault is unreachable**, a call that needs a credential answers a retryable error, never a bad credential, and a delivery that needs one is held and retried.
+
+A credential stored before the credentials vault is listed with no rule, and no call uses it: delete it and create it again. A credential an earlier version linked from an organization credential shows as organization-linked: deleting that organization credential removes it.
 
 ---
 
