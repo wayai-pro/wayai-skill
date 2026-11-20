@@ -123,7 +123,7 @@ wayai pull communities/<folder> --theirs  # resolve conflicts with the server's 
 `--community <folder|community_id>`, or run from inside its folder. A bare `wayai pull` /
 `wayai push` never reaches a community, and a bare folder name never means one. `wayai use` and
 `wayai unbind` take the same forms (`wayai use communities/<folder>`): the worktree scope has a
-communities axis beside hubs and bases, seeded by the first pull or push.
+communities axis beside hubs, bases and case spaces, seeded by the first pull or push.
 
 Pull and push run for the community's organization only: the workspace must be bound to the
 organization that owns it (`wayai-ws/wayai.yaml`). Push never creates a community — WayAI does.

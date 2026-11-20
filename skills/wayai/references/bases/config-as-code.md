@@ -74,7 +74,8 @@ wayai unbind bases/<base>            # drop that base from this worktree's scope
 explicit `--hub`/`--base`/`--community` flag → an explicit positional (`hubs/support`, `bases/crm`,
 `communities/acme`) → the folder you are `cd`'d into → `wayai-ws/wayai.yaml`'s
 `default_hub`/`default_base` → the sole candidate folder across the hubs and bases subtrees. A
-community is never reached by the last two ([communities.md](../communities.md)).
+community is never reached by the last two ([communities.md](../communities.md)), and a case type
+(`cases/<space>/<type>`) only by a positional or its folder ([cases.md](../cases.md#case-types-as-files)).
 
 An invocation that names targets in **both** subtrees is **refused, never merged** — non-zero exit,
 before any network call and before any file write. So in a workspace holding both a hub folder and a
@@ -112,7 +113,7 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   clones default to `local`) and you will want SQL or change history on it
   ([querying.md](querying.md)).
 - **The worktree scope is a routing guard.** Each git checkout carries one untracked scope file
-  (`<git-dir>/wayai-scope`) holding a set of hubs, a set of bases and a set of communities; the base axis is what applies
+  (`<git-dir>/wayai-scope`) holding a set of hubs, a set of bases, a set of communities and a set of case spaces; the base axis is what applies
   here. `pull`/`push` refuse to run against a base outside a non-empty set, and the axis is seeded
   automatically on the first successful pull/push into a checkout that has none. It is a routing
   tripwire for those two verbs only — no other command reads it. `wayai status` reports every axis.

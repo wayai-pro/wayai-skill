@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.283.0
+version: 6.284.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -588,7 +588,8 @@ wayai migrate           # Move a legacy workspace/ + root org/ layout to wayai-w
 wayai pull              # Pull hub config from platform (-y skips confirmation; auto-binds worktree on first pull). Also writes the linked production hub as a read-only mirror folder
 wayai push              # Push local changes (-y skips confirmation; auto-pulls IDs back). Auto-creates a lone new folder; a multi-hub workspace needs --hub or `wayai create`
 # `pull`/`push` are ONE verb each, routing by workspace subtree: `hubs/<hub>` (above), `bases/<base>` (the Data surface)
-#   or `communities/<community>` (references/communities.md) — a community only by the flag, a positional or its folder as cwd.
+#   `communities/<community>` (references/communities.md) — a community only by the flag, a positional or its folder as cwd —
+#   or `cases/<space>/<type>` (references/cases.md) — a case type only by a positional or its folder as cwd.
 # The target resolves in this order: the `--hub`/`--base`/`--community` flag → a positional → the folder you are cd'd into →
 #   `wayai-ws/wayai.yaml`'s `default_hub`/`default_base` → the sole folder across the hubs and bases subtrees.
 # So in a workspace holding BOTH a hub folder and a base folder, a bare `wayai pull` is refused as ambiguous.
@@ -601,7 +602,7 @@ wayai diff              # Dry-run diff of local files vs preview (read-only); --
 wayai replicate [hub]   # Clone a hub (preview or production) into a new sibling preview; --label <l> names it. Pulls the new preview into its own folder
 wayai relabel <label>   # Set a preview hub's label (--clear removes it; --hub to target). Renames the local folder. The server-owned way to change preview_label
 wayai publish           # Promote the preview to production (alias: wayai sync). Auto-detects first-publish (clones preview → new production) vs sync (pushes changes to the linked production); shows the preview→production diff and confirms (-y skips). Paid plans only. `wayai push` first — promotes the pushed preview state
-wayai use <selector>    # Scope this worktree to a hub, base or community (UUID, folder name, hubs/<n>, bases/<n>, communities/<n>, --hub/--base/--community). Replaces that axis; `--add` widens it instead
+wayai use <selector>    # Scope this worktree to a hub, base, community or case space (UUID, folder name, hubs/<n>, bases/<n>, communities/<n>, cases/<space>, --hub/--base/--community). Replaces that axis; `--add` widens it instead
 wayai unbind [<sel>]    # Drop one entry from the worktree scope; bare, it clears the whole scope (every axis)
 wayai send-message      # Test message to a hub (preview or production). -c <id> continues a conversation
                         # `-f, --file <path>` attaches a file (repeatable, max 20, ~7 MB/request) delivered exactly as a real channel does — this is how image/document behaviour gets exercised in the dev loop. Message text is optional when a file is attached (an attachment-only send mirrors a photo with no caption). Images reach the model as a signed URL, not base64
@@ -637,6 +638,7 @@ wayai cases connect     # Connect this machine's code agents to ONE case: `wayai
 wayai cases disconnect  # Revoke a case's token and remove it from this machine: `wayai cases disconnect <code>` [--org] [--space]. See references/cases.md
 wayai cases             # Work the connected case with its token: clone, pull, push, log, brief, next, explain, check, decisions, note, received add, review, review verdict; --confidential only when you mean it. See references/cases.md
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
+wayai pull cases/<space>/<type>                # A case type as files in wayai-ws/cases/<space>/<type>/ (a space administrator, your own sign-in; named explicitly, never by a bare pull; first pull: cases/<space_id>/<type_id>); push sends it as a draft a person publishes in the web app. See references/cases.md#case-types-as-files
 wayai status            # Show workspace status
 wayai report create     # Create platform bug report (--title, --description, --hub, --conversation, --error). With --hub, auto-attaches the hub's active alerts so triage sees a credential/connection cause up front — check `wayai alerts` yourself first, it's often not a platform bug
 wayai report edit       # Amend your own pending report (<id> --title/--description/--error/--steps/--context)
@@ -672,7 +674,7 @@ wayai files pull|push <file_type> --base <id> [--folder <path>]   # A file type'
 wayai knowledge refresh-preview --org <id> --base <knowledge base>   # Copy the knowledge base's production files into its preview, after creating it and whenever it should be current again (references/bases/files.md)
 ```
 
-`wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` maintain **one** worktree scope covering hubs, bases and communities (the selector says which — `wayai use bases/crm` vs `wayai use <hub-uuid>`), so `wayai bases use`/`wayai bases unbind` are deprecated aliases for the base axis alone; and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. Hubs and bases are different entities — never substitute one for the other.
+`wayai bases --help` (and `wayai <namespace> --help`) prints the full tree; the grammar for every command above is in [`references/bases/`](references/bases/README.md). Two collisions worth holding onto: `wayai use`/`wayai unbind` maintain **one** worktree scope covering hubs, bases, communities and case spaces (the selector says which — `wayai use bases/crm` vs `wayai use <hub-uuid>`), so `wayai bases use`/`wayai bases unbind` are deprecated aliases for the base axis alone; and `wayai publish` promotes a hub while `wayai bases promote` promotes a base. Hubs and bases are different entities — never substitute one for the other.
 
 **Closing the loop on a report you filed.** After triage escalates and the fix ships, your report
 moves to `shipped` — you'll get an email, and `wayai login`/`wayai status` remind you once (or find it
@@ -684,19 +686,20 @@ Most commands accept `--hub <uuid|folder>` to disambiguate when multiple hubs li
 
 ### Worktree scope
 
-Each git checkout (main or linked worktree) carries a **scope**: a set of hubs, a set of bases and a set of communities, in one file at `<git-dir>/wayai-scope` (per-checkout, never tracked).
+Each git checkout (main or linked worktree) carries a **scope**: a set of hubs, a set of bases, a set of communities and a set of case spaces, in one file at `<git-dir>/wayai-scope` (per-checkout, never tracked).
 
 ```yaml
 hubs: [11111111-1111-1111-1111-111111111111]
 bases: [crm, billing]
 communities: [6b1e0000-0000-4000-8000-000000000001]
+cases: [22222222-2222-4222-8222-222222222222]
 ```
 
 It is a routing tripwire, not a concurrency lock (it does not coordinate concurrent edits) and not authorization (grants are the security boundary). It never *selects* a target either — it only refuses one.
 
 **How it fills up.** Each axis is seeded independently by the first successful pull/push/create into a checkout whose set for that axis is empty. After that it only grows on purpose: an automatic bind never appends to a non-empty set.
 
-**How it is enforced.** `wayai pull`, `wayai push`, `wayai publish` and `wayai relabel` refuse to run against a hub outside a non-empty `hubs` set; `wayai pull bases/<base>` and `wayai push bases/<base>` refuse a base outside a non-empty `bases` set; `wayai pull communities/<x>` and `wayai push communities/<x>` refuse a community outside a non-empty `communities` set. Creating a *new* hub or base in a checkout already scoped on that axis is refused the same way.
+**How it is enforced.** `wayai pull`, `wayai push`, `wayai publish` and `wayai relabel` refuse to run against a hub outside a non-empty `hubs` set; `wayai pull bases/<base>` and `wayai push bases/<base>` refuse a base outside a non-empty `bases` set; `wayai pull communities/<x>` and `wayai push communities/<x>` refuse a community outside a non-empty `communities` set; `wayai pull cases/<space>/<type>` and `wayai push cases/<space>/<type>` refuse a case type whose space is outside a non-empty `cases` set. Creating a *new* hub or base in a checkout already scoped on that axis is refused the same way.
 
 **Changing it.**
 
@@ -707,11 +710,11 @@ wayai unbind <selector>       # drop one entry
 wayai unbind                  # clear the whole scope, every axis
 ```
 
-A selector names the axis the same way `pull`/`push` do: a bare UUID is a hub, `bases/<id>` and `--base <id>` are a base, `hubs/<name>` and `--hub <x>` a hub, `communities/<folder|id>` and `--community <x>` a community, and a bare folder name is looked up in the hubs and bases subtrees (present in both → refused, never guessed; never a community). `wayai status` shows the current scope; `status --json` carries it as `worktree_scope`.
+A selector names the axis the same way `pull`/`push` do: a bare UUID is a hub, `bases/<id>` and `--base <id>` are a base, `hubs/<name>` and `--hub <x>` a hub, `communities/<folder|id>` and `--community <x>` a community, `cases/<space folder|space_id>` a case space, and a bare folder name is looked up in the hubs and bases subtrees (present in both → refused, never guessed; never a community or a case space). `wayai status` shows the current scope; `status --json` carries it as `worktree_scope`.
 
 A worktree legitimately scoped to several entities is normal — a base serving several hubs, or delegation wiring hub A to hub B. Widen with `--add` for those; do not clear the tripwire to get past them.
 
-If `push`/`pull` errors with a scope refusal, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use` (with or without `--add`), `wayai bases unbind`, `wayai bases use`, or edit the scope file without explicit user instruction in the current session — widening the scope is as much a session-routing action as clearing it, and both change which hub, base or community the user thinks you're working on.
+If `push`/`pull` errors with a scope refusal, **stop and ask the user before doing anything else**. It usually means a prompt was meant for a different worktree. Do **not** run `wayai unbind`, `wayai use` (with or without `--add`), `wayai bases unbind`, `wayai bases use`, or edit the scope file without explicit user instruction in the current session — widening the scope is as much a session-routing action as clearing it, and both change which hub, base, community or case space the user thinks you're working on.
 
 ## Repository Structure
 
@@ -743,6 +746,9 @@ wayai-ws/                                # All WayAI config-as-code (init create
 ├── org/                                 # Org-as-code — shared skills (wayai org pull/push)
 │   ├── skills.yaml
 │   └── skills/<skill_name>/
+├── cases/                               # Case types as files — `wayai pull cases/<space_id>/<type_id>` (references/cases.md)
+│   └── <space>/                         #   One folder per case space, any name: its types' markers bind it
+│       └── <type>/                      #   type.json, instructions/, templates/, tools/, sources/, .wayai-case-type.json
 ├── communities/                         # One folder per community — `wayai pull communities/<community_id>`
 │   └── <community-slug>/                #   (see references/communities.md; push edits the LIVE community)
 │       ├── community.yaml               # Identity, settings, join link state, rooms, course folders in order — with ids and revs

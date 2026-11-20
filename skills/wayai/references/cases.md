@@ -15,7 +15,7 @@ authority: a push sends changes to the case, and the case decides what it takes.
 | Read the case's state at the start of a session | The clone's read-only mirror, `.wayai-mirror/` ([The mirror](#the-mirror)) |
 | See what to do, why something is blocked, a delivery's checks; write the approved decisions; add notes; register a received document | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `note`, `received add`) ([Work commands](#work-commands)) |
 | Graph review: read it, record `consistent` or `needs_change` | CLI (`review`, `review verdict`) ([Graph review](#graph-review)) |
-| Hold a case type as files and push a draft of it (a space administrator) | CLI (`type pull`, `type diff`, `type push`), with your own sign-in ([Case types as files](#case-types-as-files)) |
+| Hold a case type as files and push a draft of it (a space administrator) | CLI (`type pull`, `type diff`, `type push`, or `wayai pull`/`push cases/<space>/<type>` in the organization's workspace), with your own sign-in ([Case types as files](#case-types-as-files)) |
 | Keep an item, accept a stopped chain, submit, approve, publish, open a case, and every other human decision | A person, in the web app (some also in the mobile app) ([What only a person does](#what-only-a-person-does)) |
 
 ## Connecting a case
@@ -301,6 +301,29 @@ wayai cases type push [--dry-run]
 A draft changes nothing. Publishing it as the type's next version, which new cases open on, is a
 person's act in the web app: the CLI never publishes. A push from a folder pulled before the
 type's latest version is refused: pull into a new folder and carry your changes over.
+
+### In the organization's workspace: `cases/`
+
+In the repository bound to the organization (`wayai-ws/wayai.yaml`), case types live beside hubs,
+bases and communities, one folder per case space and one per type in it:
+
+```bash
+wayai pull cases/<space_id>/<type_id>    # first pull: writes wayai-ws/cases/<space_id>/<abbreviation>/
+wayai pull cases/<space>/<type>          # again, by the folders' names (or by ids)
+wayai push cases/<space>/<type> [--dry-run]
+```
+
+- Each type folder is the same folder `type pull` writes, pulled and pushed by the same rules:
+  `--overwrite` (and `--yes`) on pull, `--dry-run` on push. `wayai cases type diff` works in it.
+- Name the space's folder as you like: the markers of the types in it bind it to its space, and
+  must all name one space of the workspace's organization. A first pull names a new space folder by
+  the space's id.
+- A case type is always named: `cases/<space>/<type>`, or run inside its folder. A bare
+  `wayai pull` / `wayai push` never reaches one, and a bare folder name never means one.
+- It takes your own sign-in, never a case token. A case's clone is no type folder: clone each
+  case into a folder of its own (`wayai cases clone`), apart from this workspace.
+- The worktree scope has a `cases` axis of case space ids: `wayai use cases/<space>` scopes this
+  checkout to a space, and the first pull or push seeds it.
 
 ## Exit codes and limits
 
