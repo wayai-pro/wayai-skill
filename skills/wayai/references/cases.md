@@ -15,6 +15,7 @@ authority: a push sends changes to the case, and the case decides what it takes.
 | Read the case's state at the start of a session | The clone's read-only mirror, `.wayai-mirror/` ([The mirror](#the-mirror)) |
 | See what to do, why something is blocked, a delivery's checks; write the approved decisions; add notes; register a received document | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `note`, `received add`) ([Work commands](#work-commands)) |
 | Graph review: read it, record `consistent` or `needs_change` | CLI (`review`, `review verdict`) ([Graph review](#graph-review)) |
+| Hold a case type as files and push a draft of it (a space administrator) | CLI (`type pull`, `type diff`, `type push`), with your own sign-in ([Case types as files](#case-types-as-files)) |
 | Keep an item, accept a stopped chain, submit, approve, publish, open a case, and every other human decision | A person, in the web app (some also in the mobile app) ([What only a person does](#what-only-a-person-does)) |
 
 ## Connecting a case
@@ -252,12 +253,38 @@ Cases tab.
 Other case work also has no `wayai cases` command: tasks, owners and deadlines, linking inputs,
 citing passages and proposing values are done in the web app.
 
+## Case types as files
+
+A space administrator (or the organization's owner) can hold a case type as files and push a
+draft of it. These commands take your own sign-in (`wayai login`), never a case token.
+
+```bash
+wayai cases type pull <org_id> <space_id> <type_id> [--dir <folder>]   # default ./<abbreviation>
+wayai cases type diff [--json]     # run in the type's folder
+wayai cases type push [--dry-run]
+```
+
+- `type pull` writes the type's current version: `type.json` (its name and definition) and its
+  package under `instructions/`, `templates/`, `tools/` and `sources/`. Nothing else in the
+  folder is read or written. Pulled again into the same folder, it refuses while a file you
+  changed differs from the published version; `--overwrite` replaces those after asking.
+- `type diff` compares the folder with the published version: the name, the definition by part,
+  and each package file added, changed or removed (confidential ones marked). It exits 1 when a
+  push would be refused, including when the type was published since your pull.
+- `type push` checks the folder first. While a problem remains it sends nothing and names every
+  one. Then it pushes the folder as the type's draft, replacing its open draft, and prints the
+  draft's id.
+
+A draft changes nothing. Publishing it as the type's next version, which new cases open on, is a
+person's act in the web app: the CLI never publishes. A push from a folder pulled before the
+type's latest version is refused: pull into a new folder and carry your changes over.
+
 ## Exit codes and limits
 
 - Every `wayai cases` command exits 1 on an error, and says why.
 - It also exits 1 when `pull` names a conflict, when `check` finds a submit would be refused, and
-  when `review` finds a stopped chain.
+  when `review` finds a stopped chain, and when `type diff` finds a push would be refused.
 - Your case commands and your case pages in the web app share one rate budget. A refusal says when
   to try again.
 
-Not available yet: case type drafts and packages, `skeleton`, and the case package.
+Not available yet: `skeleton`, and the case package.
