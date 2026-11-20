@@ -140,7 +140,7 @@ what the case says of itself now:
 | `deliveries.json` | Each phase under way: its newest submission and manifest |
 | `inputs.json` | Each phase under way: each input whose linked document you may read, the version it links, where its text is, and its cited passages |
 | `inputs/<phase folder>/<input key>.md` | Each such input's registered text, byte for byte |
-| `package-manifest.json` | The case's package as published for the type version it opened on: its version and revision, and each file's path, SHA-256 and size, and whether it was written here |
+| `package-manifest.json` | The case's package: the revision of the type version it opened on that reaches it, with its version and revision, and each file's path, SHA-256 and size, and whether it was written here |
 | `package/` | The package's files (`instructions/`, `templates/`, `tools/`, `sources/`), read-only |
 | `session-start.sh` | The session-start hook |
 | `README.md` | What the folder holds and what it leaves out |
@@ -292,15 +292,28 @@ wayai cases type push [--dry-run]
   folder is read or written. Pulled again into the same folder, it refuses while a file you
   changed differs from the published version; `--overwrite` replaces those after asking.
 - `type diff` compares the folder with the published version: the name, the definition by part,
-  and each package file added, changed or removed (confidential ones marked). It exits 1 when a
-  push would be refused, including when the type was published since your pull.
+  and each package file added, changed or removed (confidential ones marked). It exits 1 when the
+  folder has a problem a push would be refused for, or when the type was published as a new
+  version since your pull. It does not see a package revision of the current version: once one is
+  out, a push is refused even when the diff is clean (below).
 - `type push` checks the folder first. While a problem remains it sends nothing and names every
   one. Then it pushes the folder as the type's draft, replacing its open draft, and prints the
   draft's id.
 
-A draft changes nothing. Publishing it as the type's next version, which new cases open on, is a
-person's act in the web app: the CLI never publishes. A push from a folder pulled before the
-type's latest version is refused: pull into a new folder and carry your changes over.
+A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
+
+- A draft whose definition changed publishes as the type's next version, which new cases open on.
+  A case stays on the version it opened on.
+- A draft that changes only the package publishes as a revision of the current version. The
+  publisher chooses whether it reaches only the cases opened from then on, or the open cases on
+  that version too.
+- A case reads the newest revision that reaches it. A closed case keeps the revision it read when
+  it closed.
+
+A push from a folder pulled before the type's latest version or package revision is refused: pull
+into a new folder and carry your changes over. `type push` does not yet name the package revision
+its folder was pulled from, so once the type's current version holds a package-only revision, every
+push of it is refused (`case_type_draft_base_revision_required`) until the CLI names it.
 
 ### In the organization's workspace: `cases/`
 
@@ -330,6 +343,7 @@ wayai push cases/<space>/<type> [--dry-run]
 - Every `wayai cases` command exits 1 on an error, and says why.
 - It also exits 1 when `pull` names a conflict, when `check` finds a submit would be refused or a
   package file that differs, and
-  when `review` finds a stopped chain, and when `type diff` finds a push would be refused.
+  when `review` finds a stopped chain, and when `type diff` finds a problem in the folder or a
+  version published since the pull.
 - Your case commands and your case pages in the web app share one rate budget. A refusal says when
   to try again.
