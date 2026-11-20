@@ -293,12 +293,11 @@ wayai cases type push [--dry-run]
   changed differs from the published version; `--overwrite` replaces those after asking.
 - `type diff` compares the folder with the published version: the name, the definition by part,
   and each package file added, changed or removed (confidential ones marked). It exits 1 when the
-  folder has a problem a push would be refused for, or when the type was published as a new
-  version since your pull. It does not see a package revision of the current version: once one is
-  out, a push is refused even when the diff is clean (below).
+  folder has a problem a push would be refused for, or when the type was published since your
+  pull: as a new version, or as a package revision of the version you pulled.
 - `type push` checks the folder first. While a problem remains it sends nothing and names every
   one. Then it pushes the folder as the type's draft, replacing its open draft, and prints the
-  draft's id.
+  draft's id and its review page in the web app, where it is published.
 
 A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
 
@@ -311,9 +310,10 @@ A draft changes nothing. Publishing it is a person's act in the web app: the CLI
   it closed.
 
 A push from a folder pulled before the type's latest version or package revision is refused: pull
-into a new folder and carry your changes over. `type push` does not yet name the package revision
-its folder was pulled from, so once the type's current version holds a package-only revision, every
-push of it is refused (`case_type_draft_base_revision_required`) until the CLI names it.
+into a new folder and carry your changes over. `type pull` records the package revision it pulled,
+and `type push` sends it. A folder pulled by an earlier CLI records none: once the type's current
+version holds a package-only revision, its push is refused (`case_type_draft_base_revision_required`)
+until you pull again.
 
 ### In the organization's workspace: `cases/`
 
@@ -344,6 +344,6 @@ wayai push cases/<space>/<type> [--dry-run]
 - It also exits 1 when `pull` names a conflict, when `check` finds a submit would be refused or a
   package file that differs, and
   when `review` finds a stopped chain, and when `type diff` finds a problem in the folder or a
-  version published since the pull.
+  version or package revision published since the pull.
 - Your case commands and your case pages in the web app share one rate budget. A refusal says when
   to try again.
