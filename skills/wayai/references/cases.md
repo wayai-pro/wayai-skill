@@ -62,7 +62,7 @@ account can. **Run `wayai logout` next**: the case token does not need it.
   authorization may still be live: revoke it on the case's Agents page. `--org` and `--space` pick
   the case when two connected cases share a code.
 - **Your authorizations** for a case are listed on its Agents page in the web app, where you can
-  revoke each one.
+  revoke each one and switch its Confidential right on or off.
 
 ### Which case a command works on
 
@@ -234,8 +234,9 @@ and no hook adds it.
   `review verdict --mark-confidential` makes your verdict readable only by holders of the
   Confidential right.
 - `--confidential` is refused when the authorization lacks the Confidential right. Every
-  authorization starts without it, and switching it on isn't available yet, so a case token works
-  without confidential content.
+  authorization starts without it. Its person switches it on, on the case's Agents page in the web
+  app, and only while they hold the Confidential flag on the case. The token then reads what its
+  person reads with the flag, and loses it at its next call once its person loses the flag.
 
 ## What only a person does
 
@@ -248,7 +249,7 @@ Cases tab.
 - dispense, activate a phase, decide on a newer version of a source, set confidentiality, send the
   agenda, close a case;
 - Keep an item against a review finding, accept a stopped review chain;
-- authorize an agent.
+- authorize an agent, or switch an agent's Confidential right.
 
 Other case work also has no `wayai cases` command: tasks, owners and deadlines, linking inputs,
 citing passages and proposing values are done in the web app.
