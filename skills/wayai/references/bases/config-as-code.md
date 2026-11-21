@@ -126,8 +126,10 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
   stripped on pull, and a push generates none: existing secrets are left untouched. A pushed webhook
   trigger that holds no secret delivers unsigned, and push names it; a push that moves a trigger holding a
   secret to another host or path is refused ([integrations.md](integrations.md#triggers)).
-  A pushed inbound webhook is stored with no secret, or keeps the one it holds; a push that switches
-  one holding a secret between signing and a static header is refused ([integrations.md](integrations.md#inbound-webhooks)).
+  A pushed inbound webhook is stored with no secret, or keeps the one it holds, and push names one that
+  holds none; a push that switches one holding a secret between signing and a static header is refused
+  ([integrations.md](integrations.md#inbound-webhooks)). Each secret is set on the base with
+  `wayai triggers set-secret` or `wayai inbound-webhooks set-secret`, on production too.
   A push that carries an external source's inline secret is refused: storing one is unavailable for now. A
   source names a [base credential](toolsets.md#credentials-behind-a-bases-integrations) as
   `credential:<name>` instead. A push that would send a stored credential where its rule does not

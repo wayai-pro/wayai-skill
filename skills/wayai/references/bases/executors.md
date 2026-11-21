@@ -15,7 +15,7 @@ It sits on two directions, and both use the same signing scheme:
 | **Outbound** — the base calls you | A **trigger** POSTs to your URL when records change; an **external source** proxies a record read/write through to your URL | `wayai triggers`, record-type sources |
 | **Inbound** — you call the base | Your executor POSTs results into an **inbound webhook** | `wayai inbound-webhooks` |
 
-**For now no edge is signed or verified, and no credential is pulled.** A base credential can only be placed in a request header ([toolsets.md](toolsets.md#credentials-behind-a-bases-integrations)), and signing and webhook secrets cannot be stored yet: a source that declares `signing` fails before it dispatches, a webhook trigger delivers unsigned ([integrations.md](integrations.md#triggers)), an inbound webhook verifies no delivery ([integrations.md](integrations.md#inbound-webhooks)), and a credential pull is refused. The contract below is what an executor is held to once they are.
+**What is signed today.** A webhook trigger signs its deliveries once its signing secret is set on the base ([integrations.md](integrations.md#triggers)), and an inbound webhook verifies the deliveries it takes once its secret is set ([integrations.md](integrations.md#inbound-webhooks)). A source's calls are not signed and no credential is pulled: a base credential can only be placed in a request header ([toolsets.md](toolsets.md#credentials-behind-a-bases-integrations)), a source that declares `signing` fails before it dispatches, and a credential pull is refused. The contract below is what an executor is held to on every edge that is signed.
 
 The executor is invisible to the agent. Whether a record is native, source-backed, or executor-backed, the agent reads and writes it through the same `wayai records` / toolset surface — see [toolsets.md](toolsets.md).
 
@@ -209,7 +209,7 @@ Because retries replay the same delivery, **idempotency dedupe is the only thing
 
 The SDK exposes a **dev-bypass option** that skips signature verification while you develop locally (dedupe still applies when the headers are present). Gate it on an explicit environment check and **never enable it in production** — it disables the only thing standing between your executor and a forged request.
 
-Once a base signs again, set its signing secret as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates). For now a webhook trigger delivers unsigned, which a verifying executor rejects ([integrations.md](integrations.md#triggers)). Set `WAYAI_BASE` to drop the repeated `--base`.
+Set the same secret as the trigger's signing secret (`wayai triggers set-secret <id> --base <base>`) and as your executor's **signing-secret environment variable** (name it whatever your deployment convention dictates); a write-back into an inbound webhook signs with that webhook's secret (`wayai inbound-webhooks set-secret`). A webhook trigger with no signing secret delivers unsigned, which a verifying executor rejects ([integrations.md](integrations.md#triggers)). Set `WAYAI_BASE` to drop the repeated `--base`.
 
 Triggers can only be created or deleted in **preview** bases — build and exercise the executor against a preview, then promote.
 
