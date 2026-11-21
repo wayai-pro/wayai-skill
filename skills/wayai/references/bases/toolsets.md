@@ -706,6 +706,8 @@ A base credential is a secret held by the base itself, such as an API key, that 
 
 **Storing one can be off.** Until storing base credentials is turned on, creating a credential and entering a new value are refused by name and store nothing, and a source whose credential is not usable fails with a clear "no usable credential configured" error before anything is sent upstream. The CLI and the base's Credentials tab ask first, before reading a value, and say so.
 
+**Storing is on only for admitted organizations.** Once storing is turned on, it is open only to the organizations WayAI has admitted to it. For any other organization, creating a credential and entering a new value are refused by name (`org_not_admitted`) and store nothing; the CLI and the Credentials tab say so before reading a value. A credential stored while its organization was admitted keeps working, and can still be edited and deleted, if the organization is later taken off.
+
 **Source first.** Write the source, then enter the credential it names: a credential no source names is refused. The platform derives where the credential may be sent from the sources that name it, and stores the value with that **rule**:
 - each origin the sources call, with each path and the methods called there;
 - a path and the paths below it become one destination with every method (`/orders` and `/orders/{{id}}` become `/orders` and below);
