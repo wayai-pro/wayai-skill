@@ -125,8 +125,9 @@ Per-subtree refusals survive unchanged: `push` against `hubs/` targets preview h
 - **Secrets are never written to files.** Inbound-webhook, trigger and external-source secrets are
   stripped on pull, and a push generates none: existing secrets are left untouched. A pushed webhook
   trigger that holds no secret delivers unsigned, and push names it ([integrations.md](integrations.md#triggers)).
-  A push that adds or changes an inbound webhook ([integrations.md](integrations.md#inbound-webhooks)),
-  or carries an external source's inline secret, is refused: storing one is unavailable for now. A
+  A pushed inbound webhook is stored with no secret, or keeps the one it holds; a push that switches
+  one holding a secret between signing and a static header is refused ([integrations.md](integrations.md#inbound-webhooks)).
+  A push that carries an external source's inline secret is refused: storing one is unavailable for now. A
   source names a [base credential](toolsets.md#credentials-behind-a-bases-integrations) as
   `credential:<name>` instead. A push that would send a stored credential where its rule does not
   reach is refused, naming it; in a terminal, push offers to enter its value again and then pushes
@@ -184,8 +185,9 @@ first. Promote selectively with `--record-types`/`--triggers`/`--inbound-webhook
 each narrows its own kind, and a kind you do not name is promoted in full. `promotions` lists prior
 promotions and `rollback` reverts one by id. Promotion is blocked if it would break a published
 toolset, remove a file type production still holds files of, change the `cascade` flag of a
-relationship type production still has links of, or add or change an inbound webhook
-([integrations.md](integrations.md#inbound-webhooks)) — a dry run lists the conflicts. A promotion
+relationship type production still has links of, or switch an inbound webhook production holds a
+secret for between signing and a static header ([integrations.md](integrations.md#inbound-webhooks))
+— a dry run lists the conflicts. It names each promoted inbound webhook production holds no secret for. A promotion
 carries no credential, inline or `credential:<name>` ([`toolsets.md`](toolsets.md#credentials-behind-a-bases-integrations)),
 and (including `--dry-run`) names every source, on a record type it adds or changes, that has no usable credential on production, and each use production's stored rule does not cover.
 
