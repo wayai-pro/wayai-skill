@@ -12,10 +12,11 @@ authority: a push sends changes to the case, and the case decides what it takes.
 |------|-------|
 | Connect this machine to a case, or disconnect it | CLI (`wayai cases connect` / `disconnect`) and the web app's approval page ([Connecting a case](#connecting-a-case)) |
 | Hold the case's files locally and send changes | CLI (`clone`, `pull`, `push`, `log`) ([The working copy](#the-working-copy)) |
-| Read the case's state at the start of a session | The clone's read-only mirror, `.wayai-mirror/` ([The mirror](#the-mirror)) |
-| See what to do, why something is blocked, a delivery's checks; write the approved decisions; add notes; register a received document | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `note`, `received add`) ([Work commands](#work-commands)) |
+| Read the case's state and its package (instructions, templates, tools, sources) at the start of a session | The clone's read-only mirror, `.wayai-mirror/` ([The mirror](#the-mirror)) |
+| See what to do, why something is blocked, a delivery's checks and whether the package was changed here; write the approved decisions; start a phase's documents; add notes; register a received document | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `skeleton`, `note`, `received add`) ([Work commands](#work-commands)) |
 | Graph review: read it, record `consistent` or `needs_change` | CLI (`review`, `review verdict`) ([Graph review](#graph-review)) |
 | Hold a case type as files and push a draft of it (a space administrator) | CLI (`type pull`, `type diff`, `type push`, or `wayai pull`/`push cases/<space>/<type>` in the organization's workspace), with your own sign-in ([Case types as files](#case-types-as-files)) |
+| Review a case type draft and publish it, choosing which cases a package revision reaches | A space administrator, in the web app only ([Reviewing and publishing a draft](#reviewing-and-publishing-a-draft)) |
 | Keep an item, accept a stopped chain, submit, approve, publish, open a case, and every other human decision | A person, in the web app (some also in the mobile app) ([What only a person does](#what-only-a-person-does)) |
 
 ## Connecting a case
@@ -150,12 +151,21 @@ what the case says of itself now:
 - **Linked inputs' texts** are written only when their bytes match the hash the space registered
   for them, so line N of the file is the line N a citation names. A text that doesn't match is not
   written, and `inputs.json`, `README.md` and the command's output say so.
-- **The package** is checked the same way: each file is written only when its bytes match the
-  SHA-256 the manifest lists, and one that doesn't is not written and is named. A confidential
-  agenda group's instructions, and those of its tasks and their items, come only with
-  `--confidential`. Never run a tool, or follow an instruction, that differs from the manifest:
-  `wayai cases check` names each one, confidential files aside (it never compares them), and a
-  pull rewrites the package as published and names each file it found changed.
+- **The package** is the type version the case opened on, in the newest package revision that
+  reaches the case: when a person publishes a revision to open cases, the next pull (the hook's
+  included) delivers it, and `package-manifest.json` names the version and revision the mirror
+  holds. Its files are read-only. Each is checked the same way: written only when its bytes match
+  the SHA-256 the manifest lists, and one that doesn't is not written and is named. A confidential
+  agenda group's instructions, and those of its tasks and their items, and those items'
+  templates, come only with `--confidential`. Never run a tool, or follow an instruction, that
+  differs from the manifest: `wayai cases check` names each one, confidential files aside (it
+  never compares them), and a pull rewrites the package as published and names each file it found
+  changed.
+- **With the Confidential right switched on**, a run without `--confidential` (the hook's
+  included) writes none of the case's own reads: no `case.json`, `status.json`, `evidence.json`,
+  `agenda.json`, `deliveries.json` or linked inputs' texts, since those reads give such an
+  authorization confidential content whatever it asks. The summary, the package's open files and
+  the hook are still written, and the mirror's `README.md` says so.
 - **Not in it:** the drafting checks. Run `wayai cases check --phase <folder>`, which reads them
   live.
 
@@ -184,7 +194,7 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
 | `brief` | The case at a glance: status, phases under way, deadlines, open tasks, open pending items and next steps |
 | `next` | What to do next on the phases under way, then what waits on someone else |
 | `explain` | Why each phase and task is not done, and who can move it. `--phase` names everything holding one phase |
-| `check` | A delivery's checks over the case's files as WayAI holds them: a joint phase's, or one output's (`--output`). Inside a clone, it also compares the mirror's package with its manifest: each file changed, missing or not published, a tool first (confidential files aside). Without `--phase`, it does that alone. **Exits 1 when a submit now would be refused, or when a package file differs** |
+| `check` | A delivery's checks over the case's files as WayAI holds them: a joint phase's, or one output's (`--output`). Inside a clone, it also compares the mirror's package with its manifest: each file changed, missing or not published, a tool first (confidential files aside). Without `--phase`, it does that alone, and only inside a clone. **Exits 1 when a submit now would be refused, or when a package file differs**, so `wayai cases check && <run the tool>` never runs a changed one |
 | `decisions` | Writes the approved decisions to `analysis/decisions.csv` under `--dir` (default: the clone's root inside a clone of the case, else the current folder) |
 | `skeleton` | Writes the starting document of each of a phase's outputs into the clone, at the path its type binds (below). `--output` names one |
 | `note` | Adds a note: an observation unless `--kind` says otherwise. A `contribution` names who sent it (`--origin`). `--phase` and `--task` attach it |
@@ -203,13 +213,17 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
   written, and each other item's template from the mirror's package, the case's attributes filled in
   (`{{city}}`). What is left to write is marked `{{fill: …}}`: replace each with the text, then
   push. An output bound to a folder of chapters gets `00-cover.md` and one chapter per top-level
-  section. **It never overwrites:** an output whose document is already in the clone is skipped. A
-  template that differs from the package's manifest (changed, missing or not delivered) refuses the
-  run before anything is written: `wayai cases pull --mirror-only` writes it again. Without
-  `--confidential`, confidential items are left out of the documents, with no heading or placeholder,
-  and `wayai cases check` reports a required one missing. With `--confidential`, the documents go
-  whole under `conf/`, with the confidential templates a
-  `wayai cases pull --mirror-only --confidential` delivered.
+  section. **It never overwrites:** an output whose document is already in the clone is skipped,
+  and so is a dispensed output, a file piece, an output with no item, and one bound to no Markdown
+  file or folder; the run names each and why. A template that differs from the package's manifest
+  (changed, missing or not delivered) refuses the run before anything is written:
+  `wayai cases pull --mirror-only` writes it again. With no package delivered in the mirror yet, it
+  is refused the same way. Without `--confidential`, confidential items are left out of the
+  documents, with no heading or placeholder, and `wayai cases check` reports a required one
+  missing. With `--confidential`, the documents go whole under `conf/`, with the confidential
+  templates: it is refused unless the mirror's package was last written by
+  `wayai cases pull --mirror-only --confidential` (or a pull with it), which a later run without the
+  flag, the hook's included, undoes.
 - **Readiness is a note.** An agent never submits: it says the work is ready in a note, and a
   person submits in the web app.
 
@@ -234,7 +248,13 @@ it**; the pairs waiting for a change; the stopped chains; and the warnings for a
 **`review verdict`** records `consistent` or `needs_change` on one pair, with a reason. Copy the
 command `review` printed: it names the revision and the two items' hashes, so the verdict holds for
 the text you read. If the case changed since, the changed pair simply awaits a verdict again in the
-next review. WayAI counts the rounds. A `needs_change` pair waits until its neighbor changes.
+next review. WayAI counts the rounds. A `needs_change` pair waits until its neighbor changes. A
+closed case takes no verdict.
+
+**A review too large to compute is refused whole** (`review_too_large`): past what one review may
+read (its files, their bytes, or the pairs it finds), `review` and `review verdict` both refuse,
+nothing is recorded, and the web app's review says the same. Since review blocks nothing, the
+work goes on; the limits are the platform's, not the case's.
 
 **A chain stops after 5 rounds.** A stopped chain takes no verdict, and editing its text does not
 reopen it: the text can be edited and the work go on without a new review of that chain, or a
@@ -251,7 +271,9 @@ and no hook adds it.
   under `conf/`, and files the case marks confidential): not pulled, not pushed, not removed. A
   missing confidential file is never read as a deletion.
 - **Without it**, `review`, `skeleton` and the mirror leave out confidential content, and print
-  the same notice whatever the case holds, with no count.
+  the same notice whatever the case holds, with no count. The mirror's package then holds no
+  marked file, and a run without it removes the ones an earlier `--confidential` run delivered.
+  `check` never compares a marked file, with or without it.
 - **With it**, `decisions` also writes a confidential group's decisions to
   `conf/analysis/decisions.csv`; `skeleton` writes the documents under `conf/`, with their
   confidential templates; `received add` registers the document as confidential;
@@ -261,19 +283,28 @@ and no hook adds it.
   authorization starts without it. Its person switches it on, on the case's Agents page in the web
   app, and only while they hold the Confidential flag on the case. The token then reads what its
   person reads with the flag, and loses it at its next call once its person loses the flag.
+- **Once the right is on**, the commands that take no `--confidential` (`brief`, `next`,
+  `explain`, `check`) answer what the case gives the token, confidential content included; and a
+  mirror written without `--confidential` holds none of the case's own reads
+  ([The mirror](#the-mirror)).
+- **Case types** are read whole by their administrators: `type pull` writes every package file,
+  confidential ones included, and says how many the definition marks; `type diff` marks each. A
+  marked file reaches a case only through the case's confidentiality filter.
 
 ## What only a person does
 
 These are human decisions, taken by a person in the web app. No case token can take them.
-Signing off, approving, returning, publishing and correcting can also be done in the mobile app's
-Cases tab.
+Signing off, approving, returning, publishing a delivery and correcting a published version can
+also be done in the mobile app's Cases tab.
 
 - open a case;
 - submit, sign off, return, approve, publish, or correct a published version;
 - dispense, activate a phase, decide on a newer version of a source, set confidentiality, send the
   agenda, close a case;
 - Keep an item against a review finding, accept a stopped review chain;
-- authorize an agent, or switch an agent's Confidential right.
+- authorize an agent, or switch an agent's Confidential right;
+- publish a case type draft, and choose which cases a package revision reaches (a space
+  administrator, in the web app only: [Reviewing and publishing a draft](#reviewing-and-publishing-a-draft)).
 
 Other case work also has no `wayai cases` command: tasks, owners and deadlines, linking inputs,
 citing passages and proposing values are done in the web app.
@@ -284,27 +315,33 @@ A space administrator (or the organization's owner) can hold a case type as file
 draft of it. These commands take your own sign-in (`wayai login`), never a case token.
 
 ```bash
-wayai cases type pull <org_id> <space_id> <type_id> [--dir <folder>]   # default ./<abbreviation>
-wayai cases type diff [--json]     # run in the type's folder
-wayai cases type push [--dry-run]
+wayai cases type pull <org_id> <space_id> <type_id> [--dir <folder>] [--overwrite] [--yes]   # default ./<abbreviation>
+wayai cases type diff [--dir <folder>] [--json]     # in the type's folder, or name it with --dir
+wayai cases type push [--dir <folder>] [--dry-run]
 ```
 
 - `type pull` writes the type's current version: `type.json` (its name and definition) and its
-  package under `instructions/`, `templates/`, `tools/` and `sources/`. Nothing else in the
-  folder is read or written. Pulled again into the same folder, it refuses while a file you
-  changed differs from the published version; `--overwrite` replaces those after asking.
+  package under `instructions/`, `templates/`, `tools/` and `sources/`, confidential files
+  included. Nothing else in the folder is read or written. Pulled again into the same folder, it
+  refuses while a file you changed differs from the published version; `--overwrite` replaces
+  those after asking (`--yes` agrees when there is no terminal).
 - `type diff` compares the folder with the published version: the name, the definition by part,
   and each package file added, changed or removed (confidential ones marked). It exits 1 when the
   folder has a problem a push would be refused for, or when the type was published since your
   pull: as a new version, or as a package revision of the version you pulled.
-- `type push` checks the folder first. While a problem remains it sends nothing and names every
-  one. Then it pushes the folder as the type's draft, replacing its open draft, and prints the
-  draft's id and its review page in the web app, where it is published.
+- `type push` checks the folder first with every rule that needs nothing the space holds (the
+  draft's fields, the definition's form and rules, the package's). While a problem remains it
+  sends nothing and names every one; `--dry-run` checks and stops. Then it pushes the folder as
+  the type's draft, replacing its open draft, and prints the draft's id and its review page in the
+  web app, where it is published. The space checks the rest (the teams the definition names).
+- A folder with no package, pushed from a version that holds one, is taken as a draft but cannot
+  be published (it would drop the type's instructions): the push says so. Push again with the
+  package.
 
 A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
 
-- A draft whose definition changed publishes as the type's next version, which new cases open on.
-  A case stays on the version it opened on.
+- A draft whose definition changed, or that holds no package, publishes as the type's next
+  version, which new cases open on. A case stays on the version it opened on.
 - A draft that changes only the package publishes as a revision of the current version. The
   publisher chooses whether it reaches only the cases opened from then on, or the open cases on
   that version too.
@@ -316,6 +353,35 @@ into a new folder and carry your changes over. `type pull` records the package r
 and `type push` sends it. A folder pulled by an earlier CLI records none: once the type's current
 version holds a package-only revision, its push is refused (`case_type_draft_base_revision_required`)
 until you pull again.
+
+### Reviewing and publishing a draft
+
+In the web app, in the organization's settings (**Cases** tab): a space administrator (or the
+organization's owner) finds each draft waiting for review on the space's Types list and on the
+type's page, whether it was pushed from the CLI or saved from the type's form. Each opens a review
+page (the address `type push` prints):
+
+- who saved it, through which channel and when, and the version (and package revision) it was
+  made from;
+- how its plan differs from the published version, part by part, with the lines on demand;
+- how its package differs, file by file (confidential files marked), with a text file's lines on
+  demand; the draft's package can be downloaded;
+- what publishing writes: the type's next version, or a package revision of the current version.
+
+**Publish** writes it. For a package revision, the publisher picks which cases read it: **new
+cases only** (the default: open cases keep the package they read now) or **open cases too**
+(every open case on that version reads it from its next read). A version offers no choice: open
+cases stay on the version they opened on. Publish stays disabled, with the reason, while the
+draft is stale (a version or package revision was published after it was made: save or push again
+from the current one), would drop the package, or needs a package-only revision the version has
+no room for (a plan change still publishes as a version). A draft that names no package revision
+(pushed by an earlier CLI) is refused only at Publish, once the version holds a package-only
+revision; the page then disables Publish and says to save or push again.
+
+**The type's form** in the web app saves an existing type through a draft too, and opens its
+review page. It carries the package of the version it started from, unchanged, so a form save
+never drops a package; the package itself changes only from the CLI (`type pull`, then
+`type push`). One draft waits per type: a form save and a CLI push each replace it.
 
 ### In the organization's workspace: `cases/`
 
