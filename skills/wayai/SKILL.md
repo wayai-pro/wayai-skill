@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.289.0
+version: 6.290.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -90,7 +90,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list of an invite-only community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
 | Communities — the name, settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md) |
 | Communities — moderators, reports, bans, the moderation log; what members see (joining, rooms, limits, courses, notifications) | UI only — see [`references/communities.md`](references/communities.md#moderation) and [For members](references/communities.md#for-members) |
-| Cases — connect this machine to one case, hold its files locally (clone, pull, push), read its state and its package, run its checks, start a phase's documents (`skeleton`), add notes, register received documents, link inputs to a received document or an earlier phase's official version, cite passages, record graph review verdicts | CLI (`wayai cases`, with a case token you approve in the web app) — see [`references/cases.md`](references/cases.md) |
+| Cases — connect this machine to one case, hold its files locally (clone, pull, push), read its state and its package, run its checks, start a phase's documents (`skeleton`), add notes, register received documents, link inputs to a received document or an earlier phase's official version (listing the official versions an input may link), cite passages, record graph review verdicts | CLI (`wayai cases`, with a case token you approve in the web app) — see [`references/cases.md`](references/cases.md) |
 | Cases — open a case, submit, sign off, approve, publish, Keep, accept a stopped review chain, publish a case type draft, and every other human decision | UI only (sign off, approve, return, publish a delivery and correct also in the mobile app; a case type draft is published in the web app only) — see [`references/cases.md`](references/cases.md#what-only-a-person-does) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |

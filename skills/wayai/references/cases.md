@@ -140,7 +140,7 @@ what the case says of itself now:
 | `agenda.json` | Each phase under way: its agenda groups and decisions; and the approved decisions |
 | `deliveries.json` | Each phase under way: its newest submission and manifest |
 | `inputs.json` | Each phase under way: each input whose link you may read, what it links (a collection document's version, an earlier phase's official version, a received document), where its text is, and its cited passages |
-| `inputs/<phase folder>/<input key>.md` | Each such input's registered text, byte for byte: a collection version's or a received document's |
+| `inputs/<phase folder>/<input key>.md` | Each such input's text, byte for byte: a collection version's or a received document's registered text, or an earlier phase's official version's text as WayAI numbers its passages |
 | `package-manifest.json` | The case's package: the revision of the type version it opened on that reaches it, with its version and revision, and each file's path, SHA-256 and size, and whether it was written here |
 | `package/` | The package's files (`instructions/`, `templates/`, `tools/`, `sources/`), read-only |
 | `session-start.sh` | The session-start hook |
@@ -148,13 +148,15 @@ what the case says of itself now:
 
 - **Never edit it.** Every pull rewrites it whole, and `push` never sends anything in it: an edit
   there is lost.
-- **Linked inputs' texts** are written only when their bytes match the hash the space registered
-  for them, so line N of the file is the line N a citation names (`wayai cases cite` takes those
-  numbers). A text that doesn't match is not written, and `inputs.json`, `README.md` and the
-  command's output say so. A received document's text is its registered Markdown, the one its
-  phase's `received/` holds. **An earlier phase's official version's text is not written:** the
-  CLI cannot read it yet, so `inputs.json` lists the input with its passages, and `README.md` and
-  the output say its text is not there.
+- **Linked inputs' texts** are written only when their bytes match the hash WayAI gives for them,
+  so line N of the file is the line N a citation names (`wayai cases cite` takes those numbers). A
+  text that doesn't match is not written, and `inputs.json`, `README.md` and the command's output
+  say so. A received document's text is its registered Markdown, the one its phase's `received/`
+  holds. An earlier phase's official version's text is the published document as it was
+  submitted, frozen: its one Markdown file, or a document of chapters joined as WayAI joins them,
+  checked against the SHA-256 WayAI gives for exactly those bytes. A file output (a spreadsheet,
+  a drawing) has no text, and neither has a text WayAI cannot serve (past its size limit, or not
+  text): `inputs.json` says `no_text`.
 - **The package** is the type version the case opened on, in the newest package revision that
   reaches the case: when a person publishes a revision to open cases, the next pull (the hook's
   included) delivers it, and `package-manifest.json` names the version and revision the mirror
@@ -191,7 +193,7 @@ wayai cases skeleton --phase <folder> [--output <code>] [--dir <clone>] [--confi
 wayai cases note "<text>" [--kind observation|next_step|pending|contribution] [--phase <folder>] [--task <task_id>] [--origin <who sent it>]
 wayai cases note done <note_id>
 wayai cases received add <file> --text <markdown file> --phase <folder> --type <type> [--title <title>] [--confidential]
-wayai cases link <input> --phase <folder> --official-version <id> | --received <id>
+wayai cases link <input> --phase <folder> --official-version <id | output code> | --received <id> | --list
 wayai cases cite <input> <start>[-<end>] --phase <folder>
 ```
 
@@ -206,7 +208,7 @@ wayai cases cite <input> <start>[-<end>] --phase <folder>
 | `note` | Adds a note: an observation unless `--kind` says otherwise. A `contribution` names who sent it (`--origin`). `--phase` and `--task` attach it |
 | `note done` | Marks a pending item or next step done |
 | `received add` | Registers a document a party sent, in one phase's `received/`, with its Markdown text read from the file `--text` names |
-| `link` | Links an input of one phase: one of origin `previous_output` to the current official version of an output of a phase it depends on (`--official-version`), one of origin `received` to a received document of the case, from any phase (`--received`) |
+| `link` | Links an input of one phase: one of origin `previous_output` to the current official version of an output of a phase it depends on (`--official-version`: its id, or its output's code), one of origin `received` to a received document of the case, from any phase (`--received`). `--list` lists the official versions an input of origin `previous_output` may link, each with the command that links it, and links nothing |
 | `cite` | Cites a passage of what an input links now, by its lines, numbered as the mirror's `inputs/` texts are (`12-18`, or one line). WayAI hashes the lines; the same lines again answer the passage it holds |
 
 - `--phase` takes a phase's folder (as `case.json` lists it). `--task` takes a task's id, as
@@ -235,16 +237,21 @@ wayai cases cite <input> <start>[-<end>] --phase <folder>
 - **Inputs and their links.** `explain --phase` lists each of the phase's inputs and what it links
   (or that it is dispensed, unlinked, or linked to something you may not read). `next` names each
   unlinked input with the command that links it (an unlinked collection input waits on a person,
-  in the web app), and each linked one whose version was replaced
+  in the web app; one of origin `previous_output` lists each official version it may link, with
+  its command, and waits on someone else while it may link none), and each linked one whose
+  version was replaced
   since: an official version a correction superseded is yours to relink, with the exact `link`
   command naming the current one; a newer version of a collection document awaits a person's
   decision in the web app. `check` reports both too (`input_unlinked`, `input_version_undecided`).
 - **`link` and `cite`** take the input's key (as `explain --phase` names it) and its phase.
   - A received document's id is in its files' names under a phase's `received/` in the clone
     (`<id>.<format>`, `<id>.text.md`), and `received add` prints it.
-  - No `wayai cases` command lists an earlier phase's official versions: for a first link, a person
-    gives you the id, or links the input in the web app. Relinking after a correction takes the
-    id `next` prints.
+  - The official versions an input of origin `previous_output` may link are the current one of
+    each output of a phase its phase depends on, of the input's document type, that you may read:
+    `link --list`, `next` and `explain --phase` list them, each with its command.
+    `--official-version <output code>` (as `memo`) links the one listed of that output; when
+    phases share the code, name it by its id. Relinking after a correction takes the id `next`
+    prints.
   - Only an output's current official version links: one a correction superseded is refused, naming
     the current one when you may read it.
   - A collection input is linked in the web app (keeping an earlier version of its document is a
