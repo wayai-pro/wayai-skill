@@ -13,7 +13,7 @@ authority: a push sends changes to the case, and the case decides what it takes.
 | Connect this machine to a case, or disconnect it | CLI (`wayai cases connect` / `disconnect`) and the web app's approval page ([Connecting a case](#connecting-a-case)) |
 | Hold the case's files locally and send changes | CLI (`clone`, `pull`, `push`, `log`) ([The working copy](#the-working-copy)) |
 | Read the case's state and its package (instructions, templates, tools, sources) at the start of a session | The clone's read-only mirror, `.wayai-mirror/` ([The mirror](#the-mirror)) |
-| See what to do, why something is blocked, a delivery's checks and whether the package was changed here; write the approved decisions; start a phase's documents; add notes; register a received document | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `skeleton`, `note`, `received add`) ([Work commands](#work-commands)) |
+| See what to do, why something is blocked, a delivery's checks and whether the package was changed here; write the approved decisions; start a phase's documents; add notes; register a received document; link an input to a received document or an earlier phase's official version; cite a passage of what an input links | CLI (`brief`, `next`, `explain`, `check`, `decisions`, `skeleton`, `note`, `received add`, `link`, `cite`) ([Work commands](#work-commands)) |
 | Graph review: read it, record `consistent` or `needs_change` | CLI (`review`, `review verdict`) ([Graph review](#graph-review)) |
 | Hold a case type as files and push a draft of it (a space administrator) | CLI (`type pull`, `type diff`, `type push`, or `wayai pull`/`push cases/<space>/<type>` in the organization's workspace), with your own sign-in ([Case types as files](#case-types-as-files)) |
 | Review a case type draft and publish it, choosing which cases a package revision reaches | A space administrator, in the web app only ([Reviewing and publishing a draft](#reviewing-and-publishing-a-draft)) |
@@ -139,8 +139,8 @@ what the case says of itself now:
 | `evidence.json` | Each phase under way: its inputs with their links, its outputs and its items |
 | `agenda.json` | Each phase under way: its agenda groups and decisions; and the approved decisions |
 | `deliveries.json` | Each phase under way: its newest submission and manifest |
-| `inputs.json` | Each phase under way: each input whose linked document you may read, the version it links, where its text is, and its cited passages |
-| `inputs/<phase folder>/<input key>.md` | Each such input's registered text, byte for byte |
+| `inputs.json` | Each phase under way: each input whose link you may read, what it links (a collection document's version, an earlier phase's official version, a received document), where its text is, and its cited passages |
+| `inputs/<phase folder>/<input key>.md` | Each such input's registered text, byte for byte: a collection version's or a received document's |
 | `package-manifest.json` | The case's package: the revision of the type version it opened on that reaches it, with its version and revision, and each file's path, SHA-256 and size, and whether it was written here |
 | `package/` | The package's files (`instructions/`, `templates/`, `tools/`, `sources/`), read-only |
 | `session-start.sh` | The session-start hook |
@@ -149,8 +149,12 @@ what the case says of itself now:
 - **Never edit it.** Every pull rewrites it whole, and `push` never sends anything in it: an edit
   there is lost.
 - **Linked inputs' texts** are written only when their bytes match the hash the space registered
-  for them, so line N of the file is the line N a citation names. A text that doesn't match is not
-  written, and `inputs.json`, `README.md` and the command's output say so.
+  for them, so line N of the file is the line N a citation names (`wayai cases cite` takes those
+  numbers). A text that doesn't match is not written, and `inputs.json`, `README.md` and the
+  command's output say so. A received document's text is its registered Markdown, the one its
+  phase's `received/` holds. **An earlier phase's official version's text is not written:** the
+  CLI cannot read it yet, so `inputs.json` lists the input with its passages, and `README.md` and
+  the output say its text is not there.
 - **The package** is the type version the case opened on, in the newest package revision that
   reaches the case: when a person publishes a revision to open cases, the next pull (the hook's
   included) delivers it, and `package-manifest.json` names the version and revision the mirror
@@ -187,6 +191,8 @@ wayai cases skeleton --phase <folder> [--output <code>] [--dir <clone>] [--confi
 wayai cases note "<text>" [--kind observation|next_step|pending|contribution] [--phase <folder>] [--task <task_id>] [--origin <who sent it>]
 wayai cases note done <note_id>
 wayai cases received add <file> --text <markdown file> --phase <folder> --type <type> [--title <title>] [--confidential]
+wayai cases link <input> --phase <folder> --official-version <id> | --received <id>
+wayai cases cite <input> <start>[-<end>] --phase <folder>
 ```
 
 | Command | Does |
@@ -200,6 +206,8 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
 | `note` | Adds a note: an observation unless `--kind` says otherwise. A `contribution` names who sent it (`--origin`). `--phase` and `--task` attach it |
 | `note done` | Marks a pending item or next step done |
 | `received add` | Registers a document a party sent, in one phase's `received/`, with its Markdown text read from the file `--text` names |
+| `link` | Links an input of one phase: one of origin `previous_output` to the current official version of an output of a phase it depends on (`--official-version`), one of origin `received` to a received document of the case, from any phase (`--received`) |
+| `cite` | Cites a passage of what an input links now, by its lines, numbered as the mirror's `inputs/` texts are (`12-18`, or one line). WayAI hashes the lines; the same lines again answer the passage it holds |
 
 - `--phase` takes a phase's folder (as `case.json` lists it). `--task` takes a task's id, as
   `brief` shows it; `note done` takes a note's id, as `next` shows it.
@@ -224,6 +232,23 @@ wayai cases received add <file> --text <markdown file> --phase <folder> --type <
   templates: it is refused unless the mirror's package was last written by
   `wayai cases pull --mirror-only --confidential` (or a pull with it), which a later run without the
   flag, the hook's included, undoes.
+- **Inputs and their links.** `explain --phase` lists each of the phase's inputs and what it links
+  (or that it is dispensed, unlinked, or linked to something you may not read). `next` names each
+  unlinked input with the command that links it (an unlinked collection input waits on a person,
+  in the web app), and each linked one whose version was replaced
+  since: an official version a correction superseded is yours to relink, with the exact `link`
+  command naming the current one; a newer version of a collection document awaits a person's
+  decision in the web app. `check` reports both too (`input_unlinked`, `input_version_undecided`).
+- **`link` and `cite`** take the input's key (as `explain --phase` names it) and its phase.
+  - A received document's id is in its files' names under a phase's `received/` in the clone
+    (`<id>.<format>`, `<id>.text.md`), and `received add` prints it.
+  - No `wayai cases` command lists an earlier phase's official versions: for a first link, a person
+    gives you the id, or links the input in the web app. Relinking after a correction takes the
+    id `next` prints.
+  - Only an output's current official version links: one a correction superseded is refused, naming
+    the current one when you may read it.
+  - A collection input is linked in the web app (keeping an earlier version of its document is a
+    person's decision); `cite` takes its passages too.
 - **Readiness is a note.** An agent never submits: it says the work is ready in a note, and a
   person submits in the web app.
 
@@ -284,7 +309,8 @@ and no hook adds it.
   app, and only while they hold the Confidential flag on the case. The token then reads what its
   person reads with the flag, and loses it at its next call once its person loses the flag.
 - **Once the right is on**, the commands that take no `--confidential` (`brief`, `next`,
-  `explain`, `check`) answer what the case gives the token, confidential content included; and a
+  `explain`, `check`, `link`, `cite`) answer what the case gives the token, confidential content
+  included; `link` and `cite` print ids, lines and hashes, never a source's text; and a
   mirror written without `--confidential` holds none of the case's own reads
   ([The mirror](#the-mirror)).
 - **Case types** are read whole by their administrators: `type pull` writes every package file,
@@ -306,8 +332,8 @@ also be done in the mobile app's Cases tab.
 - publish a case type draft, and choose which cases a package revision reaches (a space
   administrator, in the web app only: [Reviewing and publishing a draft](#reviewing-and-publishing-a-draft)).
 
-Other case work also has no `wayai cases` command: tasks, owners and deadlines, linking inputs,
-citing passages and proposing values are done in the web app.
+Other case work also has no `wayai cases` command: tasks, owners and deadlines, linking a
+collection input, and proposing values are done in the web app.
 
 ## Case types as files
 

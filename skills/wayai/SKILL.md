@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.288.0
+version: 6.289.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -90,7 +90,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list of an invite-only community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
 | Communities — the name, settings (who may join: `admission`), rules, the join link's on/off state, rooms, courses (modules, lessons) | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md) |
 | Communities — moderators, reports, bans, the moderation log; what members see (joining, rooms, limits, courses, notifications) | UI only — see [`references/communities.md`](references/communities.md#moderation) and [For members](references/communities.md#for-members) |
-| Cases — connect this machine to one case, hold its files locally (clone, pull, push), read its state and its package, run its checks, start a phase's documents (`skeleton`), add notes, register received documents, record graph review verdicts | CLI (`wayai cases`, with a case token you approve in the web app) — see [`references/cases.md`](references/cases.md) |
+| Cases — connect this machine to one case, hold its files locally (clone, pull, push), read its state and its package, run its checks, start a phase's documents (`skeleton`), add notes, register received documents, link inputs to a received document or an earlier phase's official version, cite passages, record graph review verdicts | CLI (`wayai cases`, with a case token you approve in the web app) — see [`references/cases.md`](references/cases.md) |
 | Cases — open a case, submit, sign off, approve, publish, Keep, accept a stopped review chain, publish a case type draft, and every other human decision | UI only (sign off, approve, return, publish a delivery and correct also in the mobile app; a case type draft is published in the web app only) — see [`references/cases.md`](references/cases.md#what-only-a-person-does) |
 | Organization — create | CLI (`wayai org create`) or UI |
 | Organization — update, delete | UI |
@@ -636,7 +636,7 @@ wayai communities       # An organization's communities (owners and admins; brow
 wayai contacts          # Browser `wayai login` only. Person links and the deny list (every hub toolset call reads them): link-person <person_id> --to <person_id|contact_id> / unlink-person (org:write), person-links <person_id>, lookup-person <person_id>, deny-person / undeny-person <person_id|contact_id>, denied-persons [--cursor] [--limit] (organization admins) (references/bases/access.md#person-links-and-the-deny-list); --org, --json
 wayai cases connect     # Connect this machine's code agents to ONE case: `wayai cases connect <org_id> <space_id> <code> [--label <machine>]` (the case's agents page shows the exact command; browser `wayai login` only; you approve it in the web app). Run `wayai logout` after it. See references/cases.md
 wayai cases disconnect  # Revoke a case's token and remove it from this machine: `wayai cases disconnect <code>` [--org] [--space]. See references/cases.md
-wayai cases             # Work the connected case with its token: clone, pull, push, log, brief, next, explain, check, decisions, skeleton, note, received add, review, review verdict; --confidential only when you mean it. See references/cases.md
+wayai cases             # Work the connected case with its token: clone, pull, push, log, brief, next, explain, check, decisions, skeleton, note, received add, link, cite, review, review verdict; --confidential only when you mean it. See references/cases.md
 wayai pull communities/<community_id|folder>   # A community's settings, rules, join link state, rooms and courses as files (named explicitly, never by a bare pull); push applies them to the LIVE community (asks first; --dry-run, --theirs on pull)
 wayai pull cases/<space>/<type>                # A case type as files in wayai-ws/cases/<space>/<type>/ (a space administrator, your own sign-in; named explicitly, never by a bare pull; first pull: cases/<space_id>/<type_id>); push sends it as a draft a person publishes in the web app. See references/cases.md#case-types-as-files
 wayai status            # Show workspace status
