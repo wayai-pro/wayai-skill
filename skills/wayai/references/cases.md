@@ -290,9 +290,47 @@ work goes on; the limits are the platform's, not the case's.
 
 **A chain stops after 5 rounds.** A stopped chain takes no verdict, and editing its text does not
 reopen it: the text can be edited and the work go on without a new review of that chain, or a
-person accepts the chain in the web app. **Keep** (leaving an item as it is against a
-finding) and **accepting a stopped chain** are a person's, on the phase page's review in the web
-app: the CLI offers neither, and asking it (`review keep`, `review accept`) prints that.
+person accepts the chain in the web app, up to a revision, which restarts its count from there.
+**Keep** (leaving an item as it is against a finding) and **accepting a stopped chain** are a
+person's, on the phase page's review in the web app: the CLI offers neither, and asking it
+(`review keep`, `review accept`) prints that.
+
+### Working through a review
+
+Review reads the case's files as WayAI holds them, never your clone's: push a change, then read
+the review. Since it blocks nothing, running it is up to you: after each push, and before a note
+says the work is ready.
+
+1. **Push, then review:** `wayai cases push -m "<message>"`, then `wayai cases review`.
+2. **Read each changed item**, its text before and now. An `affected` item kept its text, but what
+   it cites changed (`because:` names it: a name in `analysis/results.csv` or
+   `analysis/decisions.csv`, or a newer version of an input): check that its text still holds.
+3. **Read each pair's neighbor** against the source's change. `connected:` says why the two are
+   connected: the same calculation, decision or task, an overlapping passage or a newer version of
+   the same input, one citing the other (`[[doc:…]]`), `depends on` or `reflects`. Then run the
+   command the pair printed, with your verdict and a `--reason` saying what you checked:
+
+   | Verdict | When |
+   |---------|------|
+   | `consistent` | The neighbor still holds with the change |
+   | `needs_change` | The neighbor must change: change it, push, and read the review again |
+
+   If a person decides the neighbor stays as it is, that is their Keep, in the web app: never
+   record `consistent` in its place.
+4. **What comes back.** A pair with a verdict is not asked again until either item's text
+   changes, or what an `affected` item cites changes again. A neighbor's own neighbors join the
+   review only once it is one of the changed items itself; changing it after `needs_change` makes
+   it one, a round further on.
+5. **For a person to look at** lists what no verdict settles (text outside any item, a changed
+   header or title, a removed document, a changed file piece, a CSV name no item cites, and the
+   like): pass it to the person conducting the case, for example in a note (`wayai cases note`).
+6. **A stopped chain** (`review` exits 1) takes nothing more from you: ask a person to decide, as
+   above. Pairs whose neighbor is the stopped item wait while it is stopped (`waiting on it:`).
+7. **Confidential content** ([Confidentiality](#confidentiality)). The review's notice that it
+   left confidential content out says nothing of what the case holds: never conclude there is no
+   confidential neighbor. A verdict on a pair touching confidential content is kept confidential
+   by WayAI. Any other verdict's reason is read by everyone who reads the case's review, so it
+   must reveal nothing confidential, unless you mark it (`--mark-confidential`).
 
 ## Confidentiality
 
