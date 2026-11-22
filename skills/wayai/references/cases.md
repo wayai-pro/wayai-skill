@@ -48,7 +48,8 @@ What happens:
    in this machine's keyring, apart from your sign-in.
 
 The token reaches **that case alone**, with your rights on it, read live: a right you lose, the
-token loses. It never takes a human decision ([What only a person does](#what-only-a-person-does)),
+token loses. The one thing it does beyond the case is relate it to another case you could relate
+it to, checked with the same rights (a confidential one only with the Confidential right on). It never takes a human decision ([What only a person does](#what-only-a-person-does)),
 and it starts without the Confidential right ([Confidentiality](#confidentiality)). A person holds
 at most 10 open requests in a space; each expires 10 minutes after it was made.
 
