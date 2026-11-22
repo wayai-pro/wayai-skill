@@ -240,10 +240,20 @@ wayai cases cite <input> <start>[-<end>] --phase <folder>
   unlinked input with the command that links it (an unlinked collection input waits on a person,
   in the web app; one of origin `previous_output` lists each official version it may link, with
   its command, and waits on someone else while it may link none), and each linked one whose
-  version was replaced
-  since: an official version a correction superseded is yours to relink, with the exact `link`
-  command naming the current one; a newer version of a collection document awaits a person's
-  decision in the web app. `check` reports both too (`input_unlinked`, `input_version_undecided`).
+  newer version awaits a decision: a newer version of a collection document, or an official
+  version a correction superseded. That decision is a person's, in the web app: keep the version
+  linked, with a justification, or adopt the current one. `next` lists it under "Waiting on
+  someone else", never as a relink for you. `check` reports both too (`input_unlinked`,
+  `input_version_undecided`).
+- **A kept version is settled.** Once a person keeps an earlier official version, `next` names
+  nothing of it. `explain --phase` says it is kept and over which current version, with the
+  person's justification when you may read both versions (never while this machine's
+  Confidential right is on: read it in the web app then). Neither command ever suggests relinking
+  it. When a version is superseded by one you may not read, you're not told whether a person kept
+  it, so it waits on a person.
+- **An older server** that doesn't say which version awaits a decision: a superseded official
+  version is undecided until it is relinked, and `next` gives you the exact `link` command naming
+  the current one. That is the only answer such a server takes, and no keep exists there.
 - **`link` and `cite`** take the input's key (as `explain --phase` names it) and its phase.
   - A received document's id is in its files' names under a phase's `received/` in the clone
     (`<id>.<format>`, `<id>.text.md`), and `received add` prints it.
@@ -251,10 +261,11 @@ wayai cases cite <input> <start>[-<end>] --phase <folder>
     each output of a phase its phase depends on, of the input's document type, that you may read:
     `link --list`, `next` and `explain --phase` list them, each with its command.
     `--official-version <output code>` (as `memo`) links the one listed of that output; when
-    phases share the code, name it by its id. Relinking after a correction takes the id `next`
-    prints.
+    phases share the code, name it by its id.
   - Only an output's current official version links: one a correction superseded is refused, naming
     the current one when you may read it.
+  - `link` writes nothing over a version a person kept or one awaiting their decision, and
+    `link --list` lists nothing for such an input: relinking would take that decision.
   - A collection input is linked in the web app (keeping an earlier version of its document is a
     person's decision); `cite` takes its passages too.
 - **Readiness is a note.** An agent never submits: it says the work is ready in a note, and a
