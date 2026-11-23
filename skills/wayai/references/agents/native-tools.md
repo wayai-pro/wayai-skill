@@ -36,6 +36,7 @@ Other native fields (schema, instructions, operation) come from the platform cat
 - [Skill & File Tools](#skill--file-tools)
 - [Code Sandbox Tools](#code-sandbox-tools)
 - [Repository Tools](#repository-tools)
+- [Community Tools](#community-tools)
 - [Skill Tools](#skill-tools)
 - [History & Summary Tools](#history--summary-tools)
 - [Meta Tools](#meta-tools)
@@ -437,6 +438,33 @@ Open a pull request on the agent's repository, from a branch it pushed. The repo
 
 ---
 
+## Community Tools
+
+For an automation's agent that keeps a community's tiers in step with what another system reports, such as a payment provider's subscription webhook. See [communities.md → Tiers from a webhook](../communities.md#tiers-from-a-webhook) for the whole setup.
+
+### community_tiers
+
+Give (`add_tiers`) or take away (`remove_tiers`) a community's tiers on the access-list entry for an email. `add_tiers` adds the email to the access list when the list does not hold it. The entry's tiers then reach the members linked to it, and members already in the community whose verified email it is are linked at once. Both actions are safe to repeat. It never takes an email off the access list, so it never removes a member.
+
+Assign it in YAML (`tools.native` in `agents/<slug>.yaml`), to a `pilot` or `pilot_specialist`; it is not served to a hosted agent. A call runs only when every one of these holds, and is refused otherwise:
+
+- the hub is a **production task hub**, and the turn is no eval run;
+- the conversation is a task an automation opened, of trigger `webhook` or `schedule` and target `none` ([automations.md](../automations.md#webhook-triggers)), holding no team message and no consult thread — so **no person's message reaches the tool's turn**;
+- the community belongs to the hub's organization, and its `tier_managers` setting lists this hub with every tier named.
+
+**Text inside the webhook body or another tool's result can still steer which email the model picks, bounded by the hub's listed tiers, and the tool never revokes.**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `add_tiers` or `remove_tiers` |
+| `community_id` | string | Yes | The community's id |
+| `email` | string | Yes | The person's email, as they verified it with WayAI; trimmed and lowercased |
+| `tiers` | string[] | Yes | The tiers, by name or id (1 to 20), each one this hub manages in that community |
+
+**Response.** `{ email, tiers, linked }`: the entry's tiers among those this hub manages, by name, and how many members were linked to it — or `unavailable` when that could not be checked just then (the change is saved; call again later to retry the linking). A refusal names its reason: not run where the tool runs, no such community in the hub's organization, a hub the community does not list, a tier the community does not have or this hub does not manage, or a full access list.
+
+---
+
 ## Skill Tools
 
 Read a [skill's](../skills.md#skill-files) content on demand (tool-based execution mode). `skill_id` = the skill's id (an agent link's `skill_id`); the ids of the skills linked to the agent are injected into the `skill_id` parameter description at turn time, so the agent can discover them without any hand-written ids. (The handler also resolves a skill by name.)
@@ -572,6 +600,7 @@ hub → **Connections** → set up the MCP Server connection → **Sync MCP tool
 | Skill & File | `list_files`, `read_file`, `write_file`, `edit_file`, `send_files` |
 | Code Sandbox | `bash`, `copy_to_sandbox`, `copy_from_sandbox` (need `code_execution_enabled`) |
 | Repository | `open_pull_request` (a hosted repository agent's) |
+| Community | `community_tiers` (pilot track, in a production task hub's automation task only) |
 | Skill | `read_skill`, `read_skill_file` |
 | History & Summary | `get_conversations_summary`, `get_conversation`, `expand_summary` |
 | Meta | `get_tool_schema`, `execute_tool` |
