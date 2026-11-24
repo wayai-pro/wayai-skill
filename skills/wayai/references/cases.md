@@ -43,6 +43,7 @@ also be done in the mobile app's Cases tab.
   agenda, close a case;
 - Keep an item against a review finding, accept a stopped review chain;
 - authorize an agent, or switch an agent's Confidential right;
+- write a case's own instructions and skills (`instructions/case/`);
 - publish a case type draft, and choose which cases a package revision reaches (a space
   administrator, in the web app only: [Reviewing and publishing a draft](#reviewing-and-publishing-a-draft)).
 
@@ -80,6 +81,23 @@ wayai cases type push [--dir <folder>] [--dry-run]
 - A folder with no package, pushed from a version that holds one, is taken as a draft but cannot
   be published (it would drop the type's instructions): the push says so. Push again with the
   package.
+
+### A type's skills
+
+A case type can carry skills for the agents that operate its cases, in its package:
+`instructions/skills/<name>/`, each holding a `SKILL.md` and, beside it, only Markdown, text,
+JSON, YAML, CSV and image (PNG, JPEG) files.
+
+- `SKILL.md` opens with front matter whose `name` is the folder's name (lowercase letters, digits
+  and hyphens) and whose `description` (at most 1,024 characters) says when to use it. A folder
+  without one, or whose `SKILL.md` names another, is refused (`package_skill_invalid`).
+- `instructions/org/` is reserved: any file there is refused (`package_reserved_path`).
+- A case reads its type's skills with the package. Each operator's CLI installs them for the
+  agent in the case's clone, below the case's own skills, which a person writes in the case
+  (`instructions/case/skills/<name>/`) and which win over a type's skill of the same name. A skill
+  named as a platform skill (`wayai`, `wayai-cases`, `wayai-admin`) is never installed.
+- Pushing or pulling a type with skills takes a CLI released with this support: an older one
+  refuses the package.
 
 A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
 
