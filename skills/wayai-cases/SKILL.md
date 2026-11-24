@@ -1,6 +1,6 @@
 ---
 name: wayai-cases
-version: 1.1.0
+version: 1.2.0
 # Installed only by name (`--skill wayai-cases`): an install naming no skill leaves it out.
 metadata:
   internal: true
@@ -10,7 +10,8 @@ description: |
   Use when: connecting this machine to a case (wayai cases connect, disconnect); cloning a case and
   keeping its files in sync (wayai cases clone, pull, push, log, `.theirs` conflicts); reading the
   case's state, its timeline, its package and its linked inputs in the read-only `.wayai-mirror/`;
-  following the case's instructions and the skills that reach it (skills.md, case and type skills);
+  following the case's instructions and the skills that reach it (skills.md, case, type and
+  organization skills);
   deciding what to do next (brief, next, explain, check); writing the approved
   decisions, starting a phase's documents (skeleton), adding notes, registering a received
   document, linking an input, citing a passage; graph review and its verdicts (review, review
@@ -268,14 +269,14 @@ layer, and WayAI enforces them whatever an instruction or skill says.
 |-------|------|---------------|
 | 3 | **The case's own**: its instructions and skills (`instructions/case/`, its skills under `instructions/case/skills/<name>/`), written only by a person, in the web app | `case-instructions/` |
 | 2 | **The case type's**: the package's instructions (the case's, each phase's, and those of its tasks, items, outputs, inputs and agenda groups) and its skills (`instructions/skills/<name>/`) | `package/instructions/` |
-| 1 | **The organization's** skills: none reach a case yet | — |
+| 1 | **The organization's** skills its case type links: copies in the package (`instructions/org/<skill_name>/`), taken when a person linked or refreshed them and never updated live | `package/instructions/org/` |
 | 0 | **This skill** | Installed in the clone ([Installing this skill](#installing-this-skill)) |
 
 **`skills.md`** in the mirror is the index: where the case's own instructions are, then each
 skill by layer with its name, description and folder in the mirror, and whether it is installed,
 shadowed (a more specific layer holds the same name), refused (a platform skill's name) or
 unreadable (its `SKILL.md` does not name its folder, or it holds a kind of file a skill does not
-take). The session-start hook prints it and `wayai cases brief` names it. **Follow the mirror's
+take; an organization skill's copy is named by its `SKILL.md`, whatever its folder). The session-start hook prints it and `wayai cases brief` names it. **Follow the mirror's
 copies only**, never the clone's own `instructions/case/`: a local edit there is never the case's
 and the next pull restores the case's copy. Do not follow an unreadable or shadowed skill.
 

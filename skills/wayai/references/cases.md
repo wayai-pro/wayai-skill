@@ -62,6 +62,7 @@ draft of it. These commands take your own sign-in (`wayai login`), never a case 
 wayai cases type pull <org_id> <space_id> <type_id> [--dir <folder>] [--overwrite] [--yes]   # default ./<abbreviation>
 wayai cases type diff [--dir <folder>] [--json]     # in the type's folder, or name it with --dir
 wayai cases type push [--dir <folder>] [--dry-run]
+wayai cases type skills add|remove|refresh [<org skill>] [--dir <folder>]   # link organization skills
 ```
 
 - `type pull` writes the type's current version: `type.json` (its name and definition) and its
@@ -91,13 +92,57 @@ JSON, YAML, CSV and image (PNG, JPEG) files.
 - `SKILL.md` opens with front matter whose `name` is the folder's name (lowercase letters, digits
   and hyphens) and whose `description` (at most 1,024 characters) says when to use it. A folder
   without one, or whose `SKILL.md` names another, is refused (`package_skill_invalid`).
-- `instructions/org/` is reserved: any file there is refused (`package_reserved_path`).
+- `instructions/org/` holds only linked organization skills' copies and their `links.json`
+  ([Organization skills on a type](#organization-skills-on-a-type)); any other file there is
+  refused (`package_reserved_path`).
 - A case reads its type's skills with the package. Each operator's CLI installs them for the
   agent in the case's clone, below the case's own skills, which a person writes in the case
   (`instructions/case/skills/<name>/`) and which win over a type's skill of the same name. A skill
   named as a platform skill (`wayai`, `wayai-cases`, `wayai-admin`) is never installed.
 - Pushing or pulling a type with skills takes a CLI released with this support: an older one
   refuses the package.
+
+### Organization skills on a type
+
+A case type can link the organization's skills, so the agents operating its
+cases follow them. A link copies the skill into the type's package: it never reaches one case
+alone, and a case never follows the organization's skill live.
+
+```bash
+wayai cases type skills add <org skill>        # by its skill name or id
+wayai cases type skills refresh [<org skill>]  # every link, or the one named
+wayai cases type skills remove <org skill>
+```
+
+- Run in a type's folder (or name it with `--dir`), or in a workspace's `cases/<space>/<type>/`.
+  `add` and `refresh` read the skill as it is now and write its enabled files, read-only, under
+  `instructions/org/<skill_name>/`, recording in `instructions/org/links.json` the skill's id, each
+  copied file's id, path and SHA-256, and the skill's and its files' and folders' state when
+  copied. Never edit a copy or `links.json`: `refresh` writes them again. `remove` takes the copy
+  out of the folder; nothing is sent until you push.
+- **Linkable:** an enabled skill of the space's organization, whose environment is All or
+  Production, and whose enabled files a type's skill folder takes (Markdown, text, JSON, YAML,
+  CSV, PNG and JPEG), each within the package's per-file rules (an image of at most 1 MiB, text
+  in UTF-8, no blank Markdown file). Its enabled files include a root `SKILL.md` whose front matter
+  gives a valid `name` and a `description`, as a case reads it. A refusal names the skill and
+  the file, and writes nothing.
+  The copies count against the package's limits, which `type push` checks.
+- **Who may link:** adding or refreshing a link takes reading the organization's skills
+  organization-wide (`org:read` over every hub). Linking makes the skill readable by every member
+  who reads the type's cases (guests excepted) and by their agents.
+- `type diff` lists each link added, refreshed, unchanged or removed. `type push` stops before
+  sending when a copy is not what `links.json` records; the space then checks every added or
+  refreshed link against the organization's skill and refuses one that does not match it
+  (`case_org_skill_link_invalid`, naming each) or a pusher without the read
+  (`case_org_skill_link_forbidden`). A link carried unchanged is not checked again, so a change to
+  the definition alone never waits on a linked skill.
+- A link change is a package change: published as a revision of the current version, it reaches
+  new cases, or open cases too, as the publisher chooses. Removing a link drops the copy from
+  later revisions only; cases on an earlier one keep theirs.
+- The type's page in the web app flags each linked skill changed, turned off or deleted since its
+  copy. Only a refresh, pushed and published, brings the change to the type's cases.
+- Pulling, pushing or reading a type that links organization skills takes a CLI released with this
+  support: an older one is refused, and told to update.
 
 A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
 
