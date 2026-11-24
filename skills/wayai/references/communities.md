@@ -338,7 +338,8 @@ rev: v1:3b6e0f9a2d18
 title: Welcome
 published: true                # members see a published lesson of a published course
 room: general                  # a room's key in community.yaml, for its discussion; omit for none
-video_url: https://youtu.be/…  # YouTube only; omit for none
+video_url: https://youtu.be/…  # a YouTube video; omit for none
+# video_file: videos/welcome.mp4  # or an uploaded video instead: see Uploaded lesson videos
 links:                         # at most 10
   - title: Setup guide
     url: https://example.com/setup
@@ -366,6 +367,48 @@ The lesson's text, in Markdown: at most 20,000 characters.
 - **The text** follows the second `---`. The file ends with one newline after it, which is not
   part of the text; anything else — blank lines, a text that itself starts with `---` — is kept as
   written.
+- **A lesson's video** is a YouTube `video_url:` or an uploaded `video_file:`, never both
+  ([Uploaded lesson videos](#uploaded-lesson-videos)).
+
+### Uploaded lesson videos
+
+A lesson can hold a video file uploaded to WayAI instead of a YouTube link — for an organization on
+a paid plan that WayAI has enabled uploaded videos for.
+
+- **Private to the lesson's readers.** Only people who can read the lesson can watch it, through
+  links that expire: a copied link stops working, and nobody outside the community reaches it.
+- **The storage limit.** The organization's uploaded videos count against its storage limit, in
+  minutes of video: an upload past it is refused, and removing a lesson's uploaded video frees its
+  minutes. A file is at most 30 GB, and a video's length is capped too — the refusal names the most.
+- **Watching is metered.** The minutes members watch count toward the organization's operations,
+  tallied per day. Past its operations quota, uploads stop and uploaded videos pause for members
+  until it is back within it.
+- **In the web console**, a lesson's **Video** offers **YouTube link** or **Upload**. Upload takes a
+  file, shows its progress (a stopped upload can resume), then processes the video, which can take a
+  few minutes — the page can be left meanwhile. **Remove video** deletes it; saving a YouTube link
+  removes it too.
+- **As code**, `video_file:` names the file: a path from the lesson file's folder
+  (`videos/welcome.mp4`, `../../../videos/welcome.mp4`) that stays inside the community's folder and
+  is never reached through a symlink.
+  - **Push uploads it** after the lessons' other changes, only when its content (its SHA-256)
+    differs from the lesson's video: pushing again uploads nothing, nor does the same file under
+    another name. Push lists each upload with its size, then waits until the video is ready, up to an
+    hour; a push stopped while the video is processed leaves it processing, and the next push waits
+    for it instead of sending the file again. A new lesson is created first, then gets its video.
+  - **Pull writes `video_file:`** as the name the video was uploaded under, and never downloads it:
+    its bytes stay on WayAI. A `video_file:` whose file is not in the folder stands for the lesson's
+    uploaded video while it names that video's file, so a clone without the video files still
+    pushes; when the video is replaced (by another upload or a YouTube link) or removed in the web
+    console and nothing else of the lesson changed there, pull takes it like any change made on the
+    server only (with another field
+    changed too, it is a conflict `--theirs` resolves). One naming anything else is refused before
+    anything is written, and stays as written through web edits of the lesson's other fields; a web
+    change to the video itself replaces it with the server's video, and pull or push says so. When the folder holds
+    other bytes under that name, pull says so: the next push would upload them.
+  - **Removing it.** Taking `video_file:` out, with no `video_url:`, removes the uploaded video, and
+    a `video_url:` in its place replaces it; a `video_file:` on a lesson with a YouTube video
+    replaces that once the upload is ready.
+  - Keep large video files out of git — a `.gitignore` entry such as `*.mp4`, or Git LFS.
 
 ### How pull and push decide
 
@@ -617,9 +660,13 @@ CLI. Each link: [navigation.md → Community](navigation.md#community).
   `courses_label` (**Courses** when none is set). A draft course or lesson never shows, and a module
   shows once it holds a published lesson. A course gated to tiers shows only to the members holding
   one of them ([Tiers](#tiers)).
-- **A lesson** shows its YouTube video (the mobile app opens it in YouTube or the browser), its text, its links,
+- **A lesson** shows its video — a YouTube video (the mobile app opens it in YouTube or the browser),
+  or an uploaded one, played in place on the web and in the mobile app — its text, its links,
   **Discuss in <room>** when it has a room, and "This lesson needs a paid plan." when
   `requires_paid_plan` is set — a mark only, nothing is withheld, and the iOS app does not show it.
+- **An uploaded video that cannot play now** reads "This lesson's video is unavailable for now." while
+  the organization is past its operations quota, and "This lesson's video isn't available." once it
+  no longer hosts uploaded videos ([Uploaded lesson videos](#uploaded-lesson-videos)).
 - **Mark complete** is the only way a lesson counts as done — watching the video does not — and it
   cannot be undone. A course shows "<n> of <total> lessons complete" and **Next lesson**. The
   progress outlasts a removal or a ban and comes back when the person joins again.
@@ -660,3 +707,10 @@ CLI. Each link: [navigation.md → Community](navigation.md#community).
 | … id … is also …'s — a copy keeps its original's id | Remove the `id` and its revs from the copy: push then creates it as a new one |
 | … holds at most … | Remove creates from the files: nothing is deleted, and a draft still counts |
 | Skipped: … — no module of the course lists it | A draft in progress: list the lesson in a module's `lessons:` to sync it |
+| … video_file … is not in the files …, and is not the lesson's uploaded video | Put the file at that path, or set `video_file:` to the name pull wrote. Nothing was pushed |
+| a lesson holds a video_url or a video_file, not both | Keep one of them |
+| … video_file must stay inside the community's folder | Move the video into the community's folder and point `video_file:` at it |
+| Push stopped at lesson … (video …): this organization can't upload lesson videos | Uploaded videos are for organizations on a paid plan that WayAI has enabled them for; a YouTube `video_url:` works meanwhile |
+| Push stopped at lesson … (video …): … already fill its storage | Remove another lesson's uploaded video (take its `video_file:` out and push, or **Remove video** in the web console), then push again |
+| Push stopped at lesson … (video …): … past its operations quota | Uploads stop until the organization is back within its operations quota |
+| Push stopped at lesson … (video …): … isn't a video that can be played | Export the video again (MP4 plays everywhere) and push |

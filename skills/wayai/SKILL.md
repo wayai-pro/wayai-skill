@@ -1,6 +1,6 @@
 ---
 name: wayai
-version: 6.295.0
+version: 6.296.0
 description: |
   Configure WayAI hubs, agents, tools, channels, skills, states, evals, automations, and analytics,
   plus the Data surface (bases, record types, records, relationships, files, toolsets), and live AI
@@ -87,7 +87,7 @@ WayAI is where AI agents and people work together — serving your customers and
 | Bug reporting | CLI (`wayai report create`) |
 | Workspace discovery | CLI (`wayai list`) |
 | Communities — list an organization's, read / rotate / turn off a join link, read the stats, the access list (whom an invite-only community admits) and the tiers each entry gives, in any community | CLI (`wayai communities`, browser sign-in only) or UI — see [`references/communities.md`](references/communities.md) |
-| Communities — the name, settings (who may join: `admission`; which hubs manage tiers: `tier_managers`), rules, the join link's on/off state, tiers, rooms, courses (modules, lessons) and their tier gates | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md) |
+| Communities — the name, settings (who may join: `admission`; which hubs manage tiers: `tier_managers`), rules, the join link's on/off state, tiers, rooms, courses (modules, lessons, each lesson's YouTube or uploaded video) and their tier gates | CLI (`wayai-ws/communities/<folder>/`, `wayai pull`/`push communities/<folder>`; push edits the live community) or UI — see [`references/communities.md`](references/communities.md) |
 | Communities — give and take away tiers from a payment provider's webhook, with no person in the loop | An agent with the native `community_tiers` tool in a production task hub's webhook automation — see [`references/communities.md`](references/communities.md#tiers-from-a-webhook) |
 | Communities — moderators, reports, bans, the moderation log; what members see (joining, rooms, limits, courses, notifications) | UI only — see [`references/communities.md`](references/communities.md#moderation) and [For members](references/communities.md#for-members) |
 | Cases — connect this machine to one case and work it in the case's clone (clone, pull, push, the read-only mirror, the work commands, graph review verdicts) | The operator skill, `wayai-cases`, installed in the clone's folder (`mkdir -p .claude && npx skills add wayai-pro/wayai-skill --skill wayai-cases -y`) — see [its full text](https://github.com/wayai-pro/wayai-skill/blob/main/skills/wayai-cases/SKILL.md) and [`references/cases.md`](references/cases.md) |
