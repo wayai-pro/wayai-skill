@@ -4,7 +4,7 @@ A **page** is a small working tool a hub offers its people: a coach entering swi
 
 Pages are hub config: you write them in the hub folder, push them to a preview with `wayai push`, and publish them with the rest of the hub. Each page serves one audience: the hub's **team**, or its **customers**, each of whom reaches only their own records and shared ones ([Customer Pages](#customer-pages)).
 
-Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look.
+Start a page with `wayai page new <slug>`, which writes one already styled like the app, and read [Designing a Page](#designing-a-page) before you change its look. After each push, `wayai page check <slug>` runs the page the way the app does and tells you whether it works ([Checking a Page](#checking-a-page)).
 
 > **Where people open them.** On web, a Hub User given access on the Users tab opens a customer page from the header of their own conversation with the hub, the one `https://app.wayai.pro/chat/<hubId>` opens, before its first message too; in the mobile app, from the overflow menu (**⋮**) of that same conversation, which lists the hub's customer pages with `show_in_conversation: true` (and no **All pages**), opening one in the same full-screen sheet as a team page. On web, a team member opens a team page from the Support nav: from a conversation's header, which offers the hub's pages with `show_in_conversation: true`, and from the hub's Pages section, which lists every page offered to them; that header and the Support nav's **Pages** item open it. On web, the navigation bar's **Pages** entry, between Community and Cases, shows to a team member who is offered at least one team page (on a narrow screen's bottom bar of more than five items, it sits in **More**): it lists the team pages offered to them across the hubs whose Support conversations they see, hub by hub, and opens one filling the window beside the bar, outside any conversation. In the mobile app, a team member opens a page from a support conversation's overflow menu (**⋮**), which lists the pages with `show_in_conversation: true` and then **All pages** for the rest, or every page offered to them when none sets it; the page opens in a full-screen sheet over the conversation, closed by its close button or by dragging its top bar down. The mobile app has no Pages section. In either app, a page also opens from a page card an agent sent in the conversation ([Page Cards](#page-cards)).
 
@@ -15,6 +15,7 @@ Start a page with `wayai page new <slug>`, which writes one already styled like 
 - [Customer Pages](#customer-pages)
 - [Page Cards](#page-cards)
 - [Push, Pull, Diff and Publish](#push-pull-diff-and-publish)
+- [Checking a Page](#checking-a-page)
 - [Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)
 - [Live Refresh](#live-refresh)
 - [Designing a Page](#designing-a-page)
@@ -181,6 +182,29 @@ The fallback goes out as any message of the agent's does on the conversation's c
 - **A connection with no token yet is checked only partly when a page is copied.** A toolset connection's token never travels with a copy. So on a first publish, a new preview or a CI branch preview, each toolset connection arrives with no token, and its pages are still copied. Only the checks that need the token wait: on a team page whether its connection records the toolset as customer-scoped, on a customer page the customer-facing rule ([Customer Pages](#customer-pages)), and signed file URLs on both. The page calls nothing through that connection until the hub sets its token (`wayai set-connection-credential` on a preview; the production credential in the connections tab on production). The first publish that syncs a change after production's token is saved checks the page fully; saving the token alone is no change to publish.
 - **Design warnings never stop a push.** Push and diff also print a warning for each design rule a page breaks, in the same block, marked `(design)`: [The Design Warnings](#the-design-warnings).
 - **A push checks only the pages it writes.** Pushing a page the hub already holds unchanged checks nothing, so a CI branch preview takes back its own pages. Pushing a changed or new page is held to every rule, so set the token of a preview's toolset connection before you push a page that calls it.
+
+## Checking a Page
+
+```bash
+wayai push
+wayai page check results            # the page the preview holds, run as you
+wayai page check results --json     # the same report, for a script or an agent
+```
+
+`wayai page check <slug>` runs the page your preview hub holds, signed in as you, in a headless browser on your machine, inside the same pages shell and under the same sandbox as the WayAI app, and prints:
+
+- **Shell** and **Page:** whether the shell loaded, and whether the page initialized: it sent `ui/initialize`, then `ui/notifications/initialized`.
+- **Errors:** what the page itself raised: uncaught script errors, anything the sandbox's content policy blocked (a `fetch`, an image from the Internet), and `console.error` lines. Lines marked **Shell note** come from the shell around the page, never from your page, and fail nothing.
+- **Tool calls:** each call the page made, by tool, with its outcome: `ok`, `tool error` (the tool answered an error), `refused` (the bridge refused the call, with its reason: the page was pushed again since it opened, a tool not in `page.yaml`, arguments its schema refuses, a rate limit), `failed` (no answer), or `not sent`.
+- **Refused:** each other request the host refused (`ui/open-link`, `ui/download-file`, …).
+
+It exits 1 unless the page initialized, raised no error, and every call it sent answered `ok`. It ends once the page initialized and has been quiet for a moment, or after `--timeout` seconds (20 by default).
+
+- **What it sends.** By default only calls to tools the toolset classifies as reads go through the bridge, and calls to a tool `page.yaml` does not declare, which the bridge refuses before any tool runs (the check fails, as the page would in the app); any other call is answered as not sent, and reported. `--writes` sends writes too, as you, to the preview's bases. A delete or composite Action is never sent: in the app it waits for a person's confirmation.
+- **What it runs.** The page and its tools as the preview holds them, with your own access, light theme, English, and no params. When the `index.html` in your folder differs from the one the preview holds, it says so: push first.
+- **Sign-in.** It needs your **browser sign-in** (`wayai login`). An API token (`wayai login --token`, or `WAYAI_TOKEN` in the shell) is refused, so it does not run from CI; when `WAYAI_TOKEN` is set it is sent instead of your sign-in: unset it first.
+- **Which pages.** Team pages you can open. A customer page opens only for the hub's Hub Users, so it is reported as not offered to you unless you are one. It refuses a production mirror's folder and a hub folder never pushed.
+- **A browser.** It uses the headless browser Playwright installs (the error names the exact `npx playwright-core@<version> install chromium-headless-shell` command) or Google Chrome.
 
 ## Writing a Page as an MCP Apps View
 
