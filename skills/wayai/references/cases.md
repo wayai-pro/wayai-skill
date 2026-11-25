@@ -147,7 +147,9 @@ wayai cases type skills remove <org skill>
 A draft changes nothing. Publishing it is a person's act in the web app: the CLI never publishes.
 
 - A draft whose definition changed, or that holds no package, publishes as the type's next
-  version, which new cases open on. A case stays on the version it opened on.
+  version, which new cases open on. A case keeps the plan and package of the version it opened
+  on. It can still take a party in a role a newer version adds (offered as optional, even where
+  the newer version requires it), which a person adds on the case's page in the web app.
 - A draft that changes only the package publishes as a revision of the current version. The
   publisher chooses whether it reaches only the cases opened from then on, or the open cases on
   that version too.
@@ -172,12 +174,16 @@ page (the address `type push` prints):
 - how its plan differs from the published version, part by part, with the lines on demand;
 - how its package differs, file by file (confidential files marked), with a text file's lines on
   demand; the draft's package can be downloaded;
-- what publishing writes: the type's next version, or a package revision of the current version.
+- what publishing writes: the type's next version, or a package revision of the current version;
+- how many cases are open on each version, and, for a new version, the party roles and closing
+  outcomes it adds.
 
 **Publish** writes it. For a package revision, the publisher picks which cases read it: **new
 cases only** (the default: open cases keep the package they read now) or **open cases too**
 (every open case on that version reads it from its next read). A version offers no choice: open
-cases stay on the version they opened on. Publish stays disabled, with the reason, while the
+cases keep the plan and package of the version they opened on, and can use the party roles it
+adds. A new version that also changes the package is flagged: its package reaches new cases only.
+Publish stays disabled, with the reason, while the
 draft is stale (a version or package revision was published after it was made: save or push again
 from the current one), would drop the package, or needs a package-only revision the version has
 no room for (a plan change still publishes as a version). A draft that names no package revision

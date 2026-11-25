@@ -1,6 +1,6 @@
 ---
 name: wayai-cases
-version: 1.2.0
+version: 1.3.0
 # Installed only by name (`--skill wayai-cases`): an install naming no skill leaves it out.
 metadata:
   internal: true
@@ -220,6 +220,10 @@ what the case says of itself now:
 
 - **Never edit it.** Every pull rewrites it whole, and `push` never sends anything in it: an edit
   there is lost.
+- **Parties can change between pulls.** A person on the case can add parties and instruments to
+  it in the web app, in a role of the case's version or one a newer version of its type adds.
+  Read the parties in `case.json` after each pull, not from memory. A role a newer version adds
+  comes with no guidance in the package, which stays the one of the version the case opened on.
 - **Linked inputs' texts** are written only when their bytes match the hash WayAI gives for them,
   so line N of the file is the line N a citation names (`wayai cases cite` takes those numbers). A
   text that doesn't match is not written, and `inputs.json`, `README.md` and the command's output
