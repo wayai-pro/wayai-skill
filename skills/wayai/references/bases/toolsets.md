@@ -453,6 +453,26 @@ wayai actions upsert search_invoices --base my-base --record-type invoices --ope
 - Expose a param only when the agent genuinely needs to drive it. `"expose_filter": true` restores the raw Filter-DSL escape hatch for OR / nesting the typed params cannot express.
 - `"agent_minimal": true` named the old opt-in preset for this behavior. It is still accepted (existing config keeps working) but does nothing, since hiding is now the default — omit it in new Actions.
 
+### Lists a person scrolls (`expose_cursor`)
+
+A hub page that shows a long list (stock, orders) reads it a page at a time, sorted and filtered by the server. Give it its own `list` Action with `"expose_cursor": true`, beside the typed filters and `expose_sort` it needs:
+
+```bash
+wayai actions upsert browse_orders --base my-base --record-type orders --operation list --config '{
+  "expose_cursor": true,
+  "expose_sort": true,
+  "default_limit": 50,
+  "default_sort": [ { "field": "created_at", "direction": "desc" } ],
+  "filterable_fields": [ { "field": "status", "optional": true }, { "field": "customer", "match": "search", "optional": true } ]
+}'
+```
+
+- The tool takes `cursor` and `limit` (1 to 100, default `default_limit` or 50). It never takes `offset`, and `expose_limit` or `expose_offset` beside `expose_cursor` is refused.
+- Each answer is one page: at most `limit` rows, and at most 256 KiB of them (a single larger record is a page of its own). While more follow, `meta.next_cursor` is set; pass it as `cursor` for the next page. The last page has none, and no `truncated` flag.
+- A cursor continues the query it came from. Change a filter, the sort or `fields` and start again without one: a cursor from another query is refused. `limit` may change between pages.
+- The cursor is a position in the list's order (its sort, then the record id), so the list can move under a reader who scrolls. A record that enters the list ahead of their position repeats a row on the next page: drop it by `id`. One that leaves it there skips a row: deleted, or changed so it no longer matches the filter or sorts elsewhere, the page's own write included. After a write that takes a row out of the list, read it again from its first page.
+- Every call is still decided by the server, under the caller's own access, and counts as one call against the page budgets. Agents seldom need it: keep it on a toolset made for pages.
+
 ### Curated write surface (`writable_fields`)
 
 A write-shape knob on a **`create`**/**`update`** Action — the write-side mirror of `filterable_fields`. List exactly the fields the tool may set. The allowlist does two things at once:
