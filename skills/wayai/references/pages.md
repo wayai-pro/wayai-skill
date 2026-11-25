@@ -221,7 +221,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 | `ui/message` | request | `{ role: "user", content: [{ type: "text", text }] }`: puts the text in the person's own message box, never sends it, on a page whose manifest sets `allow_messages: true` opened from a conversation ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)). Answered empty |
 | `wayai/open-page` | request | `{ page, params }`: opens another page of the same hub, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty, then the page closes |
 | `wayai/replace-params` | request | `{ params }`: puts the page's own params in the URL, the page still running, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty |
-| `ui/download-file` | request | `{ contents: [{ type: "resource", resource: { uri, mimeType, text } }] }`: hands the person one CSV or plain-text file the page built, once they confirm it, on web ([Saving a File for the Person](#saving-a-file-for-the-person)). Answered empty |
+| `ui/download-file` | request | `{ contents: [{ type: "resource", resource: { uri, mimeType, text } }] }`: hands the person one CSV or plain-text file the page built, once they confirm it, on web and in the mobile app ([Saving a File for the Person](#saving-a-file-for-the-person)). Answered empty |
 | `ping` | request | Answered empty |
 | `notifications/message` | notification | A log line |
 
@@ -235,7 +235,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 - **Cancel** (or dismissing the confirmation, or closing the page) sends nothing. The call is answered with a JSON-RPC error, code `-32000`, whose `data.code` is `TOOL_CALL_DECLINED`.
 - **Close page** on the confirmation closes the page without running the call, since the confirmation covers the page's own close.
 - **No asking again at once.** For 3 seconds after the viewer cancels, every call of the page's that needs a confirmation is answered `TOOL_CALL_DECLINED` without asking. So never re-send a declined call: the viewer said no.
-- **One confirmation at a time per page, of either kind.** Another call that needs one while it is open, or while the host asks the person to save a file ([Saving a File for the Person](#saving-a-file-for-the-person)), is answered at once with the same error, `data.code` `CONFIRMATION_PENDING`, and nothing is asked or sent. Calls that need no confirmation go through meanwhile.
+- **One confirmation at a time per page, of either kind.** Another call that needs one while it is open, or while the host asks the person to save a file ([Saving a File for the Person](#saving-a-file-for-the-person); in the mobile app, until that file's share sheet or folder picker closes), is answered at once with the same error, `data.code` `CONFIRMATION_PENDING`, and nothing is asked or sent. Calls that need no confirmation go through meanwhile.
 - **It is a guard for the person, not a permission.** Who may write is the platform's rule ([Who Sees a Team Page](#who-sees-a-team-page)), checked on every call. When the platform could not read the tools' kinds as the page opened, the host does not know which tools delete, so it confirms nothing and sends the call.
 
 A page may still confirm a destructive action in its own UI, naming what will change ("Delete Ana's result?"); the viewer then confirms twice.
@@ -449,14 +449,14 @@ load({ status: 'open' }, null);   // as the page starts, and again on each new f
 
 ### Saving a File for the Person
 
-On web (the browser and the desktop app), a page of either audience may hand the person a file it built from data it already read: a list as CSV, a summary as plain text. It asks with `ui/download-file`, the MCP Apps request (the SDK's `downloadFile`). The host asks the person first, in a dialog of its own drawn outside the page that names the page, the file's name and its size; only **Save** hands the file over, as a download from the app (the desktop app shows its save dialog). The page never reaches the network or the person's disk itself, and learns nothing of where the file went.
+On web (the browser and the desktop app) and in the mobile app, a page of either audience may hand the person a file it built from data it already read: a list as CSV, a summary as plain text. It asks with `ui/download-file`, the MCP Apps request (the SDK's `downloadFile`). The host asks the person first, in a dialog of its own drawn outside the page that names the page, the file's name and its size; only **Save** hands the file over: on web as a download from the app (the desktop app shows its save dialog); in the mobile app through the phone's share sheet on iPhone (Save to Files, or another app) and a folder the person picks on Android. The page never reaches the network or the person's disk itself, and learns nothing of where the file went, nor whether the person kept it once the share sheet or folder picker opened: the answer is the same.
 
 - **What it takes:** one file, as an embedded resource with its content inline: `{ contents: [{ type: "resource", resource: { uri: "file:///orders.csv", mimeType: "text/csv", text } }] }`. `mimeType` is exactly `text/csv` or `text/plain`. Never a `resource_link` or a `blob`: the host fetches nothing and saves text only.
-- **Its name:** the last part of `uri` (`orders.csv`), with characters a file system refuses taken out, at most 120 characters, and always ending `.csv` or `.txt` as its type says (`report.html` sent as text is saved as `report.html.txt`).
+- **Its name:** the last part of `uri` (`orders.csv`), with characters a file system refuses taken out, at most 120 characters, and always ending `.csv` or `.txt` as its type says (`report.html` sent as text is saved as `report.html.txt`). The mobile app also turns every character but a letter or digit of the English alphabet, `.`, `-` and `_` into `_` (`Pedidos de março.csv` is saved as `Pedidos_de_mar_o.csv`), and its confirmation names the file that way.
 - **Its size:** at most 5 MiB (5,242,880 bytes) of UTF-8. A larger file is refused whole, never cut: export fewer rows.
-- **How often:** the person is asked at most 10 times in any 10 minutes, across every page they have open in that app window, whatever they answer. For 3 seconds after they cancel, every request of the page's is declined without asking. The host asks one thing at a time: a file, or a delete or composite Action's confirmation.
+- **How often:** the person is asked at most 10 times in any 10 minutes, across every page they have open in that app window (in the mobile app, in the app until it restarts), whatever they answer. For 3 seconds after they cancel, every request of the page's is declined without asking. The host asks one thing at a time: a file, or a delete or composite Action's confirmation; in the mobile app a file's ask lasts until its share sheet or folder picker closes.
 - **Spreadsheets:** Excel reads a CSV as UTF-8 only when it starts with a byte-order mark: start the text with it (in JavaScript, `\uFEFF`) when it holds accents (`João`). Quote a value holding the separator, a quote or a line break (`"Silva, Ana"`, a quote doubled), and start a value beginning with `=`, `+`, `-`, `@`, a tab or a carriage return with a `'`, so a spreadsheet does not run it as a formula.
-- **How to tell it is available:** the `ui/initialize` answer's `hostCapabilities.downloadFile` is present (`{}`). Offer an export only then. The mobile app answers it `-32000` (not available), as older app versions and `wayai page check` do, so a page must work without it.
+- **How to tell it is available:** the `ui/initialize` answer's `hostCapabilities.downloadFile` is present (`{}`). Offer an export only then. A mobile app version older than this answers it `-32000` (not available), as older web versions and `wayai page check` do, so a page must work without it.
 - **Send it when the person asks** (an **Export** button), never as the page starts.
 
 Refused with a JSON-RPC error, with nothing saved:
@@ -464,13 +464,13 @@ Refused with a JSON-RPC error, with nothing saved:
 | Error | `data.code` | When |
 |-------|-------------|------|
 | `-32000` | `FILE_DECLINED` | The person cancelled, or the page asked again within 3 seconds of a cancel |
-| `-32000` | `FILE_PENDING` | Another file, or a delete or composite Action's confirmation, is waiting for the person to answer |
+| `-32000` | `FILE_PENDING` | Another file, or a delete or composite Action's confirmation, is waiting for the person to answer (in the mobile app, also while a file's share sheet or folder picker is open) |
 | `-32000` | `FILE_BUDGET_EXCEEDED` | The person was asked 10 times in the last 10 minutes |
-| `-32000` | (none) | Not available here: the mobile app, an older app version, `wayai page check` |
+| `-32000` | (none) | Not available here: an older mobile or web app version, `wayai page check` |
 | `-32602` | `FILE_TYPE_NOT_ALLOWED` | `mimeType` is not exactly `text/csv` or `text/plain` |
 | `-32602` | `FILE_TOO_LARGE` | The text is over 5 MiB of UTF-8 |
 | `-32602` | (none) | Not one embedded resource with `uri` and `text`: a `resource_link`, a `blob`, two files, or another field |
-| `-32603` | (none) | The browser would not take the file just then |
+| `-32603` | (none) | The browser or the phone would not take the file just then |
 
 ```js
 // hostCapabilities from the ui/initialize answer
@@ -710,7 +710,7 @@ Write each refusal of [a tool call](#writing-a-page-as-an-mcp-apps-view) for the
 | `isError` with `VALIDATION_ERROR` | The tool refused the arguments: point at the field, with the result's text |
 | `isError` with no `structuredContent` | The tool's own refusal: show its text |
 | A JSON-RPC error with `data.code` `TOOL_CALL_DECLINED` | The viewer cancelled [the host's confirmation](#writing-a-page-as-an-mcp-apps-view): nothing was sent. Leave the page as it was, with no error, and never re-send the call |
-| A JSON-RPC error with `data.code` `CONFIRMATION_PENDING` | Another call, or a file the page asked to save, is waiting for the viewer's confirmation: nothing was sent. Disable the action while a call or an export runs |
+| A JSON-RPC error with `data.code` `CONFIRMATION_PENDING` | Another call, or a file the page asked to save, is waiting for the viewer's confirmation (in the mobile app, a file until its share sheet or folder picker closes): nothing was sent. Disable the action while a call or an export runs |
 | Any other JSON-RPC error | The call did not get through: "Could not reach WayAI." with a "Try again" button the viewer presses. Never retry a call by itself: a call that writes may run twice, and a declined one would ask the viewer again |
 
 ### UI Text
@@ -765,7 +765,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 - **An opaque origin.** The page runs in a sandboxed frame of its own. Inline `<script>` and `<style>`, and `eval` / `new Function`, work.
 - **No network.** `fetch`, XHR, WebSockets, remote scripts, stylesheets, images and fonts are all refused. Images and fonts work only as `data:` (or `blob:`) URLs. **Inline every library, the MCP Apps SDK included, inside the 512 KiB cap.** The page's only way out is `tools/call`.
 - **No storage.** No cookies, `localStorage`, `sessionStorage` or IndexedDB. Keep state in memory, and in the base through the page's tools.
-- **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download a file itself: to hand the person a CSV or text file it built, ask the host, on web ([Saving a File for the Person](#saving-a-file-for-the-person)).
+- **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download a file itself: to hand the person a CSV or text file it built, ask the host, on web and in the mobile app ([Saving a File for the Person](#saving-a-file-for-the-person)).
 - **No navigation.** Links and `location` changes do not leave the page, and `ui/open-link` is refused. To open another page of the hub, ask the host ([Linking to Another Page](#linking-to-another-page)).
 - **Forms work, but a submit never navigates.** `<form onsubmit>` and Enter-to-save fire your handler. Call `event.preventDefault()` and save through `tools/call`.
 
