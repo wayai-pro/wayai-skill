@@ -400,6 +400,53 @@ const status = schemaOf.update_result?.properties?.status;
 if (status?.enum) statusSelect.replaceChildren(...status.enum.map((value) => new Option(value, value)));
 ```
 
+### Showing a Long List
+
+A page that shows a long list (stock, orders) reads it a page at a time, sorted and filtered by the server, through a `list` Action made for it with `expose_cursor: true`. [Lists a person scrolls](bases/toolsets.md#lists-a-person-scrolls-expose_cursor) has the Action, its arguments and how its cursor behaves. Never read a whole list, or a base, into the page.
+
+- **Set it up:** upsert the Action, sync the connection's tools (`wayai sync-mcp --connection "<name>"`) so its tool list has `cursor` and `limit`, name the tool in `page.yaml`, and push. Until the tool list has them, a call sending either is refused with `VALIDATION_ERROR`, nothing sent, and `tools/list` shows the tool without them.
+- **The first page:** call the tool with its filters, its sort and a `limit`. The answer's `structuredContent` (and its text, the same JSON) holds the rows in `data` and, while more follow, `meta.next_cursor`.
+- **The next page:** the same arguments plus `cursor: meta.next_cursor`, when the person scrolls near the end of what is shown: one call at a time, never on a timer, never every page up front. Stop when an answer has no `next_cursor`.
+- **A new filter or sort** starts from the first page again, without a cursor; drop the answers of calls sent before it.
+- **The list moves while the person scrolls.** Drop a row whose `id` the page already shows. After the page's own write, and when `wayai.refresh` rises ([Live Refresh](#live-refresh)), read from the first page again, in place of every page already shown.
+- **Each call answers at most** `limit` rows and 256 KiB of them; one larger record comes alone, up to about 1 MiB. The answer carries the page twice, as `structuredContent` and as text: up to about 512 KiB, or about 2 MiB for one record that large.
+- **Each page is one call** against the [Limits](#limits). A person scrolling a team page a page every 2 seconds spends 30 of their 60 a minute. The hub's 500 a minute, which a call spends 1 of at the write level and 2 of at the read level, is then about 16 people scrolling at once at the write level, 8 at the read level, and at most 50,000 rows a minute. On a customer page, a page every 2 seconds spends all of a person's 30 a minute.
+- **`wayai page check`** sends the page's calls as it sends any read, and reports each one's time and size. It never scrolls: it calls a later page only while the list's end is inside its 1024×768 frame.
+
+```js
+// list_orders: a list Action with expose_cursor (bases/toolsets.md)
+let rows = [], seen = new Set(), next = null, loading = false, query = 0, current = {};
+const end = document.getElementById('list-end');   // an empty element after the list
+const observer = new IntersectionObserver(([entry]) => {
+  if (entry.isIntersecting && next && !loading) load(current, next);
+});
+
+async function load(filters, cursor) {   // cursor: null for the first page, with new filters
+  const mine = cursor === null ? ++query : query;
+  if (cursor === null) { current = filters; rows = []; seen = new Set(); next = null; }
+  loading = true;
+  try {
+    const result = await request('tools/call', {
+      name: 'list_orders',
+      arguments: { ...filters, limit: 50, ...(cursor ? { cursor } : {}) },
+    });
+    if (mine !== query) return;   // a newer filter took over
+    if (result.isError) throw new Error(result.content?.[0]?.text ?? 'The tool refused');
+    const page = result.structuredContent;
+    for (const row of page.data) if (!seen.has(row.id)) { seen.add(row.id); rows.push(row); }
+    next = page.meta?.next_cursor ?? null;
+    render(rows);
+    observer.unobserve(end); observer.observe(end);   // asks again if the end is still in view
+  } catch (err) {
+    if (mine === query) showError(err.message);   // a refusal, or a JSON-RPC error
+  } finally {
+    if (mine === query) loading = false;
+  }
+}
+
+load({ status: 'open' }, null);   // as the page starts, and again on each new filter or sort
+```
+
 ### Saving a File for the Person
 
 On web (the browser and the desktop app), a page of either audience may hand the person a file it built from data it already read: a list as CSV, a summary as plain text. It asks with `ui/download-file`, the MCP Apps request (the SDK's `downloadFile`). The host asks the person first, in a dialog of its own drawn outside the page that names the page, the file's name and its size; only **Save** hands the file over, as a download from the app (the desktop app shows its save dialog). The page never reaches the network or the person's disk itself, and learns nothing of where the file went.
@@ -730,6 +777,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 | HTML per page | 512 KiB (UTF-8), one file |
 | Tools per page | 50 |
 | `tools/list` answer | The input schemas of at most 50 tools, 1 MiB of JSON |
+| One page of a list a person scrolls | `limit` rows, at most 100, and 256 KiB of them ([Showing a Long List](#showing-a-long-list)) |
 | A file saved for the person (`ui/download-file`) | One CSV or plain-text file, 5 MiB of UTF-8, a 120-character name |
 | Files a person is asked to save | 10 in any 10 minutes, across the pages open in one app window |
 | `params` schema | 16 KiB of JSON |
