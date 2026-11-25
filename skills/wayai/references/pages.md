@@ -134,7 +134,7 @@ Push and publish refuse any other toolset on a customer page, saying what it rea
 **What a customer can do.**
 
 - **Reads only, by default.** The platform runs only the tools the toolset itself classifies as reads, as for a team page's read-only viewer ([Who Sees a Team Page](#who-sees-a-team-page)); any other tool is refused with nothing changed.
-- **Writes, only with `customer_writes: true`,** on a record type with person entries held by the base to the person using the page ([Person writes](bases/access.md#person-writes)): a record they write must still name them, and a person field may gain only their own id. A `create` that leaves out the type's `owner` field is filled with the person using the page, as an agent's is with its conversation's customer ([the owner field is filled](bases/access.md#person-writes)): their one linked contact the hub sees, else their person id. So the page creates the person's own records without knowing their id, which it is not told; a `create` naming anyone else in a person field is refused. **A `{ shared: true }` record type is written by every person using the page**, held only to its dimension entries: a write tool on such a type (a calendar, a price list) lets any customer change or delete any of its records, which every other customer then sees. Declare write tools only on types each customer may change for everyone.
+- **Writes, only with `customer_writes: true`,** on a record type with person entries held by the base to the person using the page ([Person writes](bases/access.md#person-writes)): a record they write must still name them, and a person field may gain only their own id. A `create` that leaves out the type's `owner` field is filled with the person using the page, as an agent's is with its conversation's customer ([the owner field is filled](bases/access.md#person-writes)): their one linked contact the hub sees, else their person id. So the page creates the person's own records without knowing their id, which it is not told (the host context gives a customer page the person's name and the hub's time zone, never a person id: [Knowing Who Uses the Page](#knowing-who-uses-the-page)); a `create` naming anyone else in a person field is refused. **A `{ shared: true }` record type is written by every person using the page**, held only to its dimension entries: a write tool on such a type (a calendar, a price list) lets any customer change or delete any of its records, which every other customer then sees. Declare write tools only on types each customer may change for everyone.
 - The page's top bar shows **View only**, and the host context carries `wayai.viewerLevel: "read"`, on a page without `customer_writes: true`; with it, `write`.
 - The base records each write a customer page makes as made by the page itself, labelled with its title, never by the person using it, for the person the call is for.
 
@@ -358,6 +358,27 @@ if ((hostContext.wayai.methods ?? []).includes('wayai/replace-params')) {
 }
 ```
 
+### Knowing Who Uses the Page
+
+The host context tells a page who is using it and the hub's time zone, so it can greet the person, default a filter to their own work, and show dates the way the hub reads them. WayAI fills both from the person's own sign-in and the hub's settings, never from anything the page sends.
+
+- **`wayai.viewer.displayName`:** the name of the person's WayAI account, on either audience.
+- **`wayai.viewer.personId`:** on a team page only, the person's person id in the organization (`prs_…`), the id a base's person fields hold ([Person entries](bases/access.md#person-entries)). Use it to default a list to the person's own records (`assignee` equal to it). It is a person id and only that: other ids WayAI gives the same person elsewhere (a case space's own id for its members) are not this one.
+- **`wayai.hub.timeZone`:** the hub's time zone, an IANA name (`America/Sao_Paulo`). Format dates with it (`new Intl.DateTimeFormat(locale, { timeZone })`), so every teammate sees the same day the hub's agents and reports use.
+- **A customer page** hears the name and the time zone, never a person id: its calls already reach only the person's own records, and a `create` fills the `owner` field for them ([Customer Pages](#customer-pages)).
+- **Never** the person's email, their access values, or the id of their WayAI account.
+- **It grants nothing.** Every call is still decided from the person's sign-in and the toolset: a page that sends another person's id in a filter or a field reaches only what this person may read and write.
+- **Each field may be absent:** a mobile app version older than this, an account with no name, a hub with no time zone, or a person id that cannot be worked out just then. A page must still work: greet without a name, start a list unfiltered, and fall back to the browser's own zone. The fields hold while the page runs; a rename reaches it the next time it opens.
+- **`wayai page check`** runs the page with them as the page read tells them to you.
+
+```js
+// from the ui/initialize answer
+const { viewer = {}, hub = {} } = hostContext.wayai;
+title.textContent = viewer.displayName ? t('hello', { name: viewer.displayName }) : t('helloAnonymous');
+const mine = viewer.personId ? { assignee: viewer.personId } : {};
+const when = new Intl.DateTimeFormat(hostContext.locale, { dateStyle: 'medium', timeStyle: 'short', ...(hub.timeZone ? { timeZone: hub.timeZone } : {}) });
+```
+
 ## Live Refresh
 
 On web, an open team page hears when the data its tools reach may have changed; on web and in the mobile app, a customer page hears when the person comes back to it. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
@@ -422,6 +443,8 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)). A `wayai/replace-params` does not change it |
 | `wayai.methods` | On web only: `["wayai/open-page", "wayai/replace-params"]`, the WayAI requests the host answers ([Linking to Another Page](#linking-to-another-page)). Absent in the mobile app |
+| `wayai.viewer` | Who is using the page, from their sign-in: `displayName`, and on a team page `personId` ([Knowing Who Uses the Page](#knowing-who-uses-the-page)). Each field may be absent |
+| `wayai.hub` | `timeZone`: the hub's time zone, an IANA name. Absent when the hub states none ([Knowing Who Uses the Page](#knowing-who-uses-the-page)) |
 | `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)); on a customer page, `write` when it sets `customer_writes: true` ([Customer Pages](#customer-pages)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
 | `wayai.refresh` | A number WayAI raises when the person comes back to a customer page (on web and in the mobile app), or, on web only, when a team page's data may have changed ([Live Refresh](#live-refresh)) |
 | `platform` | `web` in the web app, `mobile` in the mobile app |
