@@ -218,6 +218,8 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 | `ui/notifications/initialized` | notification | Sent once the page has its answer to `ui/initialize` |
 | `tools/call` | request | `{ name, arguments }`: calls one of the manifest's tools by its tool name. The answer is the tool's result: `content`, and `isError` when the tool refused |
 | `ui/message` | request | `{ role: "user", content: [{ type: "text", text }] }`: puts the text in the person's own message box, never sends it, on a page whose manifest sets `allow_messages: true` opened from a conversation ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)). Answered empty |
+| `wayai/open-page` | request | `{ page, params }`: opens another page of the same hub, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty, then the page closes |
+| `wayai/replace-params` | request | `{ params }`: puts the page's own params in the URL, the page still running, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty |
 | `ping` | request | Answered empty |
 | `notifications/message` | notification | A log line |
 
@@ -236,7 +238,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 
 A page may still confirm a destructive action in its own UI, naming what will change ("Delete Ana's result?"); the viewer then confirms twice.
 
-**Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents. The host already drops from a page card's params what the page's current schema does not accept ([Page Cards](#page-cards)).
+**Params** arrive in the host context as `wayai.params`. Read them from the `ui/initialize` answer, and ignore anything the schema in `params:` would not accept: links are written by people and agents. The host already drops from a page card's params what the page's current schema does not accept ([Page Cards](#page-cards)). A page keeps its view in the URL with `wayai/replace-params` ([Linking to Another Page](#linking-to-another-page)).
 
 **A tool call can fail for reasons a page should show, not swallow:** the tool refused (`isError`), the viewer may no longer use the page, too many calls, or the page was updated since it opened (reload it).
 
@@ -324,6 +326,38 @@ Refused with a JSON-RPC error, with nothing put anywhere:
 | `-32602` | `MESSAGE_TOO_LONG` | The text is over 4,000 characters; it is refused whole, never cut |
 | `-32602` | (none) | Anything but `role: "user"` and text blocks, a field other than `role` and `content`, or text that is only whitespace |
 
+### Linking to Another Page
+
+On web, a page of either audience may open another page of the same hub, and may keep the view it shows in the URL. Neither is an MCP Apps request: they are WayAI's own, and the host draws every transition. A page never names a URL, so it cannot open another hub's page or a site outside WayAI.
+
+- **Open another page:** `wayai/open-page` with `{ page: "<slug>", params: { … } }` (`params` optional). The host opens it only when it is a page of the same hub and audience that the person is offered, and its `params:` schema accepts every param. It opens where the page was open (over the conversation, in the hub's Pages section, or filling the window from the **Pages** entry) as a new entry in the browser's history: Back returns to the page before, which starts again with the params its URL carries. The close button leaves every page opened this way. The request is answered empty, then the page closes. Open a page only when the person asks (a click), never as the page starts: Back would open it again.
+- **Keep the view in the URL:** `wayai/replace-params` with `{ params: { … } }` puts those params in the URL in place of the page's own. The page keeps running; a reload, or a teammate opening the link, starts it with them. They must be the page's whole view (`{}` clears them) and fit its own `params:` schema. Send it when the view settles (a filter chosen, a tab opened), never on each keystroke: the browser limits how often a page's URL may change. `wayai.params` keeps the values the page opened with.
+- **How to tell they are available:** the host context's `wayai.methods` names both. The mobile app answers both `-32601` (method not found), as older app versions do, so a page must work without them: show a link only where `wayai.methods` names it. `wayai page check` answers both not found too, and lists them under **Refused**.
+- **Params** take at most 4,096 characters of JSON, the most a page card carries.
+
+Refused with a JSON-RPC error, with nothing opened and, but for a `-32603`, the URL unchanged:
+
+| Error | `data.code` | When |
+|-------|-------------|------|
+| `-32000` | `PAGE_NOT_AVAILABLE` | `page` names no page of the hub that the person is offered in this page's audience: deleted, of the other audience, or not theirs to open |
+| `-32000` | `PAGE_ALREADY_OPEN` | `page` and `params` are the page and params open now |
+| `-32000` | `PAGE_OPENING` | Another `wayai/open-page` is being checked, or has opened its page: one at a time |
+| `-32602` | `PARAMS_NOT_ACCEPTED` | The schema of the page they would open with does not accept some params; `data.dropped` names them. They are never dropped quietly |
+| `-32602` | `PARAMS_TOO_LONG` | The params are over 4,096 characters of JSON |
+| `-32602` | (none) | `page` is not a slug, a field other than `page` and `params` (`params` alone for `wayai/replace-params`), or `params` is not an object |
+| `-32603` | (none) | The host could not read the hub's pages, or the browser refused to change the URL just then, which it may still change: send the same request again later |
+
+```js
+// wayai.methods from the ui/initialize answer
+const canLink = (hostContext.wayai.methods ?? []).includes('wayai/open-page');
+if (canLink) row.onclick = () => request('wayai/open-page', { page: 'order', params: { id: order.id } });
+
+// after the person picks a filter
+if ((hostContext.wayai.methods ?? []).includes('wayai/replace-params')) {
+  request('wayai/replace-params', { params: { status } }).catch(() => {});
+}
+```
+
 ## Live Refresh
 
 On web, an open team page hears when the data its tools reach may have changed; on web and in the mobile app, a customer page hears when the person comes back to it. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
@@ -386,7 +420,8 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `styles.variables` | Every MCP Apps standard style variable, at the current theme's values |
 | `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
 | `wayai.page` | The page's `slug` and `title` |
-| `wayai.params` | The values the page was opened with ([`params`](#the-manifest)) |
+| `wayai.params` | The values the page was opened with ([`params`](#the-manifest)). A `wayai/replace-params` does not change it |
+| `wayai.methods` | On web only: `["wayai/open-page", "wayai/replace-params"]`, the WayAI requests the host answers ([Linking to Another Page](#linking-to-another-page)). Absent in the mobile app |
 | `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)); on a customer page, `write` when it sets `customer_writes: true` ([Customer Pages](#customer-pages)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
 | `wayai.refresh` | A number WayAI raises when the person comes back to a customer page (on web and in the mobile app), or, on web only, when a team page's data may have changed ([Live Refresh](#live-refresh)) |
 | `platform` | `web` in the web app, `mobile` in the mobile app |
@@ -598,7 +633,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 - **No network.** `fetch`, XHR, WebSockets, remote scripts, stylesheets, images and fonts are all refused. Images and fonts work only as `data:` (or `blob:`) URLs. **Inline every library, the MCP Apps SDK included, inside the 512 KiB cap.** The page's only way out is `tools/call`.
 - **No storage.** No cookies, `localStorage`, `sessionStorage` or IndexedDB. Keep state in memory, and in the base through the page's tools.
 - **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download or export a file.
-- **No navigation.** Links and `location` changes do not leave the page, and `ui/open-link` is refused.
+- **No navigation.** Links and `location` changes do not leave the page, and `ui/open-link` is refused. To open another page of the hub, ask the host ([Linking to Another Page](#linking-to-another-page)).
 - **Forms work, but a submit never navigates.** `<form onsubmit>` and Enter-to-save fire your handler. Call `event.preventDefault()` and save through `tools/call`.
 
 ## Limits
