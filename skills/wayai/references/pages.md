@@ -217,6 +217,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 | `ui/initialize` | request | The first message. Its answer carries the host context: the page's params among it |
 | `ui/notifications/initialized` | notification | Sent once the page has its answer to `ui/initialize` |
 | `tools/call` | request | `{ name, arguments }`: calls one of the manifest's tools by its tool name. The answer is the tool's result: `content`, and `isError` when the tool refused |
+| `tools/list` | request | Answered with `{ tools: [{ name, inputSchema }] }`, the input schema of the manifest's tools, on a customer page its read tools only ([Reading a Tool's Input Schema](#reading-a-tools-input-schema)) |
 | `ui/message` | request | `{ role: "user", content: [{ type: "text", text }] }`: puts the text in the person's own message box, never sends it, on a page whose manifest sets `allow_messages: true` opened from a conversation ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)). Answered empty |
 | `wayai/open-page` | request | `{ page, params }`: opens another page of the same hub, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty, then the page closes |
 | `wayai/replace-params` | request | `{ params }`: puts the page's own params in the URL, the page still running, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty |
@@ -377,6 +378,25 @@ const { viewer = {}, hub = {} } = hostContext.wayai;
 title.textContent = viewer.displayName ? t('hello', { name: viewer.displayName }) : t('helloAnonymous');
 const mine = viewer.personId ? { assignee: viewer.personId } : {};
 const when = new Intl.DateTimeFormat(hostContext.locale, { dateStyle: 'medium', timeStyle: 'short', ...(hub.timeZone ? { timeZone: hub.timeZone } : {}) });
+```
+
+### Reading a Tool's Input Schema
+
+A page can ask the host for its tools' input schemas with `tools/list`, the standard MCP request, and check a form against them before it calls, instead of copying `required`, `enum`, `maxLength` or `pattern` by hand. The schema is the one the platform checks each call's arguments against, read from the tool's connection as the page opened.
+
+- **Which tools:** on a team page, each tool in `page.yaml` whose connection's tools are synced. **On a customer page, only the tools the toolset classifies as reads.** A write's schema is left out, since a `create` there has its `owner` field filled for the person ([Customer Pages](#customer-pages)), which the schema does not show.
+- **What it holds:** each tool's `name` and `inputSchema`, the JSON Schema of its arguments: field names, types, enums, limits and each field's description. On a customer page that is new to the person's browser: anyone using the page can read the read tools' field names and rules.
+- **It grants nothing.** Every call is still checked on the server. A toolset changed after the page opened is caught there: the call is refused with `VALIDATION_ERROR` ([the refusal table](#loading-empty-and-error-states)). Show that refusal as you would any other.
+- **It may be empty or absent.** A tool is left out when its schema could not be read as the page opened (its connection not synced, too many calls that minute) or once the list passes 1 MiB of JSON, in `page.yaml`'s order. A mobile app version older than this answers `-32601` (method not found). So a page must still work without it: keep a fallback for a missing schema, and rely on the server's refusal.
+- **One answer:** every tool at once, with no `nextCursor`. The list holds while the page runs; a pushed change reaches it the next time it opens.
+- **`wayai page check`** answers it with the schemas the page read gives you.
+
+```js
+// after ui/initialize
+const listed = await request('tools/list', {}).catch(() => ({ tools: [] })); // an older mobile app: method not found
+const schemaOf = Object.fromEntries(listed.tools.map((tool) => [tool.name, tool.inputSchema]));
+const status = schemaOf.update_result?.properties?.status;
+if (status?.enum) statusSelect.replaceChildren(...status.enum.map((value) => new Option(value, value)));
 ```
 
 ## Live Refresh
@@ -666,6 +686,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 | Pages per hub | 20 |
 | HTML per page | 512 KiB (UTF-8), one file |
 | Tools per page | 50 |
+| `tools/list` answer | The input schemas of at most 50 tools, 1 MiB of JSON |
 | `params` schema | 16 KiB of JSON |
 | `title` / `description` | 120 / 500 characters |
 | Audiences | `team`, `customers` |
