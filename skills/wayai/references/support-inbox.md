@@ -57,6 +57,7 @@ A hub admin who is on none of the hub's teams sees all of the hub's conversation
 - **Search:** on Agent and Team it matches the hub, the contact or the last message (and a task's title on a row with no contact), over the conversations already loaded. On Ended it searches recently ended conversations, and **Search archived instead** searches all of them.
 - **Environment filter:** a globe icon, shown when the person's hubs include both previews and production.
 - **List / board toggle:** see [The Board](#the-board).
+- **Pages:** shown when the hub of the conversation in view offers the person a team page. It opens the navigation bar's **Pages** entry filtered to that hub, where **Show all pages** lists every hub's ([pages.md](pages.md#pages)).
 
 **The Support count** on the nav is the number of people waiting on the team. It counts each person once, in conversations that are unclaimed or claimed by you and have unread team messages or a due event.
 
