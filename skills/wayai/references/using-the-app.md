@@ -99,9 +99,10 @@ A person who joined an organization's community reads and writes in its rooms an
 
 The iOS and Android apps hold the same agents and conversations as the web. This describes the app as it is built today: an older install may lack parts of it (such as the Community tab, the camera and Photo library, links in a message opening in the app, **Withdraw AI consent**, or **Appearance**, where it shows a **Dark mode** switch) until it is updated.
 
-- **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community.
+- **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community, **Pages** for someone offered a page, and **Cases** for a member of a case space. With all four of Support, Community, Pages and Cases, **Pages** and **Cases** sit in **More**.
   - **Chat** is the list at `/chat`.
   - **Support** is the team inbox, which reads "No support conversations." for someone on no hub's team.
+  - **Pages** lists the pages offered to the person, as the web's **Pages** entry does, each opening in a full-screen sheet ([pages.md](pages.md#pages)).
   - **Community** opens the person's community, or lists them when they are in several. It holds the rooms, the courses, reporting and blocking, and its moderators' actions in the rooms; joining happens on the web join page, and the reports, bans and moderation log are web only ([communities.md → For members](communities.md#for-members)).
 - **Chat agents:** a chat agent opens its ongoing conversation, with earlier conversations above it as the person scrolls up.
 - **Task agents:** a task agent opens its task list:
