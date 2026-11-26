@@ -1,6 +1,6 @@
 ---
 name: wayai-cases
-version: 1.3.1
+version: 1.3.2
 # Installed only by name (`--skill wayai-cases`): an install naming no skill leaves it out.
 metadata:
   internal: true
@@ -203,7 +203,7 @@ what the case says of itself now:
 | File | Holds |
 |------|-------|
 | `since-last-pull.md` | What changed on the case since your last pull: revisions, status changes, new tasks and submissions, parties and instruments added or removed |
-| `timeline.md` | What people did on the case since your last pull, newest first: plan changes (tasks, phases activated or dispensed, owners, deadlines, relations) and notes, up to 300 entries a run |
+| `timeline.md` | What people did on the case since your last pull, newest first: plan changes (tasks, phases activated or dispensed, owners, deadlines, relations), changes of its parties, instruments or field values (who made them, never what changed; the parties and instruments are in `since-last-pull.md`), and notes, up to 300 entries a run |
 | `skills.md` | The index of the case's own instructions and of the skills that reach the case, by layer ([The case's instructions](#the-cases-instructions)) |
 | `case-instructions/` | The case's own instructions (`instructions/case/`), read-only: the copy to follow |
 | `case.json` | The case: type and version, owner, parties, phases and their folders, tasks, and your access |
