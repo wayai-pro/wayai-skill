@@ -222,6 +222,7 @@ A page talks to its host by JSON-RPC 2.0 messages posted to its parent window, a
 | `wayai/open-page` | request | `{ page, params }`: opens another page of the same hub, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty, then the page closes |
 | `wayai/replace-params` | request | `{ params }`: puts the page's own params in the URL, the page still running, on web ([Linking to Another Page](#linking-to-another-page)). Answered empty |
 | `ui/download-file` | request | `{ contents: [{ type: "resource", resource: { uri, mimeType, text } }] }`: hands the person one CSV or plain-text file the page built, once they confirm it, on web and in the mobile app ([Saving a File for the Person](#saving-a-file-for-the-person)). Answered empty |
+| `wayai/print` | request | `{ html }`: prints a copy of the page's view, on web ([Printing the Page's View](#printing-the-pages-view)). Answered empty |
 | `ping` | request | Answered empty |
 | `notifications/message` | notification | A log line |
 
@@ -489,6 +490,46 @@ if (hostCapabilities.downloadFile) {
 }
 ```
 
+### Printing the Page's View
+
+On web (the browser and the desktop app), a page of either audience may print what it shows: an order, a day's list. It is WayAI's own request, `wayai/print`, since MCP Apps has none. The page sends a copy of its view as HTML, and the host prints that copy in a frame of its own that runs no script, under the page's own policy, so nothing in it reaches the network; the browser's print dialog, where the person may still cancel, is the only dialog. The page itself cannot print or open a dialog (`window.print()`, `alert()` do nothing), and learns nothing of whether the person printed: the answer is the same.
+
+- **What it takes:** `{ html }`, the page's view as a string: `document.documentElement.outerHTML` prints the page as it is now, its own styles, `@media print` rules included. Or send a document made for paper (an order laid out for A4); it gets WayAI's base stylesheet and font as the page does.
+- **What the copy keeps:** its markup only. No script runs in it, so what a script drew lives only in the page: write a field's typed value into its `value` attribute (a checkbox's `checked`, a `<textarea>`'s text, a `<select>`'s `selected` option) before copying, and a `<canvas>` as an `<img>` of its `toDataURL()`. Images print only as `data:` URLs.
+- **How it looks:** always in the light theme (the host sets `data-theme="light"` on the copy, whatever theme the person uses), and titled as the page when the copy has no `<title>` of its own.
+- **Its size:** at most 5 MiB (5,242,880 bytes) of UTF-8, `data:` images included. A larger copy is refused whole, never cut.
+- **How often:** at most 10 prints in any 10 minutes, across every page open in that app window. Never while the host's own confirmation (a delete or composite Action, a file to save) is open.
+- **How to tell it is available:** the host context's `wayai.methods` names `wayai/print`. The mobile app, older web versions and `wayai page check` answer it `-32601` (method not found), and `wayai page check` lists it under **Refused**, so a page must work without it: show a print button only where `wayai.methods` names it.
+- **Send it when the person asks** (a **Print** button), never as the page starts.
+
+Refused with a JSON-RPC error, with nothing printed:
+
+| Error | `data.code` | When |
+|-------|-------------|------|
+| `-32000` | `CONFIRMATION_PENDING` | A delete or composite Action's confirmation, or a file to save, is waiting for the person to answer |
+| `-32000` | `PRINT_BUDGET_EXCEEDED` | The pages in that app window started 10 prints in the last 10 minutes |
+| `-32601` | (none) | Not available here: the mobile app, an older web version, `wayai page check` |
+| `-32602` | `PRINT_TOO_LARGE` | The copy is over 5 MiB of UTF-8 |
+| `-32602` | (none) | No `html`, `html` empty or not a string, or a field other than `html` |
+
+```js
+// wayai.methods from the ui/initialize answer
+if ((hostContext.wayai.methods ?? []).includes('wayai/print')) {
+  printButton.hidden = false;
+  printButton.onclick = () => {
+    // The copy runs no script: put what the person typed into the markup.
+    for (const field of document.querySelectorAll('input')) {
+      if (field.type === 'checkbox' || field.type === 'radio') field.toggleAttribute('checked', field.checked);
+      else field.setAttribute('value', field.value);
+    }
+    for (const area of document.querySelectorAll('textarea')) area.textContent = area.value;
+    for (const option of document.querySelectorAll('option')) option.toggleAttribute('selected', option.selected);
+    request('wayai/print', { html: document.documentElement.outerHTML })
+      .catch(() => {}); // not available just then: nothing to do
+  };
+}
+```
+
 ## Live Refresh
 
 On web, an open team page hears when the data its tools reach may have changed; on web and in the mobile app, a customer page hears when the person comes back to it. The host context carries a number, `wayai.refresh`, and `host-context-changed` carries a new one each time WayAI raises it. Keep the value from `ui/initialize`, and read again when a later one differs:
@@ -552,7 +593,7 @@ To make it list your records, add the tool to `page.yaml`'s `tools` and put its 
 | `wayai.styles.variables` | WayAI's own tokens ([Styling With the Tokens](#styling-with-the-tokens)), at the current theme's values |
 | `wayai.page` | The page's `slug` and `title` |
 | `wayai.params` | The values the page was opened with ([`params`](#the-manifest)). A `wayai/replace-params` does not change it |
-| `wayai.methods` | On web only: `["wayai/open-page", "wayai/replace-params"]`, the WayAI requests the host answers ([Linking to Another Page](#linking-to-another-page)). Absent in the mobile app |
+| `wayai.methods` | On web only: the WayAI requests the host answers, `"wayai/open-page"` and `"wayai/replace-params"` ([Linking to Another Page](#linking-to-another-page)), then `"wayai/print"` where the host prints ([Printing the Page's View](#printing-the-pages-view)). Check for the one you need, never the whole list. Absent in the mobile app |
 | `wayai.viewer` | Who is using the page, from their sign-in: `displayName`, and on a team page `personId` ([Knowing Who Uses the Page](#knowing-who-uses-the-page)). Each field may be absent |
 | `wayai.hub` | `timeZone`: the hub's time zone, an IANA name. Absent when the hub states none ([Knowing Who Uses the Page](#knowing-who-uses-the-page)) |
 | `wayai.viewerLevel` | `write` when the viewer may run every tool the page declares, `read` when only its read tools ([Who Sees a Team Page](#who-sees-a-team-page)); on a customer page, `write` when it sets `customer_writes: true` ([Customer Pages](#customer-pages)). Hide or disable write controls at `read`; the platform refuses those calls anyway |
@@ -765,7 +806,7 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 - **An opaque origin.** The page runs in a sandboxed frame of its own. Inline `<script>` and `<style>`, and `eval` / `new Function`, work.
 - **No network.** `fetch`, XHR, WebSockets, remote scripts, stylesheets, images and fonts are all refused. Images and fonts work only as `data:` (or `blob:`) URLs. **Inline every library, the MCP Apps SDK included, inside the 512 KiB cap.** The page's only way out is `tools/call`.
 - **No storage.** No cookies, `localStorage`, `sessionStorage` or IndexedDB. Keep state in memory, and in the base through the page's tools.
-- **No popups, modals or downloads.** `window.open` does nothing. `alert()` and `prompt()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download a file itself: to hand the person a CSV or text file it built, ask the host, on web and in the mobile app ([Saving a File for the Person](#saving-a-file-for-the-person)).
+- **No popups, modals, printing or downloads.** `window.open` does nothing. `alert()`, `prompt()` and `print()` do nothing, and `confirm()` returns `false`. The host confirms deletes and composite Actions itself ([Writing a Page as an MCP Apps View](#writing-a-page-as-an-mcp-apps-view)); to name what will change, confirm in the page's own UI too (an "Are you sure?" button pair). A page cannot download a file itself: to hand the person a CSV or text file it built, ask the host, on web and in the mobile app ([Saving a File for the Person](#saving-a-file-for-the-person)); to print its view, ask the host too, on web ([Printing the Page's View](#printing-the-pages-view)).
 - **No navigation.** Links and `location` changes do not leave the page, and `ui/open-link` is refused. To open another page of the hub, ask the host ([Linking to Another Page](#linking-to-another-page)).
 - **Forms work, but a submit never navigates.** `<form onsubmit>` and Enter-to-save fire your handler. Call `event.preventDefault()` and save through `tools/call`.
 
@@ -780,6 +821,8 @@ The sandbox keeps page code from ever running with the WayAI app's origin or sig
 | One page of a list a person scrolls | `limit` rows, at most 100, and 256 KiB of them ([Showing a Long List](#showing-a-long-list)) |
 | A file saved for the person (`ui/download-file`) | One CSV or plain-text file, 5 MiB of UTF-8, a 120-character name |
 | Files a person is asked to save | 10 in any 10 minutes, across the pages open in one app window |
+| A copy of the view to print (`wayai/print`) | 5 MiB of UTF-8, `data:` images included |
+| Prints | 10 in any 10 minutes, across the pages open in one app window |
 | `params` schema | 16 KiB of JSON |
 | `title` / `description` | 120 / 500 characters |
 | Audiences | `team`, `customers` |
