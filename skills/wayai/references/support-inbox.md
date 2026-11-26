@@ -153,7 +153,7 @@ A hub that asks permission for new contacts (its `non_app_permission` and `acces
 ## The Contact's Context and History
 
 - **The contact's name** in the conversation header opens **User context**. It shows the contact's identity and the hub's saved state about them and about this conversation. Hub admins can rename the contact and clear a saved value.
-- **The History button** lists the contact's ended conversations with the hub.
+- **Conversation History**, in the conversation header's menu (**⋮**), lists the contact's ended conversations with the hub.
 - **On a chat hub**, scrolling up also shows earlier conversations.
 
 ## Flags

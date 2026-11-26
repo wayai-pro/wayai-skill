@@ -35,7 +35,7 @@ When you don't know the agent's id, hand over `https://app.wayai.pro/chat` and n
 **`https://app.wayai.pro/chat/<hubId>`** opens the agent's ongoing conversation.
 
 - **The conversation can end.** The agent or the support team closes it, or the hub closes it after a stretch with no messages. The message box stays open: the person's next message starts a new conversation with the same agent.
-- **Earlier conversations** sit above the current one. Scrolling up shows each one after a divider with the date and time it started. Past the first few, **Load earlier conversations** loads more. The **History** button (clock icon) in the header lists the person's ended conversations with this agent, and each opens to read.
+- **Earlier conversations** sit above the current one. Scrolling up shows each one after a divider with the date and time it started. Past the first few, **Load earlier conversations** loads more. **Conversation History**, in the header's menu (**⋮**), lists the person's ended conversations with this agent, and each opens to read.
 - **One conversation** opens at `https://app.wayai.pro/chat/<hubId>/conversations/<conversationId>`.
 - **Voice calls:** on a chat agent set up for voice calls, **Start a voice call** sits beside the message box. See [calls.md → Placing a Call](calls.md#placing-a-call).
 
