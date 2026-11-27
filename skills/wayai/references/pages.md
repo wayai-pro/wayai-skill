@@ -66,7 +66,7 @@ tools:                          # tool names must be unique across the manifest
 |-------|----------|---------|
 | `slug` | No (the folder's name) | The page's immutable id |
 | `title` | Yes | 1–120 characters; what menus show |
-| `description` | No | Up to 500 characters; shown under the title in web menus and in the mobile app's **Pages** tab (the mobile app's conversation menu shows titles only) |
+| `description` | No | Up to 500 characters, but it reads best as one short sentence: the web's **Pages** entry and the mobile app's **Pages** tab show at most 2 lines of it under the title, a page card at most 3, each ending in an ellipsis, and the conversation's menu shows titles only. Push warns over 100 characters ([The Design Warnings](#the-design-warnings)) |
 | `audience` | Yes | `team` or `customers` ([Customer Pages](#customer-pages)) |
 | `team_writes` | No (`false`) | A team page's: lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)). Push refuses it on a customer page |
 | `customer_writes` | No (unset) | A customer page's: lets each customer run its tools that change data, on their own records of a record type with person entries, and on every record of a `{ shared: true }` type ([Customer Pages](#customer-pages)). Push refuses `true` on a team page |
@@ -165,7 +165,7 @@ tools:
 
 **Params.** The card keeps only the params the page's `params` schema declares and accepts when it is sent, and the tool's answer lists those it dropped (`dropped_params`). Opening a card checks them again against the page's schema at that moment, so a card older than the page's latest manifest opens with what that manifest accepts. A card whose page was deleted since, or that the person viewing it may not open, shows **Page not available**.
 
-**What each surface shows.** On web and in the mobile app, the card: the page's title and description, and **Open**, which opens the page over the conversation as its header does, for the person in their own conversation and for the team in the support conversation. Everywhere else, and in older app versions, the card is its fallback text:
+**What each surface shows.** On web and in the mobile app, the card: the page's title, at most 3 lines of its description, and **Open**, which opens the page over the conversation as its header does, for the person in their own conversation and for the team in the support conversation. Everywhere else, and in older app versions, the card is its fallback text:
 
 - **a team page:** its title and a link that opens it on web filling the window, as the **Pages** entry does, with the card's params; a link too long for a message goes without them, and the page opens with none;
 - **a customer page:** its title and "Open this in the latest version of the WayAI app."
@@ -790,7 +790,7 @@ Format numbers and dates for the same locale: `new Intl.NumberFormat(locale).for
 
 ### The Design Warnings
 
-`wayai push` and `wayai diff` read every page in the `pages/` folder, changed or not, and print a warning for each rule below a page breaks, in the same block as the platform's warnings: `page "<slug>" (design): …`. A warning never stops a push. Each rule reads the page's text, so each has limits:
+`wayai push` and `wayai diff` read every page in the `pages/` folder, changed or not, and print a warning for each rule below a page breaks, in the same block as the platform's warnings: `page "<slug>" (design): …`. A warning never stops a push. Each rule but the last reads the page's HTML as text, so each has limits:
 
 | Warning | When | Not read |
 |---------|------|----------|
@@ -800,6 +800,7 @@ Format numbers and dates for the same locale: `new Intl.NumberFormat(locale).for
 | Tables that overflow | A table with nothing in the page that lets it fit a phone: no `wayai-table-wrap`, no `overflow` of `auto` or `scroll`, and no table rule inside a media or container query | Which table is handled: one handled table passes them all |
 | Loads the sandbox refuses | A `<script src>`, a stylesheet `<link>`, an image loading anything but a `data:` or `blob:` URL, any frame, video or audio source (a `data:` one too), a CSS `url()` or `@import` of a file, and `fetch`, `WebSocket` or `EventSource` called with a literal URL | Markup inside script strings, URLs built at run time |
 | No empty state / no error state | A page that declares tools and builds a list, with no `wayai-empty` and no check for zero rows (`.length === 0`, `!rows.length`), or no `isError` and no `wayai-alert` | Whether the check guards that list: an inlined library holding those words passes too |
+| Long description | The manifest's `description` is over 100 characters, about 2 lines on a phone, where the lists cut it | How wide the characters are |
 
 ## The Sandbox: What a Page Cannot Do
 
