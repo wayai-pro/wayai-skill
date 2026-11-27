@@ -167,7 +167,7 @@ tools:
 
 **What each surface shows.** On web and in the mobile app, the card: the page's title, at most 3 lines of its description, and **Open**, which opens the page over the conversation as its header does, for the person in their own conversation and for the team in the support conversation. Everywhere else, and in older app versions, the card is its fallback text:
 
-- **a team page:** its title and a link that opens it on web filling the window, as the **Pages** entry does, with the card's params; a link too long for a message goes without them, and the page opens with none;
+- **a team page:** its title and a link to the page with the card's params; a link too long for a message goes without them, and the page opens with none. On a phone with the mobile app 1.1.3 or later (iPhone or Android), the link opens the page in the app, in its full-screen sheet over the **Pages** tab. Anywhere else it opens on web filling the window, as the **Pages** entry does; on an iPhone with app 1.1.1 or 1.1.2, in an in-app browser, where the person signs in;
 - **a customer page:** its title and "Open this in the latest version of the WayAI app."
 
 The fallback goes out as any message of the agent's does on the conversation's channel: on WhatsApp and Instagram only within 24 hours of the person's last message; an email conversation stores the card without sending it. Later in the conversation the agent reads its card back as that fallback text, so also tell the person in your reply what the page is for.
