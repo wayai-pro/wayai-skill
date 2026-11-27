@@ -70,7 +70,7 @@ tools:                          # tool names must be unique across the manifest
 | `audience` | Yes | `team` or `customers` ([Customer Pages](#customer-pages)) |
 | `team_writes` | No (`false`) | A team page's: lets team users without a grant on the hub run the page's tools that change data, not only its reads ([Who Sees a Team Page](#who-sees-a-team-page)). Push refuses it on a customer page |
 | `customer_writes` | No (unset) | A customer page's: lets each customer run its tools that change data, on their own records of a record type with person entries, and on every record of a `{ shared: true }` type ([Customer Pages](#customer-pages)). Push refuses `true` on a team page |
-| `show_in_conversation` | No (`false`); `true` on a customer page | Lists the page in the conversation's menu (**⋮**), on either audience, on web and in the mobile app; a page without it is not listed there. It never decides who may open a page: a page without it opens from the web's **Pages** entry and the mobile app's **Pages** tab ([Where people open them](#pages)). Push refuses a customer page without it |
+| `show_in_conversation` | No (`false`) | Lists the page in the conversation's menu (**⋮**), on either audience, on web and in the mobile app; a page without it is not listed there. It never decides who may open a page: a page without it, of either audience, opens from the web's **Pages** entry and the mobile app's **Pages** tab ([Where people open them](#pages)) |
 | `allow_messages` | No (unset, which is `false`) | Either audience's: lets the page put text in the person's own message box in the conversation it was opened from, for them to send or not. It never sends ([Putting Text in the Person's Message Box](#putting-text-in-the-persons-message-box)) |
 | `order` | No (`0`) | Menu position, 0–1000, lowest first; pages of equal order sort by slug |
 | `params` | No | A JSON Schema whose root is `type: object`, at most 16 KiB of JSON: the values a link or a [page card](#page-cards) may open the page with |
@@ -114,7 +114,7 @@ A customer page (`audience: customers`) serves the hub's customers: each person 
 # pages/my-results/page.yaml: for the athletes
 title: My results
 audience: customers
-show_in_conversation: true      # required by push
+show_in_conversation: true      # also in their conversation's menu; leave it out for Pages only
 tools:                          # record types with person or inherit entries, or shared access; notify is always none
   - { connection: athlete-base, tool: list_my_results, notify: none }
 ```
