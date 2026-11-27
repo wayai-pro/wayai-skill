@@ -1,6 +1,6 @@
 ---
 name: wayai-cases
-version: 1.3.2
+version: 1.3.3
 # Installed only by name (`--skill wayai-cases`): an install naming no skill leaves it out.
 metadata:
   internal: true
@@ -159,6 +159,8 @@ would refuse is listed and left out of a push, never sent:
   `CLAUDE.local.md`), a dot-name, a `tools/` folder, or an `instructions` folder other than
   `instructions/case/`, at any depth;
 - a phase's `received/` folder: only [`received add`](#work-commands) writes there;
+- a phase's `external/` folder (in any letter case): it is reserved for external review, and no push
+  writes there;
 - `instructions/case/`: only a person writes the case's own instructions, in the web app. A push
   lists each change there as left out and sends the rest.
 
