@@ -506,7 +506,7 @@ the community, an owner's or admin's header carries **Community settings**, whic
 | Section | `<section>` | Holds |
 |---------|-------------|-------|
 | Rooms | `rooms` | **New room**, **Rename**, **Archive**, **Bring back** and **Tiers** (the room's gate). The kinds read **Chat**, **Forum** and **Announcements** (`discussion`, `forum`, `announcements` in `community.yaml`) |
-| General | `rules` | The name, the rules (shown on the join page), slow mode |
+| General | `rules` | The name, the rules (shown on the join page), slow mode, **Show member count** (off hides the count from members and the join page; owners and admins still see it) |
 | Join link | `link` | The link, its rotation and turning it off, the source tags |
 | Access | `access` | `admission` and the access list, each entry with its tiers: given to the emails an add lists, changed per entry ([Entry tiers](#entry-tiers)) |
 | Tiers | `tiers` | The tiers, each with **Edit tier** (its name and access link) and **Delete tier** (refused while it gates a room or course); **New tier**; and **Tier managers**, the hubs whose agents may give them, with a warning of what that lets those agents do ([Tiers](#tiers)) |
@@ -608,7 +608,8 @@ CLI. Each link: [navigation.md → Community](navigation.md#community).
 ### Joining
 
 - **The page** at the join link (`wayai communities join-link get`) shows the community before
-  sign-in: its name, its organization, how many members it has, its rules, and **Invite-only** on an
+  sign-in: its name, its organization, how many members it has (unless the community hides its member
+  count), its rules, and **Invite-only** on an
   invite-only one. Joining needs a WayAI account: **Create account** and **I already have an
   account** both come back to the page. On a phone, it offers to open the mobile app.
 - **The rules show only there**, and joining accepts them: there is no separate step.
