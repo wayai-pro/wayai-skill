@@ -99,7 +99,7 @@ A person who joined an organization's community reads and writes in its rooms an
 
 The iOS and Android apps hold the same agents and conversations as the web. This describes the app as it is built today: an older install may lack parts of it (such as the Community tab, the camera and Photo library, links in a message opening in the app, **Withdraw AI consent**, or **Appearance**, where it shows a **Dark mode** switch) until it is updated.
 
-- **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community, **Pages** for someone offered a page, and **Cases** for a member of a case space. With all four of Support, Community, Pages and Cases, **Pages** and **Cases** sit in **More**.
+- **Tabs:** **Chat**, **Support** and **You**, plus **Community** for a member of a community, **Pages** for someone offered a page, and **Cases** for a member of a case space. With all four of Support, Community, Pages and Cases, **More** takes the place of **You**, holding **Cases** and **You**.
   - **Chat** is the list at `/chat`.
   - **Support** is the team inbox, which reads "No support conversations." for someone on no hub's team.
   - **Pages** lists the pages offered to the person, as the web's **Pages** entry does, each opening in a full-screen sheet ([pages.md](pages.md#pages)).
